@@ -1,44 +1,46 @@
-# Federated Learning para Clasificación de Cáncer de Piel
+# Federated Learning for Skin Cancer Classification
 
-Sistema de clasificación de lesiones cutáneas usando Federated Learning con Flower y CNN ligera.
+Skin lesion classification system using Federated Learning with Flower and lightweight CNN.
 
-## Estructura del Proyecto
+## Project Structure
 
 ```
-├── config/              # Configuración global
-│   └── config.py        # Parámetros del sistema
-├── data/                # Gestión de datos
-│   ├── data_loader.py   # Carga de datasets
-│   └── preprocessing.py # Preprocesamiento y augmentation
-├── models/              # Arquitecturas de modelos
-│   └── cnn_model.py     # CNN ligera (Mamun et al. 2025)
-├── server/              # Servidor federado
-│   └── server.py        # Lógica del servidor Flower
-├── client/              # Cliente federado
-│   └── client.py        # Entrenamiento local
-├── utils/               # Utilidades
-│   ├── metrics.py       # Métricas de evaluación
-│   ├── logging_utils.py # Sistema de logging
-│   └── security.py      # Seguridad y privacidad
-├── main_server.py       # Punto de entrada del servidor
-├── main_client.py       # Punto de entrada del cliente
-└── requirements.txt     # Dependencias
+├── config/              # Global configuration
+│   └── config.py        # System parameters
+├── data/                # Data management
+│   ├── data_loader.py   # Dataset loaders
+│   └── preprocessing.py # Preprocessing and augmentation
+├── models/              # Model architectures
+│   └── cnn_model.py     # Lightweight CNN (Mamun et al. 2025)
+├── server/              # Federated server
+│   └── server.py        # Flower server logic
+├── client/              # Federated client
+│   └── client.py        # Local training
+├── utils/               # Utilities
+│   ├── metrics.py       # Evaluation metrics
+│   ├── logging_utils.py # Logging system
+│   ├── security.py      # Security and privacy
+│   └── gradcam.py       # Grad-CAM interpretability
+├── main_server.py       # Server entry point
+├── main_client.py       # Client entry point
+├── setup_project.py     # Project setup script
+└── requirements.txt     # Dependencies
 ```
 
 ## Datasets
 
-- **Base**: HAM10000
-- **Nodos adicionales**: ISIC 2018, ISIC 2020, (opcional) ISIC 2019
-- **Validación externa**: PH2
+- **Primary**: HAM10000
+- **Additional Nodes**: ISIC 2018, ISIC 2019, ISIC 2020
+- **External Validation**: PH2
 
-## Arquitectura CNN Ligera
+## Lightweight CNN Architecture
 
-Inspirada en Mamun et al. (2025):
-- 3 bloques convolucionales (32, 64, 128 filtros)
-- MaxPooling después de cada bloque
-- Flatten → Dense(256, ReLU, Dropout) → Softmax(7 clases)
+Inspired by Mamun et al. (2025):
+- 3 convolutional blocks (32, 64, 128 filters)
+- MaxPooling after each block
+- Flatten → Dense(256, ReLU, Dropout) → Softmax(7 classes)
 
-## Clases de Lesiones (7)
+## Lesion Classes (7)
 
 1. Melanoma (MEL)
 2. Melanocytic Nevus (NV)
@@ -48,35 +50,69 @@ Inspirada en Mamun et al. (2025):
 6. Dermatofibroma (DF)
 7. Vascular Lesion (VASC)
 
-## Instalación
+## Installation
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Run project setup
+python setup_project.py
 ```
 
-## Uso
+## Usage
 
-### Iniciar servidor federado
+### Start federated server
 ```bash
-python main_server.py
+python main_server.py --strategy FedAvg --rounds 50
 ```
 
-### Iniciar cliente
+### Start clients (in separate terminals)
 ```bash
-python main_client.py --node_id 0 --dataset HAM10000
+# Client 0 - HAM10000
+python main_client.py --node-id 0 --dataset HAM10000
+
+# Client 1 - ISIC2018
+python main_client.py --node-id 1 --dataset ISIC2018
+
+# Client 2 - ISIC2020
+python main_client.py --node-id 2 --dataset ISIC2020
+
+# Client 3 - ISIC2019
+python main_client.py --node-id 3 --dataset ISIC2019
 ```
 
-## Características
+### Monitor with TensorBoard
+```bash
+tensorboard --logdir=logs/tensorboard
+```
 
-- Federated Learning con Flower
-- Agregación FedAvg / FedProx
-- Estrategias IID y no-IID
-- Data augmentation robusto
-- Métricas especializadas (F1, AUC, sensibilidad/especificidad)
-- Interpretabilidad con Grad-CAM
-- Canales cifrados
-- Preparado para privacidad diferencial
+## Features
 
-## Autor
+- Federated Learning with Flower framework
+- FedAvg / FedProx aggregation strategies
+- IID and non-IID data distribution
+- Robust data augmentation
+- Specialized metrics (F1, AUC, sensitivity/specificity for melanoma)
+- Grad-CAM interpretability
+- Encrypted channels support
+- Differential privacy ready
 
-Leonidas Brando - TFG 2025
+## Configuration
+
+Key parameters can be adjusted in [config/config.py](config/config.py):
+
+- **Model**: CNN architecture, input size, dropout
+- **Training**: Learning rate, batch size, epochs
+- **Federated**: Number of rounds, aggregation strategy, minimum clients
+- **Data**: Augmentation, IID/non-IID distribution, class weights
+- **Metrics**: Tracking, melanoma-specific metrics, Grad-CAM
+- **Security**: Encryption, differential privacy, secure aggregation
+
+## Project Status
+
+This is a research project for federated learning applied to skin cancer classification using multiple dermoscopic image datasets.
+
+## Author
+
+Leonardo Chen - 2025
