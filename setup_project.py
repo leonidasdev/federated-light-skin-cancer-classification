@@ -162,10 +162,7 @@ datasets/
 │   │   └── ...
 │   └── train.csv
 │
-└── PH2/
-    ├── images/
-    │   └── ...
-    └── PH2_dataset.csv
+```
 ```
 
 ## Fuentes de Datos
@@ -190,11 +187,6 @@ datasets/
 - **Enfoque**: Binary classification (malignant/benign)
 - **Tamaño**: ~33,126 imágenes
 
-### PH2 (External Validation)
-- **Fuente**: https://www.fc.up.pt/addi/ph2%20database.html
-- **Uso**: Solo para validación externa final
-- **Tamaño**: 200 imágenes dermoscópicas
-
 ## Notas Importantes
 
 1. **Preprocesamiento**: Todas las imágenes se redimensionarán a 224×224
@@ -207,7 +199,7 @@ datasets/
 Cada dataset tiene su propia licencia. Verifica los términos de uso:
 - HAM10000: CC BY-NC 4.0
 - ISIC Challenges: Terms available at isic-archive.com
-- PH2: Academic use only
+- ISIC Challenges: Terms available at isic-archive.com
 """
     
     readme_path.write_text(readme_content, encoding='utf-8')

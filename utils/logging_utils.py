@@ -1,7 +1,7 @@
 """
-Sistema de logging para Federated Learning.
+Logging system for Federated Learning.
 
-Proporciona logging unificado para servidor y clientes.
+Provides unified logging for server and clients.
 """
 
 import logging
@@ -17,43 +17,43 @@ def setup_logger(name: str,
                 log_file: Optional[str] = None,
                 level: str = None) -> logging.Logger:
     """
-    Configura un logger para el sistema.
-    
+    Configure a logger for the system.
+
     Args:
-        name (str): Nombre del logger
-        log_file (str): Archivo de log (opcional)
-        level (str): Nivel de logging
-    
+        name (str): Logger name
+        log_file (str): Log file path (optional)
+        level (str): Logging level
+
     Returns:
-        logging.Logger: Logger configurado
+        logging.Logger: Configured logger
     """
-    # Nivel de logging
+    # Logging level
     if level is None:
         level = LOGGING_CONFIG.get('log_level', 'INFO')
     
     log_level = getattr(logging, level.upper(), logging.INFO)
     
-    # Crear logger
+    # Create logger
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
     
-    # Evitar duplicación de handlers
+    # Avoid duplicate handlers
     if logger.handlers:
         return logger
     
-    # Formato
+    # Formatter
     formatter = logging.Formatter(
         fmt=LOGGING_CONFIG.get('log_format'),
         datefmt=LOGGING_CONFIG.get('date_format')
     )
     
-    # Handler para consola
+    # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # Handler para archivo (si se especifica)
+    # File handler (if specified)
     if log_file or LOGGING_CONFIG.get('save_logs_to_file', False):
         if log_file is None:
             log_dir = Path(LOGGING_CONFIG['log_dir'])
@@ -70,13 +70,13 @@ def setup_logger(name: str,
 
 def create_experiment_logger(experiment_name: str) -> logging.Logger:
     """
-    Crea un logger específico para un experimento.
-    
+    Create an experiment-specific logger.
+
     Args:
-        experiment_name (str): Nombre del experimento
-    
+        experiment_name (str): Experiment name
+
     Returns:
-        logging.Logger: Logger del experimento
+        logging.Logger: Experiment logger
     """
     # Crear directorio de logs del experimento
     log_dir = Path(LOGGING_CONFIG['log_dir']) / experiment_name
@@ -91,44 +91,44 @@ def create_experiment_logger(experiment_name: str) -> logging.Logger:
 
 def log_system_info(logger: logging.Logger):
     """
-    Registra información del sistema.
-    
+    Log system information.
+
     Args:
-        logger: Logger a usar
+        logger: Logger to use
     """
     import platform
     import tensorflow as tf
     
     logger.info("=" * 60)
-    logger.info("INFORMACIÓN DEL SISTEMA")
+    logger.info("SYSTEM INFORMATION")
     logger.info("=" * 60)
     logger.info(f"Python: {platform.python_version()}")
     logger.info(f"TensorFlow: {tf.__version__}")
-    logger.info(f"Sistema Operativo: {platform.system()} {platform.release()}")
-    logger.info(f"Procesador: {platform.processor()}")
+    logger.info(f"Operating System: {platform.system()} {platform.release()}")
+    logger.info(f"Processor: {platform.processor()}")
     
     # GPU info
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
-        logger.info(f"GPUs disponibles: {len(gpus)}")
+        logger.info(f"GPUs available: {len(gpus)}")
         for gpu in gpus:
             logger.info(f"  - {gpu.name}")
     else:
-        logger.info("No se detectaron GPUs - usando CPU")
+        logger.info("No GPUs detected - using CPU")
     
     logger.info("=" * 60)
 
 
 def log_experiment_config(logger: logging.Logger, config: dict):
     """
-    Registra la configuración del experimento.
-    
+    Log the experiment configuration.
+
     Args:
-        logger: Logger a usar
-        config: Diccionario de configuración
+        logger: Logger to use
+        config: Configuration dictionary
     """
     logger.info("=" * 60)
-    logger.info("CONFIGURACIÓN DEL EXPERIMENTO")
+    logger.info("EXPERIMENT CONFIGURATION")
     logger.info("=" * 60)
     
     for key, value in config.items():
@@ -141,29 +141,29 @@ def log_training_progress(logger: logging.Logger,
                          round_num: int,
                          metrics: dict):
     """
-    Registra progreso del entrenamiento.
-    
+    Log training progress.
+
     Args:
-        logger: Logger a usar
-        round_num: Número de ronda
-        metrics: Métricas de la ronda
+        logger: Logger to use
+        round_num: Round number
+        metrics: Round metrics
     """
-    logger.info(f"Ronda {round_num} completada:")
+    logger.info(f"Round {round_num} completed:")
     for metric_name, metric_value in metrics.items():
         logger.info(f"  {metric_name}: {metric_value:.4f}")
 
 
 class TensorBoardLogger:
     """
-    Logger para TensorBoard.
+    Logger for TensorBoard.
     """
     
     def __init__(self, log_dir: str = None):
         """
-        Inicializa el logger de TensorBoard.
-        
+        Initialize the TensorBoard logger.
+
         Args:
-            log_dir (str): Directorio de logs
+            log_dir (str): Logs directory
         """
         if log_dir is None:
             log_dir = LOGGING_CONFIG['tensorboard_dir']
@@ -171,11 +171,11 @@ class TensorBoardLogger:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
         
-        # Crear subdirectorio con timestamp
+        # Create subdirectory with timestamp
         timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
         self.run_dir = self.log_dir / timestamp
         
-        # File writers para diferentes secciones
+        # File writers for different sections
         import tensorflow as tf
         self.train_writer = tf.summary.create_file_writer(str(self.run_dir / 'train'))
         self.val_writer = tf.summary.create_file_writer(str(self.run_dir / 'val'))
@@ -183,13 +183,13 @@ class TensorBoardLogger:
     
     def log_scalar(self, tag: str, value: float, step: int, mode: str = 'train'):
         """
-        Registra un valor escalar.
-        
+        Log a scalar value.
+
         Args:
-            tag (str): Nombre de la métrica
-            value (float): Valor
-            step (int): Paso/época
-            mode (str): 'train', 'val' o 'test'
+            tag (str): Metric name
+            value (float): Value
+            step (int): Step/epoch
+            mode (str): 'train', 'val' or 'test'
         """
         import tensorflow as tf
         
@@ -205,12 +205,12 @@ class TensorBoardLogger:
     
     def log_metrics(self, metrics: dict, step: int, mode: str = 'train'):
         """
-        Registra múltiples métricas.
-        
+        Log multiple metrics.
+
         Args:
-            metrics (dict): Diccionario de métricas
-            step (int): Paso/época
-            mode (str): 'train', 'val' o 'test'
+            metrics (dict): Metrics dictionary
+            step (int): Step/epoch
+            mode (str): 'train', 'val' or 'test'
         """
         for metric_name, metric_value in metrics.items():
             if isinstance(metric_value, (int, float)):
@@ -218,12 +218,12 @@ class TensorBoardLogger:
     
     def log_image(self, tag: str, image, step: int):
         """
-        Registra una imagen.
-        
+        Log an image.
+
         Args:
-            tag (str): Nombre de la imagen
-            image: Imagen (array numpy)
-            step (int): Paso
+            tag (str): Image name
+            image: Image (numpy array)
+            step (int): Step
         """
         import tensorflow as tf
         
@@ -233,12 +233,12 @@ class TensorBoardLogger:
     
     def log_histogram(self, tag: str, values, step: int):
         """
-        Registra un histograma.
-        
+        Log a histogram.
+
         Args:
-            tag (str): Nombre
-            values: Valores (array)
-            step (int): Paso
+            tag (str): Name
+            values: Values (array)
+            step (int): Step
         """
         import tensorflow as tf
         
@@ -247,7 +247,7 @@ class TensorBoardLogger:
             self.train_writer.flush()
     
     def close(self):
-        """Cierra los file writers."""
+        """Close the file writers."""
         self.train_writer.close()
         self.val_writer.close()
         self.test_writer.close()
@@ -255,14 +255,14 @@ class TensorBoardLogger:
 
 def create_progress_bar(total: int, desc: str = "Progreso"):
     """
-    Crea una barra de progreso.
-    
+    Create a progress bar.
+
     Args:
-        total (int): Total de iteraciones
-        desc (str): Descripción
-    
+        total (int): Total iterations
+        desc (str): Description
+
     Returns:
-        tqdm: Barra de progreso
+        tqdm: Progress bar
     """
     from tqdm import tqdm
     return tqdm(total=total, desc=desc, unit='step')
@@ -272,13 +272,13 @@ def create_progress_bar(total: int, desc: str = "Progreso"):
 
 def get_log_file_path(name: str) -> Path:
     """
-    Obtiene la ruta del archivo de log.
-    
+    Get the log file path.
+
     Args:
-        name (str): Nombre del log
-    
+        name (str): Log name
+
     Returns:
-        Path: Ruta del archivo
+        Path: Path to the log file
     """
     log_dir = Path(LOGGING_CONFIG['log_dir'])
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -289,11 +289,11 @@ def get_log_file_path(name: str) -> Path:
 
 def setup_federated_logging(experiment_name: str = "federated_experiment"):
     """
-    Configura el sistema de logging completo para FL.
-    
+    Setup the full logging system for FL.
+
     Args:
-        experiment_name (str): Nombre del experimento
-    
+        experiment_name (str): Experiment name
+
     Returns:
         tuple: (logger, tensorboard_logger)
     """
@@ -303,10 +303,10 @@ def setup_federated_logging(experiment_name: str = "federated_experiment"):
     # Logger de TensorBoard
     tb_logger = TensorBoardLogger()
     
-    # Registrar información del sistema
+    # Log system information
     log_system_info(logger)
-    
-    logger.info(f"Sistema de logging inicializado - Experimento: {experiment_name}")
+
+    logger.info(f"Logging system initialized - Experiment: {experiment_name}")
     logger.info(f"TensorBoard: {tb_logger.run_dir}")
     
     return logger, tb_logger
@@ -315,19 +315,19 @@ def setup_federated_logging(experiment_name: str = "federated_experiment"):
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    print("Probando sistema de logging...")
-    
-    # Crear logger de prueba
+    print("Testing logging system...")
+
+    # Create test logger
     logger = setup_logger('TestLogger')
-    logger.info("Esto es un mensaje INFO")
-    logger.debug("Esto es un mensaje DEBUG")
-    logger.warning("Esto es un WARNING")
-    
-    # Probar TensorBoard logger
+    logger.info("This is an INFO message")
+    logger.debug("This is a DEBUG message")
+    logger.warning("This is a WARNING")
+
+    # Test TensorBoard logger
     tb_logger = TensorBoardLogger()
     tb_logger.log_scalar('test_metric', 0.95, step=1)
     tb_logger.log_metrics({'accuracy': 0.95, 'loss': 0.05}, step=1)
     tb_logger.close()
-    
-    print(f"\nLogs guardados en: {LOGGING_CONFIG['log_dir']}")
+
+    print(f"\nLogs saved to: {LOGGING_CONFIG['log_dir']}")
     print(f"TensorBoard: {tb_logger.run_dir}")

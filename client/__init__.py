@@ -1,5 +1,5 @@
 """
-Módulo del cliente federado.
+Federated client module.
 """
 
 from .client import (

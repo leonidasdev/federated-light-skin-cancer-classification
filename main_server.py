@@ -1,10 +1,10 @@
 """
-Punto de entrada principal para el servidor federado.
+Main entry point for the federated server.
 
-Uso:
+Usage:
     python main_server.py [--strategy STRATEGY] [--rounds ROUNDS] [--address ADDRESS]
 
-Ejemplo:
+Example:
     python main_server.py --strategy FedAvg --rounds 50 --address [::]:8080
 """
 
@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-# Añadir directorio raíz al path
+# Add root directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from config.config import print_config_summary, FEDERATED_CONFIG
@@ -23,13 +23,13 @@ from utils.security import setup_secure_communication
 
 def parse_args():
     """
-    Parsea argumentos de línea de comandos.
-    
+    Parse command-line arguments.
+
     Returns:
-        argparse.Namespace: Argumentos parseados
+        argparse.Namespace: Parsed arguments
     """
     parser = argparse.ArgumentParser(
-        description='Servidor Federado para Clasificación de Cáncer de Piel'
+        description='Federated Server for Skin Cancer Classification'
     )
     
     parser.add_argument(
@@ -37,102 +37,101 @@ def parse_args():
         type=str,
         default=FEDERATED_CONFIG['strategy'],
         choices=['FedAvg', 'FedProx'],
-        help='Estrategia de agregación federada'
+        help='Federated aggregation strategy'
     )
     
     parser.add_argument(
         '--rounds',
         type=int,
         default=FEDERATED_CONFIG['num_rounds'],
-        help='Número de rondas de entrenamiento federado'
+        help='Number of federated training rounds'
     )
     
     parser.add_argument(
         '--address',
         type=str,
         default=FEDERATED_CONFIG['server_address'],
-        help='Dirección del servidor (formato: [host]:port)'
+        help='Server address (format: [host]:port)'
     )
     
     parser.add_argument(
         '--min-clients',
         type=int,
         default=FEDERATED_CONFIG['min_available_clients'],
-        help='Número mínimo de clientes requeridos'
+        help='Minimum number of required clients'
     )
     
     parser.add_argument(
         '--experiment-name',
         type=str,
         default='federated_skin_cancer',
-        help='Nombre del experimento (para logs)'
+        help='Experiment name (for logs)'
     )
     
     parser.add_argument(
         '--secure',
         action='store_true',
-        help='Habilitar comunicaciones seguras (TLS)'
+        help='Enable secure communications (TLS)'
     )
     
     return parser.parse_args()
 
 
 def main():
-    """
-    Función principal del servidor.
-    """
-    # Parsear argumentos
+    """Main server function."""
+
+    # Parse arguments
     args = parse_args()
-    
-    # Configurar logging
+
+    # Setup logging
     logger, tb_logger = setup_federated_logging(args.experiment_name)
-    
-    # Imprimir configuración
+
+    # Print configuration
     print_config_summary()
-    
+
     logger.info("=" * 60)
-    logger.info("INICIANDO SERVIDOR FEDERADO")
+    logger.info("STARTING FEDERATED SERVER")
     logger.info("=" * 60)
-    logger.info(f"Estrategia: {args.strategy}")
-    logger.info(f"Rondas: {args.rounds}")
-    logger.info(f"Dirección: {args.address}")
-    logger.info(f"Clientes mínimos: {args.min_clients}")
-    logger.info(f"Experimento: {args.experiment_name}")
+    logger.info(f"Strategy: {args.strategy}")
+    logger.info(f"Rounds: {args.rounds}")
+    logger.info(f"Address: {args.address}")
+    logger.info(f"Min clients: {args.min_clients}")
+    logger.info(f"Experiment: {args.experiment_name}")
     logger.info("=" * 60)
-    
+
     try:
-        # Configurar seguridad si es necesario
+        # Configure security if required
         if args.secure:
-            logger.info("Configurando comunicaciones seguras...")
+            logger.info("Configuring secure communications...")
             setup_secure_communication(args.address)
-        
-        # Crear servidor
-        logger.info("Creando servidor federado...")
+
+        # Create server
+        logger.info("Creating federated server...")
         server = create_server(
             strategy_name=args.strategy,
             num_rounds=args.rounds,
             server_address=args.address
         )
-        
-        # Iniciar servidor
-        logger.info("Iniciando servidor - esperando clientes...")
-        logger.info("Presiona Ctrl+C para detener el servidor")
-        
+
+        # Start server
+        logger.info("Starting server - waiting for clients...")
+        logger.info("Press Ctrl+C to stop the server")
+
         server.start()
-        
-        logger.info("Servidor finalizado exitosamente")
-    
+
+        logger.info("Server finished successfully")
+
     except KeyboardInterrupt:
-        logger.info("Servidor detenido por el usuario")
-    
+        logger.info("Server stopped by user")
+
     except Exception as e:
-        logger.error(f"Error crítico en servidor: {e}", exc_info=True)
+        logger.error(f"Critical error in server: {e}", exc_info=True)
         sys.exit(1)
-    
+
     finally:
-        # Cerrar TensorBoard logger
+        # Close TensorBoard logger
         tb_logger.close()
-        logger.info("Recursos liberados correctamente")
+        logger.info("Resources released successfully")
 
 
 if __name__ == '__main__':

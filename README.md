@@ -31,7 +31,7 @@ Skin lesion classification system using Federated Learning with Flower and light
 
 - **Primary**: HAM10000
 - **Additional Nodes**: ISIC 2018, ISIC 2019, ISIC 2020
-- **External Validation**: PH2
+- **External Validation**: None configured
 
 ## Lightweight CNN Architecture
 

@@ -1,11 +1,11 @@
 """
-Módulo de seguridad y privacidad para Federated Learning.
+Security and privacy module for Federated Learning.
 
-Incluye:
-- Cifrado de comunicaciones
+Includes:
+- Communication encryption
 - Secure aggregation (placeholder)
-- Privacidad diferencial (placeholder)
-- Autenticación de clientes
+- Differential privacy (placeholder)
+- Client authentication
 """
 
 import hashlib
@@ -20,15 +20,15 @@ from utils.logging_utils import setup_logger
 
 class SecureChannel:
     """
-    Gestiona comunicaciones cifradas entre servidor y clientes.
+    Manage encrypted communications between server and clients.
     """
     
     def __init__(self, use_encryption: bool = None):
         """
-        Inicializa el canal seguro.
-        
+        Initialize the secure channel.
+
         Args:
-            use_encryption (bool): Si usar cifrado
+            use_encryption (bool): Whether to use encryption
         """
         if use_encryption is None:
             use_encryption = SECURITY_CONFIG.get('use_encryption', True)
@@ -37,50 +37,50 @@ class SecureChannel:
         self.logger = setup_logger('SecureChannel')
         
         if self.use_encryption:
-            self.logger.info("Canal seguro habilitado con cifrado")
+            self.logger.info("Secure channel enabled with encryption")
         else:
-            self.logger.warning("Canal seguro deshabilitado - modo desarrollo")
+            self.logger.warning("Secure channel disabled - development mode")
     
     def encrypt_parameters(self, parameters: List[np.ndarray]) -> List[np.ndarray]:
         """
-        Cifra parámetros del modelo.
-        
+        Encrypt model parameters.
+
         Args:
-            parameters (List[np.ndarray]): Parámetros a cifrar
-        
+            parameters (List[np.ndarray]): Parameters to encrypt
+
         Returns:
-            List[np.ndarray]: Parámetros cifrados
+            List[np.ndarray]: Encrypted parameters
         """
-        # TODO: Implementar cifrado real (AES, RSA, etc.)
-        # Por ahora, retornar sin modificar
+        # TODO: Implement real encryption (AES, RSA, etc.)
+        # For now, return unmodified
         
         if not self.use_encryption:
             return parameters
-        
-        self.logger.debug("Cifrando parámetros...")
-        
-        # Placeholder: implementar cifrado real
-        encrypted = parameters  # Sin modificar por ahora
+
+        self.logger.debug("Encrypting parameters...")
+
+        # Placeholder: implement real encryption
+        encrypted = parameters  # Unmodified for now
         
         return encrypted
     
     def decrypt_parameters(self, encrypted_parameters: List[np.ndarray]) -> List[np.ndarray]:
         """
-        Descifra parámetros del modelo.
-        
+        Decrypt model parameters.
+
         Args:
-            encrypted_parameters (List[np.ndarray]): Parámetros cifrados
-        
+            encrypted_parameters (List[np.ndarray]): Encrypted parameters
+
         Returns:
-            List[np.ndarray]: Parámetros descifrados
+            List[np.ndarray]: Decrypted parameters
         """
         # TODO: Implementar descifrado real
         
         if not self.use_encryption:
             return encrypted_parameters
-        
-        self.logger.debug("Descifrando parámetros...")
-        
+
+        self.logger.debug("Decrypting parameters...")
+
         # Placeholder
         decrypted = encrypted_parameters
         
@@ -89,39 +89,39 @@ class SecureChannel:
 
 class SecureAggregation:
     """
-    Implementa agregación segura de parámetros.
-    
-    Placeholder para secure aggregation real usando:
+    Implement secure aggregation of parameters.
+
+    Placeholder for real secure aggregation using:
     - Secret sharing (Shamir)
-    - Masks aditivos
-    - Protocolos multi-party computation
+    - Additive masks
+    - Multi-party computation protocols
     """
     
     def __init__(self):
         """Inicializa secure aggregation."""
         self.logger = setup_logger('SecureAggregation')
-        self.logger.warning("Secure Aggregation no implementada completamente - placeholder activo")
+        self.logger.warning("Secure Aggregation not fully implemented - placeholder active")
     
     def aggregate_secure(self, 
                         client_parameters: List[List[np.ndarray]],
                         weights: Optional[List[float]] = None) -> List[np.ndarray]:
         """
-        Agrega parámetros de forma segura sin revelar valores individuales.
-        
+        Securely aggregate parameters without revealing individual values.
+
         Args:
-            client_parameters (List[List[np.ndarray]]): Parámetros de cada cliente
-            weights (List[float]): Pesos de agregación (opcional)
-        
+            client_parameters (List[List[np.ndarray]]): Parameters from each client
+            weights (List[float]): Aggregation weights (optional)
+
         Returns:
-            List[np.ndarray]: Parámetros agregados
+            List[np.ndarray]: Aggregated parameters
         """
-        # TODO: Implementar secure aggregation real
-        # Por ahora, agregación simple (FedAvg)
-        
-        self.logger.debug(f"Agregación segura de {len(client_parameters)} clientes")
+        # TODO: Implement real secure aggregation
+        # For now, simple aggregation (FedAvg)
+
+        self.logger.debug(f"Securely aggregating {len(client_parameters)} clients")
         
         if weights is None:
-            # Pesos uniformes
+            # Uniform weights
             weights = [1.0 / len(client_parameters)] * len(client_parameters)
         
         # Agregar parámetros (weighted average)
@@ -141,9 +141,9 @@ class SecureAggregation:
 
 class DifferentialPrivacy:
     """
-    Añade privacidad diferencial al entrenamiento.
-    
-    Implementa:
+    Add differential privacy to training.
+
+    Implements:
     - DP-SGD (Differentially Private SGD)
     - Gaussian noise addition
     - Gradient clipping
@@ -154,43 +154,43 @@ class DifferentialPrivacy:
                  delta: float = None,
                  noise_multiplier: float = None):
         """
-        Inicializa DP.
-        
+        Initialize DP.
+
         Args:
-            epsilon (float): Budget de privacidad
-            delta (float): Probabilidad de fallo
-            noise_multiplier (float): Multiplicador de ruido
+            epsilon (float): Privacy budget
+            delta (float): Failure probability
+            noise_multiplier (float): Noise multiplier
         """
         self.epsilon = epsilon or SECURITY_CONFIG.get('dp_epsilon', 1.0)
         self.delta = delta or SECURITY_CONFIG.get('dp_delta', 1e-5)
         self.noise_multiplier = noise_multiplier or SECURITY_CONFIG.get('dp_noise_multiplier', 0.1)
         
         self.logger = setup_logger('DifferentialPrivacy')
-        self.logger.warning("Privacidad Diferencial no implementada completamente - placeholder activo")
+        self.logger.warning("Differential Privacy not fully implemented - placeholder active")
         self.logger.info(f"DP Config: ε={self.epsilon}, δ={self.delta}, noise={self.noise_multiplier}")
     
     def clip_gradients(self, 
                        gradients: List[np.ndarray],
                        clip_norm: float = 1.0) -> List[np.ndarray]:
         """
-        Clipea gradientes para DP.
-        
+        Clip gradients for DP.
+
         Args:
-            gradients (List[np.ndarray]): Gradientes
-            clip_norm (float): Norma de clipping
-        
+            gradients (List[np.ndarray]): Gradients
+            clip_norm (float): Clipping norm
+
         Returns:
-            List[np.ndarray]: Gradientes clipados
+            List[np.ndarray]: Clipped gradients
         """
         # TODO: Implementar clipping real
         
         clipped = []
         for grad in gradients:
-            # Calcular norma L2
+            # Compute L2 norm
             norm = np.linalg.norm(grad)
-            
+
             if norm > clip_norm:
-                # Clipear
+                # Clip
                 clipped_grad = grad * (clip_norm / norm)
             else:
                 clipped_grad = grad
@@ -201,13 +201,13 @@ class DifferentialPrivacy:
     
     def add_noise(self, parameters: List[np.ndarray]) -> List[np.ndarray]:
         """
-        Añade ruido gaussiano para DP.
-        
+        Add Gaussian noise for DP.
+
         Args:
-            parameters (List[np.ndarray]): Parámetros
-        
+            parameters (List[np.ndarray]): Parameters
+
         Returns:
-            List[np.ndarray]: Parámetros con ruido
+            List[np.ndarray]: Parameters with noise
         """
         noisy_params = []
         
@@ -228,97 +228,97 @@ class DifferentialPrivacy:
                            parameters: List[np.ndarray],
                            clip_norm: float = 1.0) -> List[np.ndarray]:
         """
-        Aplica privacidad diferencial a parámetros.
-        
+        Apply differential privacy to parameters.
+
         Args:
-            parameters (List[np.ndarray]): Parámetros originales
-            clip_norm (float): Norma de clipping
-        
+            parameters (List[np.ndarray]): Original parameters
+            clip_norm (float): Clipping norm
+
         Returns:
-            List[np.ndarray]: Parámetros privatizados
+            List[np.ndarray]: Privatized parameters
         """
-        # Clipear
+        # Clip
         clipped = self.clip_gradients(parameters, clip_norm)
-        
-        # Añadir ruido
+
+        # Add noise
         privatized = self.add_noise(clipped)
-        
-        self.logger.debug(f"Parámetros privatizados con ε={self.epsilon}")
-        
+
+        self.logger.debug(f"Parameters privatized with ε={self.epsilon}")
+
         return privatized
 
 
 class ClientAuthenticator:
     """
-    Gestiona autenticación de clientes.
+    Manage client authentication.
     """
     
     def __init__(self):
-        """Inicializa autenticador."""
+        """Initialize authenticator."""
         self.logger = setup_logger('ClientAuthenticator')
         self.allowed_clients = SECURITY_CONFIG.get('allowed_client_ids', None)
         self.use_auth = SECURITY_CONFIG.get('authenticate_clients', False)
-        
+
         if self.use_auth:
-            self.logger.info("Autenticación de clientes habilitada")
+            self.logger.info("Client authentication enabled")
         else:
-            self.logger.warning("Autenticación deshabilitada - modo desarrollo")
-        
-        # Tokens de clientes (en producción, usar BD o sistema externo)
+            self.logger.warning("Authentication disabled - development mode")
+
+        # Client tokens (in production, use DB or external system)
         self.client_tokens = {}
     
     def generate_token(self, client_id: int) -> str:
         """
-        Genera token para un cliente.
-        
+        Generate a token for a client.
+
         Args:
-            client_id (int): ID del cliente
-        
+            client_id (int): Client ID
+
         Returns:
-            str: Token generado
+            str: Generated token
         """
-        # Generar token seguro
+        # Generate secure token
         token = secrets.token_hex(32)
-        
-        # Almacenar hash del token
+
+        # Store hash of token
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         self.client_tokens[client_id] = token_hash
-        
-        self.logger.info(f"Token generado para cliente {client_id}")
-        
+
+        self.logger.info(f"Token generated for client {client_id}")
+
         return token
     
     def validate_token(self, client_id: int, token: str) -> bool:
         """
-        Valida token de cliente.
-        
+        Validate a client's token.
+
         Args:
-            client_id (int): ID del cliente
-            token (str): Token a validar
-        
+            client_id (int): Client ID
+            token (str): Token to validate
+
         Returns:
-            bool: True si válido
+            bool: True if valid
         """
         if not self.use_auth:
             return True
-        
-        # Verificar si el cliente está permitido
+
+        # Check if client is allowed
         if self.allowed_clients and client_id not in self.allowed_clients:
-            self.logger.warning(f"Cliente {client_id} no está en lista permitida")
+            self.logger.warning(f"Client {client_id} not in allowed list")
             return False
-        
-        # Validar token
+
+        # Validate token
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        
+
         if client_id not in self.client_tokens:
-            self.logger.warning(f"Cliente {client_id} sin token registrado")
+            self.logger.warning(f"Client {client_id} has no registered token")
             return False
-        
+
         is_valid = self.client_tokens[client_id] == token_hash
-        
+
         if not is_valid:
-            self.logger.warning(f"Token inválido para cliente {client_id}")
-        
+            self.logger.warning(f"Invalid token for client {client_id}")
+
         return is_valid
 
 
@@ -326,75 +326,75 @@ class ClientAuthenticator:
 
 def setup_secure_communication(server_address: str):
     """
-    Configura comunicación segura con TLS.
-    
+    Configure secure communication with TLS.
+
     Args:
-        server_address (str): Dirección del servidor
-    
+        server_address (str): Server address
+
     Returns:
-        dict: Configuración de seguridad
+        dict: Security configuration
     """
-    # TODO: Implementar configuración TLS real
-    
+    # TODO: Implement real TLS configuration
+
     logger = setup_logger('SecuritySetup')
-    
+
     if SECURITY_CONFIG.get('use_encryption', False):
-        logger.info("Configurando comunicación segura con TLS...")
-        
+        logger.info("Configuring secure communication with TLS...")
+
         cert_path = SECURITY_CONFIG.get('certificate_path')
         key_path = SECURITY_CONFIG.get('key_path')
-        
-        # Verificar existencia de certificados
+
+        # Check certificates existence
         if cert_path and key_path:
             if Path(cert_path).exists() and Path(key_path).exists():
-                logger.info("Certificados TLS encontrados")
+                logger.info("TLS certificates found")
             else:
-                logger.warning("Certificados TLS no encontrados - generando autofirmados...")
-                # TODO: Generar certificados autofirmados
+                logger.warning("TLS certificates not found - generating self-signed...")
+                # TODO: Generate self-signed certificates
         else:
-            logger.warning("Rutas de certificados no configuradas")
+            logger.warning("Certificate paths not configured")
     else:
-        logger.warning("Comunicación sin cifrado - solo para desarrollo")
-    
+        logger.warning("Unencrypted communication - development only")
+
     return {}
 
 
 def hash_parameters(parameters: List[np.ndarray]) -> str:
     """
-    Calcula hash de parámetros para verificación de integridad.
-    
+    Compute a hash of parameters for integrity verification.
+
     Args:
-        parameters (List[np.ndarray]): Parámetros
-    
+        parameters (List[np.ndarray]): Parameters
+
     Returns:
-        str: Hash SHA256
+        str: SHA256 hash
     """
-    # Concatenar todos los parámetros
+    # Concatenate all parameters
     concatenated = np.concatenate([p.flatten() for p in parameters])
-    
-    # Calcular hash
+
+    # Compute hash
     param_hash = hashlib.sha256(concatenated.tobytes()).hexdigest()
-    
+
     return param_hash
 
 
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    print("Probando módulo de seguridad...")
-    
-    # Probar canal seguro
+    print("Testing security module...")
+
+    # Test secure channel
     channel = SecureChannel(use_encryption=True)
     dummy_params = [np.random.rand(10, 10) for _ in range(3)]
     encrypted = channel.encrypt_parameters(dummy_params)
-    print(f"Parámetros cifrados: {len(encrypted)} arrays")
-    
-    # Probar DP
+    print(f"Encrypted parameters: {len(encrypted)} arrays")
+
+    # Test DP
     dp = DifferentialPrivacy()
     privatized = dp.privatize_parameters(dummy_params)
-    print(f"Parámetros privatizados: {len(privatized)} arrays")
-    
-    # Probar autenticador
+    print(f"Privatized parameters: {len(privatized)} arrays")
+
+    # Test authenticator
     auth = ClientAuthenticator()
     token = auth.generate_token(client_id=1)
     is_valid = auth.validate_token(client_id=1, token=token)

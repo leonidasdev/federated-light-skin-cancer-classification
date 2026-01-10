@@ -1,5 +1,5 @@
 """
-Módulo de utilidades.
+Utilities module.
 """
 
 from .metrics import (

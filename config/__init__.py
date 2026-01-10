@@ -1,5 +1,5 @@
 """
-Módulo de configuración del sistema.
+System configuration module.
 """
 
 from .config import (

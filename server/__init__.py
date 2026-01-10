@@ -1,5 +1,5 @@
 """
-Módulo del servidor federado.
+Federated server module.
 """
 
 from .server import (

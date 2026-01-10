@@ -1,12 +1,12 @@
 """
-Módulo de métricas de evaluación para clasificación de lesiones cutáneas.
+Evaluation metrics module for skin lesion classification.
 
-Incluye:
+Includes:
 - Accuracy, Precision, Recall, F1
-- AUC macro/micro
-- Sensibilidad y especificidad para melanoma
-- Matriz de confusión
-- Métricas por clase
+- Macro/micro AUC
+- Sensitivity and specificity for melanoma
+- Confusion matrix
+- Per-class metrics
 """
 
 import numpy as np
@@ -31,15 +31,15 @@ def calculate_metrics(y_true: np.ndarray,
                       y_pred: np.ndarray,
                       y_pred_proba: Optional[np.ndarray] = None) -> Dict:
     """
-    Calcula todas las métricas de clasificación.
-    
+    Calculate full set of classification metrics.
+
     Args:
-        y_true (np.ndarray): Etiquetas verdaderas (índices o one-hot)
-        y_pred (np.ndarray): Predicciones (índices o one-hot)
-        y_pred_proba (np.ndarray): Probabilidades de predicción (opcional, para AUC)
-    
+        y_true (np.ndarray): True labels (indices or one-hot)
+        y_pred (np.ndarray): Predictions (indices or one-hot)
+        y_pred_proba (np.ndarray): Predicted probabilities (optional, for AUC)
+
     Returns:
-        dict: Diccionario con todas las métricas
+        dict: Dictionary with computed metrics
     """
     # Convertir a índices si es one-hot
     if len(y_true.shape) > 1 and y_true.shape[1] > 1:
@@ -78,7 +78,7 @@ def calculate_metrics(y_true: np.ndarray,
             metrics['auc_macro'] = roc_auc_score(y_true_onehot, y_pred_proba, average='macro', multi_class='ovr')
             metrics['auc_micro'] = roc_auc_score(y_true_onehot, y_pred_proba, average='micro', multi_class='ovr')
         except Exception as e:
-            print(f"Advertencia: No se pudo calcular AUC - {e}")
+            print(f"Warning: Could not compute AUC - {e}")
     
     # Métricas específicas para melanoma (si está configurado)
     if METRICS_CONFIG.get('binary_melanoma_metrics', False):
@@ -90,14 +90,14 @@ def calculate_metrics(y_true: np.ndarray,
 
 def calculate_melanoma_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict:
     """
-    Calcula métricas específicas para melanoma vs no-melanoma.
-    
+    Calculate metrics specific to melanoma vs non-melanoma.
+
     Args:
-        y_true (np.ndarray): Etiquetas verdaderas (índices)
-        y_pred (np.ndarray): Predicciones (índices)
-    
+        y_true (np.ndarray): True labels (indices)
+        y_pred (np.ndarray): Predictions (indices)
+
     Returns:
-        dict: Métricas para melanoma
+        dict: Melanoma metrics
     """
     # Convertir a problema binario: melanoma (clase 0) vs resto
     melanoma_idx = METRICS_CONFIG.get('melanoma_class_index', 0)
@@ -125,14 +125,14 @@ def calculate_melanoma_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict:
 def calculate_per_class_metrics(y_true: np.ndarray, 
                                 y_pred: np.ndarray) -> Dict[str, Dict]:
     """
-    Calcula métricas para cada clase individualmente.
-    
+    Calculate metrics for each class individually.
+
     Args:
-        y_true (np.ndarray): Etiquetas verdaderas
-        y_pred (np.ndarray): Predicciones
-    
+        y_true (np.ndarray): True labels
+        y_pred (np.ndarray): Predictions
+
     Returns:
-        dict: Métricas por clase
+        dict: Per-class metrics
     """
     # Convertir a índices
     if len(y_true.shape) > 1:
@@ -167,15 +167,15 @@ def compute_confusion_matrix(y_true: np.ndarray,
                              y_pred: np.ndarray,
                              normalize: bool = False) -> np.ndarray:
     """
-    Calcula la matriz de confusión.
-    
+    Compute the confusion matrix.
+
     Args:
-        y_true (np.ndarray): Etiquetas verdaderas
-        y_pred (np.ndarray): Predicciones
-        normalize (bool): Si normalizar por fila
-    
+        y_true (np.ndarray): True labels
+        y_pred (np.ndarray): Predictions
+        normalize (bool): Whether to normalize by row
+
     Returns:
-        np.ndarray: Matriz de confusión
+        np.ndarray: Confusion matrix
     """
     # Convertir a índices
     if len(y_true.shape) > 1:
@@ -201,13 +201,13 @@ def plot_confusion_matrix(cm: np.ndarray,
                          normalize: bool = False,
                          figsize: Tuple[int, int] = (10, 8)) -> None:
     """
-    Visualiza la matriz de confusión.
-    
+    Visualize the confusion matrix.
+
     Args:
-        cm (np.ndarray): Matriz de confusión
-        save_path (str): Ruta para guardar la figura (opcional)
-        normalize (bool): Si normalizar
-        figsize (tuple): Tamaño de la figura
+        cm (np.ndarray): Confusion matrix
+        save_path (str): Path to save the figure (optional)
+        normalize (bool): Whether to normalize
+        figsize (tuple): Figure size
     """
     plt.figure(figsize=figsize)
     
@@ -222,17 +222,17 @@ def plot_confusion_matrix(cm: np.ndarray,
         cmap='Blues',
         xticklabels=list(CLASS_NAMES.values()),
         yticklabels=list(CLASS_NAMES.values()),
-        cbar_kws={'label': 'Proporción' if normalize else 'Conteo'}
+        cbar_kws={'label': 'Proportion' if normalize else 'Count'}
     )
     
-    plt.ylabel('Etiqueta Verdadera')
-    plt.xlabel('Predicción')
-    plt.title('Matriz de Confusión' + (' (Normalizada)' if normalize else ''))
+    plt.ylabel('True Label')
+    plt.xlabel('Prediction')
+    plt.title('Confusion Matrix' + (' (Normalized)' if normalize else ''))
     plt.tight_layout()
     
     if save_path:
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        print(f"Matriz de confusión guardada en: {save_path}")
+        print(f"Confusion matrix saved to: {save_path}")
     
     plt.show()
 
@@ -240,14 +240,14 @@ def plot_confusion_matrix(cm: np.ndarray,
 def print_classification_report(y_true: np.ndarray, 
                                y_pred: np.ndarray) -> str:
     """
-    Genera reporte de clasificación.
-    
+    Generate classification report.
+
     Args:
-        y_true (np.ndarray): Etiquetas verdaderas
-        y_pred (np.ndarray): Predicciones
-    
+        y_true (np.ndarray): True labels
+        y_pred (np.ndarray): Predictions
+
     Returns:
-        str: Reporte de clasificación
+        str: Classification report
     """
     # Convertir a índices
     if len(y_true.shape) > 1:
@@ -273,28 +273,28 @@ def print_classification_report(y_true: np.ndarray,
 
 def print_metrics_summary(metrics: Dict, title: str = "MÉTRICAS DE EVALUACIÓN"):
     """
-    Imprime resumen de métricas.
-    
+    Print a summary of metrics.
+
     Args:
-        metrics (dict): Diccionario de métricas
-        title (str): Título del resumen
+        metrics (dict): Dictionary of metrics
+        title (str): Summary title
     """
     print("\n" + "=" * 60)
     print(title)
     print("=" * 60)
     
-    # Métricas generales
-    print("\nMétricas Generales:")
+    # General metrics
+    print("\nGeneral Metrics:")
     general_metrics = ['accuracy', 'precision_macro', 'recall_macro', 'f1_macro', 
                       'auc_macro', 'cohen_kappa']
     for metric in general_metrics:
         if metric in metrics:
             print(f"  {metric.replace('_', ' ').title()}: {metrics[metric]:.4f}")
     
-    # Métricas de melanoma
+    # Melanoma metrics
     melanoma_metrics = {k: v for k, v in metrics.items() if 'melanoma' in k}
     if melanoma_metrics:
-        print("\nMétricas Melanoma vs No-Melanoma:")
+        print("\nMelanoma vs No-Melanoma Metrics:")
         for metric, value in melanoma_metrics.items():
             print(f"  {metric.replace('_', ' ').replace('melanoma ', '').title()}: {value:.4f}")
     
@@ -307,17 +307,17 @@ def calculate_roc_auc(y_true: np.ndarray,
                      y_pred_proba: np.ndarray,
                      class_idx: Optional[int] = None) -> float:
     """
-    Calcula AUC-ROC.
-    
+    Calculate ROC-AUC.
+
     Args:
-        y_true (np.ndarray): Etiquetas verdaderas
-        y_pred_proba (np.ndarray): Probabilidades predichas
-        class_idx (int): Índice de clase específica (opcional, para one-vs-rest)
-    
+        y_true (np.ndarray): True labels
+        y_pred_proba (np.ndarray): Predicted probabilities
+        class_idx (int): Specific class index (optional, for one-vs-rest)
+
     Returns:
         float: AUC score
     """
-    # TODO: Implementar cálculo de ROC-AUC específico por clase
+    # TODO: Implement per-class ROC-AUC calculation
     pass
 
 
@@ -339,13 +339,13 @@ def save_metrics_to_file(metrics: Dict, filepath: str):
     with open(filepath, 'w') as f:
         json.dump(metrics, f, indent=2)
     
-    print(f"Métricas guardadas en: {filepath}")
+    print(f"Metrics saved to: {filepath}")
 
 
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    print("Probando módulo de métricas...")
+    print("Testing metrics module...")
     
     # Crear datos de prueba
     from tensorflow.keras.utils import to_categorical
@@ -361,13 +361,13 @@ if __name__ == '__main__':
     y_pred_proba = np.random.rand(n_samples, n_classes)
     y_pred_proba = y_pred_proba / y_pred_proba.sum(axis=1, keepdims=True)
     
-    # Calcular métricas
+    # Calculate metrics
     metrics = calculate_metrics(y_true_onehot, y_pred_proba, y_pred_proba)
-    print_metrics_summary(metrics, "PRUEBA DE MÉTRICAS")
+    print_metrics_summary(metrics, "METRICS TEST")
     
     # Matriz de confusión
     cm = compute_confusion_matrix(y_true, y_pred)
-    print("\nMatriz de confusión:")
+    print("\nConfusion matrix:")
     print(cm)
     
     # Reporte de clasificación

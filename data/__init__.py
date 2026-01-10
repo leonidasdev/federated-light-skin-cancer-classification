@@ -1,5 +1,5 @@
 """
-Módulo de gestión de datos.
+Data management package.
 """
 
 from .data_loader import (
@@ -8,12 +8,10 @@ from .data_loader import (
     ISIC2018Loader,
     ISIC2019Loader,
     ISIC2020Loader,
-    PH2Loader,
     get_dataset_loader,
     load_node_data,
     split_data_iid,
     split_data_non_iid,
-    load_external_validation_data,
     print_dataset_info
 )
 
@@ -37,12 +35,10 @@ __all__ = [
     'ISIC2018Loader',
     'ISIC2019Loader',
     'ISIC2020Loader',
-    'PH2Loader',
     'get_dataset_loader',
     'load_node_data',
     'split_data_iid',
     'split_data_non_iid',
-    'load_external_validation_data',
     'print_dataset_info',
     
     # Preprocessing

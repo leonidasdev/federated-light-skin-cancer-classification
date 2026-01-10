@@ -1,6 +1,6 @@
-# .gitignore para proyecto de Federated Learning
+# .gitignore for the Federated Learning project
 
-# Datasets (son muy grandes)
+# Datasets (these can be very large)
 datasets/
 *.csv
 *.jpg
@@ -8,7 +8,7 @@ datasets/
 *.png
 *.bmp
 
-# Modelos entrenados y checkpoints
+# Trained models and checkpoints
 checkpoints/
 *.h5
 *.hdf5
@@ -17,14 +17,14 @@ checkpoints/
 *.weights
 saved_models/
 
-# Logs y resultados
+# Logs and results
 logs/
 results/
 *.log
 tensorboard/
 wandb/
 
-# Certificados y claves de seguridad
+# Certificates and security keys
 *.crt
 *.key
 *.pem
@@ -72,7 +72,7 @@ env/
 .ipynb_checkpoints
 *.ipynb
 
-# Configuraciones locales
+# Local configurations
 config_local.py
 .env
 .env.local
@@ -81,11 +81,11 @@ config_local.py
 .cache/
 *.cache
 
-# Temporales
+# Temporary files
 tmp/
 temp/
 *.tmp
 
-# Archivos de sistema
+# System files
 Thumbs.db
 desktop.ini

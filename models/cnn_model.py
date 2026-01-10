@@ -1,13 +1,13 @@
 """
-Definición de la arquitectura CNN ligera para clasificación de lesiones cutáneas.
-Inspirada en Mamun et al. (2025).
+Definition of the lightweight CNN architecture for skin lesion classification.
+Inspired by Mamun et al. (2025).
 
-Arquitectura:
-- 3 bloques convolucionales (32, 64, 128 filtros)
-- MaxPooling después de cada bloque
+Architecture:
+- 3 convolutional blocks (32, 64, 128 filters)
+- MaxPooling after each block
 - Flatten
 - Dense(256, ReLU, Dropout)
-- Softmax(7 clases)
+- Softmax(output classes)
 """
 
 import tensorflow as tf
@@ -20,17 +20,17 @@ from config.config import MODEL_CONFIG
 
 def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
     """
-    Crea el modelo CNN ligero para clasificación de lesiones cutáneas.
-    
+    Create the lightweight CNN model for skin lesion classification.
+
     Args:
-        input_shape (tuple): Forma de entrada (height, width, channels)
-        num_classes (int): Número de clases de salida
-        dropout_rate (float): Tasa de dropout
-    
+        input_shape (tuple): Input shape (height, width, channels)
+        num_classes (int): Number of output classes
+        dropout_rate (float): Dropout rate
+
     Returns:
-        keras.Model: Modelo compilado
+        keras.Model: The Keras model (uncompiled)
     """
-    # Usar valores de configuración si no se especifican
+    # Use configuration values if not provided
     if input_shape is None:
         input_shape = MODEL_CONFIG['input_shape']
     if num_classes is None:
@@ -38,11 +38,11 @@ def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
     if dropout_rate is None:
         dropout_rate = MODEL_CONFIG['dropout_rate']
     
-    # Entrada
+    # Input
     inputs = layers.Input(shape=input_shape, name='input_images')
     x = inputs
     
-    # Bloque Convolucional 1: 32 filtros
+    # Convolutional Block 1: 32 filters
     x = layers.Conv2D(
         filters=32,
         kernel_size=(3, 3),
@@ -62,7 +62,7 @@ def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
     x = layers.MaxPooling2D(pool_size=(2, 2), name='pool1')(x)
     x = layers.BatchNormalization(name='bn1')(x)
     
-    # Bloque Convolucional 2: 64 filtros
+    # Convolutional Block 2: 64 filters
     x = layers.Conv2D(
         filters=64,
         kernel_size=(3, 3),
@@ -82,7 +82,7 @@ def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
     x = layers.MaxPooling2D(pool_size=(2, 2), name='pool2')(x)
     x = layers.BatchNormalization(name='bn2')(x)
     
-    # Bloque Convolucional 3: 128 filtros
+    # Convolutional Block 3: 128 filters
     x = layers.Conv2D(
         filters=128,
         kernel_size=(3, 3),
@@ -102,13 +102,13 @@ def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
     x = layers.MaxPooling2D(pool_size=(2, 2), name='pool3')(x)
     x = layers.BatchNormalization(name='bn3')(x)
     
-    # Almacenar para Grad-CAM (última capa convolucional)
+    # Store for Grad-CAM (last convolutional layer)
     last_conv_layer = x
     
-    # Aplanar
+    # Flatten
     x = layers.Flatten(name='flatten')(x)
     
-    # Capa densa con dropout
+    # Dense layer with dropout
     x = layers.Dense(
         256,
         activation='relu',
@@ -117,14 +117,14 @@ def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
     )(x)
     x = layers.Dropout(dropout_rate, name='dropout1')(x)
     
-    # Capa de salida (softmax)
+    # Output layer (softmax)
     outputs = layers.Dense(
         num_classes,
         activation='softmax',
         name='output'
     )(x)
     
-    # Crear modelo
+    # Create model
     model = models.Model(inputs=inputs, outputs=outputs, name='LightCNN_SkinCancer')
     
     return model
@@ -132,25 +132,25 @@ def create_cnn_model(input_shape=None, num_classes=None, dropout_rate=None):
 
 def compile_model(model, learning_rate=None, loss_function=None):
     """
-    Compila el modelo con optimizador, pérdida y métricas.
-    
+    Compile the model with optimizer, loss and metrics.
+
     Args:
-        model (keras.Model): Modelo a compilar
-        learning_rate (float): Tasa de aprendizaje
-        loss_function (str): Función de pérdida
-    
+        model (keras.Model): Model to compile
+        learning_rate (float): Learning rate
+        loss_function (str): Loss function identifier
+
     Returns:
-        keras.Model: Modelo compilado
+        keras.Model: Compiled model
     """
     from config.config import TRAINING_CONFIG
     
-    # Usar valores de configuración si no se especifican
+    # Use configuration values if not provided
     if learning_rate is None:
         learning_rate = TRAINING_CONFIG['learning_rate']
     if loss_function is None:
         loss_function = TRAINING_CONFIG['loss_function']
     
-    # Configurar optimizador
+    # Configure optimizer
     optimizer = keras.optimizers.Adam(
         learning_rate=learning_rate,
         beta_1=TRAINING_CONFIG['optimizer_params']['beta_1'],
@@ -158,14 +158,14 @@ def compile_model(model, learning_rate=None, loss_function=None):
         epsilon=TRAINING_CONFIG['optimizer_params']['epsilon']
     )
     
-    # Configurar función de pérdida
+    # Configure loss function
     if loss_function == 'focal_loss':
-        # TODO: Implementar focal loss para datos desbalanceados
+        # TODO: Implement focal loss for class imbalance
         loss = keras.losses.CategoricalCrossentropy()
     else:
         loss = keras.losses.CategoricalCrossentropy()
     
-    # Métricas
+    # Metrics
     metrics = [
         keras.metrics.CategoricalAccuracy(name='accuracy'),
         keras.metrics.Precision(name='precision'),
@@ -185,13 +185,13 @@ def compile_model(model, learning_rate=None, loss_function=None):
 
 def get_model_summary(model):
     """
-    Obtiene un resumen del modelo.
-    
+    Get a string summary of the model.
+
     Args:
-        model (keras.Model): Modelo
-    
+        model (keras.Model): The model
+
     Returns:
-        str: Resumen del modelo
+        str: Model summary
     """
     import io
     stream = io.StringIO()
@@ -203,13 +203,13 @@ def get_model_summary(model):
 
 def count_parameters(model):
     """
-    Cuenta los parámetros totales y entrenables del modelo.
-    
+    Count total and trainable parameters of the model.
+
     Args:
-        model (keras.Model): Modelo
-    
+        model (keras.Model): The model
+
     Returns:
-        dict: Diccionario con conteo de parámetros
+        dict: Dictionary with parameter counts
     """
     trainable_params = sum([tf.size(w).numpy() for w in model.trainable_weights])
     non_trainable_params = sum([tf.size(w).numpy() for w in model.non_trainable_weights])
@@ -224,30 +224,30 @@ def count_parameters(model):
 
 def create_focal_loss(alpha=0.25, gamma=2.0):
     """
-    Crea función de focal loss para manejar desbalance de clases.
-    
+    Create focal loss function to handle class imbalance.
+
     Focal Loss = -alpha * (1 - p_t)^gamma * log(p_t)
-    
+
     Args:
-        alpha (float): Factor de balance
-        gamma (float): Factor de enfoque
-    
+        alpha (float): Balance factor
+        gamma (float): Focusing parameter
+
     Returns:
-        function: Función de focal loss
+        function: Focal loss function
     """
     def focal_loss(y_true, y_pred):
         """
-        Calcula focal loss.
-        
+        Compute focal loss.
+
         Args:
-            y_true: Etiquetas verdaderas (one-hot)
-            y_pred: Predicciones del modelo
-        
+            y_true: True labels (one-hot)
+            y_pred: Model predictions
+
         Returns:
-            tensor: Loss calculado
+            tensor: Calculated loss
         """
-        # TODO: Implementar focal loss
-        # epsilon para estabilidad numérica
+        # TODO: Implement focal loss
+        # epsilon for numerical stability
         epsilon = tf.keras.backend.epsilon()
         y_pred = tf.clip_by_value(y_pred, epsilon, 1.0 - epsilon)
         
@@ -267,13 +267,13 @@ def create_focal_loss(alpha=0.25, gamma=2.0):
 
 def get_last_conv_layer_name(model):
     """
-    Obtiene el nombre de la última capa convolucional (para Grad-CAM).
-    
+    Get the name of the last convolutional layer (for Grad-CAM).
+
     Args:
-        model (keras.Model): Modelo
-    
+        model (keras.Model): The model
+
     Returns:
-        str: Nombre de la última capa convolucional
+        str: Name of the last convolutional layer or None
     """
     conv_layers = [layer.name for layer in model.layers if 'conv' in layer.name.lower()]
     if conv_layers:
@@ -281,15 +281,15 @@ def get_last_conv_layer_name(model):
     return None
 
 
-# ==================== FUNCIONES DE UTILIDAD ====================
+# ==================== UTILITY FUNCTIONS ====================
 
 def save_model_architecture(model, filepath='model_architecture.png'):
     """
-    Guarda la arquitectura del modelo como imagen.
-    
+    Save the model architecture as an image.
+
     Args:
-        model (keras.Model): Modelo
-        filepath (str): Ruta donde guardar la imagen
+        model (keras.Model): The model
+        filepath (str): Path to save the image
     """
     # TODO: Implementar visualización de arquitectura
     try:
@@ -302,35 +302,35 @@ def save_model_architecture(model, filepath='model_architecture.png'):
             expand_nested=True,
             dpi=96
         )
-        print(f"Arquitectura guardada en: {filepath}")
+        print(f"Architecture saved to: {filepath}")
     except Exception as e:
-        print(f"Error al guardar arquitectura: {e}")
+        print(f"Error saving architecture: {e}")
 
 
 def print_model_info(model):
     """
-    Imprime información detallada del modelo.
-    
+    Print detailed model information.
+
     Args:
-        model (keras.Model): Modelo
+        model (keras.Model): The model
     """
     print("\n" + "=" * 60)
-    print("INFORMACIÓN DEL MODELO")
+    print("MODEL INFORMATION")
     print("=" * 60)
     
     # Resumen
     model.summary()
     
-    # Parámetros
+    # Parameters
     params = count_parameters(model)
-    print("\nPARÁMETROS:")
+    print("\nPARAMETERS:")
     print(f"  Total: {params['total']:,}")
-    print(f"  Entrenables: {params['trainable']:,}")
-    print(f"  No entrenables: {params['non_trainable']:,}")
-    
-    # Última capa convolucional
+    print(f"  Trainable: {params['trainable']:,}")
+    print(f"  Non-trainable: {params['non_trainable']:,}")
+
+    # Last convolutional layer
     last_conv = get_last_conv_layer_name(model)
-    print(f"\nÚltima capa convolucional (Grad-CAM): {last_conv}")
+    print(f"\nLast convolutional layer (Grad-CAM): {last_conv}")
     
     print("=" * 60 + "\n")
 
@@ -338,17 +338,17 @@ def print_model_info(model):
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    # Crear y mostrar modelo
-    print("Creando modelo CNN ligero...")
+    # Create and display model
+    print("Creating light CNN model...")
     model = create_cnn_model()
     model = compile_model(model)
     
     # Mostrar información
     print_model_info(model)
     
-    # Probar predicción con datos dummy
+    # Test prediction with dummy data
     import numpy as np
     dummy_input = np.random.rand(1, 224, 224, 3).astype(np.float32)
     output = model.predict(dummy_input, verbose=0)
-    print(f"Forma de salida: {output.shape}")
-    print(f"Suma de probabilidades: {output.sum():.4f}")
+    print(f"Output shape: {output.shape}")
+    print(f"Sum of probabilities: {output.sum():.4f}")

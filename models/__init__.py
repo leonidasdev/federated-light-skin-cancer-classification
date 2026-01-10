@@ -1,5 +1,5 @@
 """
-Módulo de modelos de deep learning.
+Deep learning models module.
 """
 
 from .cnn_model import (

@@ -1,6 +1,6 @@
 """
-Utilidades para interpretabilidad del modelo usando Grad-CAM.
-Permite visualizar qué regiones de la imagen influyen en las predicciones.
+Utilities for model interpretability using Grad-CAM.
+Allows visualizing which image regions influence predictions.
 """
 
 import numpy as np
@@ -16,18 +16,18 @@ from config.config import METRICS_CONFIG, CLASS_NAMES_FULL
 
 class GradCAM:
     """
-    Implementación de Gradient-weighted Class Activation Mapping (Grad-CAM).
-    
-    Referencia: Selvaraju et al. (2017) "Grad-CAM: Visual Explanations from Deep Networks"
+    Implementation of Gradient-weighted Class Activation Mapping (Grad-CAM).
+
+    Reference: Selvaraju et al. (2017) "Grad-CAM: Visual Explanations from Deep Networks"
     """
     
     def __init__(self, model: keras.Model, layer_name: Optional[str] = None):
         """
-        Inicializa Grad-CAM.
-        
+        Initialize Grad-CAM.
+
         Args:
-            model (keras.Model): Modelo a interpretar
-            layer_name (str): Nombre de la capa convolucional (última por defecto)
+            model (keras.Model): Model to interpret
+            layer_name (str): Name of convolutional layer (last by default)
         """
         self.model = model
         
@@ -41,14 +41,14 @@ class GradCAM:
         self.grad_model = self._create_grad_model()
     
     def _find_last_conv_layer(self) -> str:
-        """Encuentra la última capa convolucional."""
+        """Find the last convolutional layer."""
         for layer in reversed(self.model.layers):
             if isinstance(layer, keras.layers.Conv2D):
                 return layer.name
-        raise ValueError("No se encontró ninguna capa convolucional")
+        raise ValueError("No convolutional layer found")
     
     def _create_grad_model(self) -> keras.Model:
-        """Crea modelo para calcular gradientes."""
+        """Create model to compute activations and gradients."""
         return keras.Model(
             inputs=self.model.input,
             outputs=[
@@ -62,39 +62,39 @@ class GradCAM:
                        class_idx: Optional[int] = None,
                        normalize: bool = True) -> np.ndarray:
         """
-        Calcula el heatmap de Grad-CAM para una imagen.
-        
+        Compute the Grad-CAM heatmap for an image.
+
         Args:
-            image (np.ndarray): Imagen de entrada (sin batch dimension)
-            class_idx (int): Índice de clase (None = clase predicha)
-            normalize (bool): Si normalizar el heatmap
-        
+            image (np.ndarray): Input image (no batch dimension)
+            class_idx (int): Class index (None = predicted class)
+            normalize (bool): Whether to normalize the heatmap
+
         Returns:
-            np.ndarray: Heatmap de Grad-CAM
+            np.ndarray: Grad-CAM heatmap
         """
-        # Añadir batch dimension
+        # Add batch dimension
         if len(image.shape) == 3:
             image = np.expand_dims(image, axis=0)
         
-        # Calcular gradientes
+        # Compute gradients
         with tf.GradientTape() as tape:
             # Forward pass
             conv_outputs, predictions = self.grad_model(image)
             
-            # Si no se especifica clase, usar la predicha
+            # If class not specified, use predicted class
             if class_idx is None:
                 class_idx = tf.argmax(predictions[0])
             
             # Output de la clase target
             class_channel = predictions[:, class_idx]
         
-        # Calcular gradientes de la clase respecto a las activaciones
+        # Compute gradients of the class with respect to activations
         grads = tape.gradient(class_channel, conv_outputs)
         
-        # Global average pooling de gradientes
+        # Global average pooling of gradients
         pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
         
-        # Ponderar activaciones por gradientes
+        # Weight activations by gradients
         conv_outputs = conv_outputs[0]
         pooled_grads = pooled_grads.numpy()
         conv_outputs = conv_outputs.numpy()
@@ -102,13 +102,13 @@ class GradCAM:
         for i in range(pooled_grads.shape[-1]):
             conv_outputs[:, :, i] *= pooled_grads[i]
         
-        # Crear heatmap
+        # Create heatmap
         heatmap = np.mean(conv_outputs, axis=-1)
         
-        # ReLU (solo valores positivos)
+        # ReLU (keep only positive values)
         heatmap = np.maximum(heatmap, 0)
         
-        # Normalizar
+        # Normalize
         if normalize and heatmap.max() > 0:
             heatmap /= heatmap.max()
         
@@ -120,34 +120,34 @@ class GradCAM:
                        alpha: float = 0.4,
                        colormap: int = cv2.COLORMAP_JET) -> np.ndarray:
         """
-        Superpone el heatmap sobre la imagen original.
-        
+        Overlay the heatmap on the original image.
+
         Args:
-            image (np.ndarray): Imagen original
-            heatmap (np.ndarray): Heatmap de Grad-CAM
-            alpha (float): Transparencia del heatmap
-            colormap (int): Colormap de OpenCV
-        
+            image (np.ndarray): Original image
+            heatmap (np.ndarray): Grad-CAM heatmap
+            alpha (float): Heatmap transparency
+            colormap (int): OpenCV colormap
+
         Returns:
-            np.ndarray: Imagen con heatmap superpuesto
+            np.ndarray: Image with heatmap overlay
         """
-        # Redimensionar heatmap al tamaño de la imagen
+        # Resize heatmap to image size
         heatmap_resized = cv2.resize(heatmap, (image.shape[1], image.shape[0]))
         
-        # Convertir heatmap a RGB con colormap
+        # Convert heatmap to RGB with colormap
         heatmap_colored = cv2.applyColorMap(
             np.uint8(255 * heatmap_resized),
             colormap
         )
         
-        # Convertir a float
+        # Convert to float
         heatmap_colored = heatmap_colored.astype(np.float32) / 255.0
         
-        # Asegurar que la imagen esté en [0, 1]
+        # Ensure image is in [0, 1]
         if image.max() > 1:
             image = image.astype(np.float32) / 255.0
         
-        # Superponer
+        # Overlay
         overlayed = heatmap_colored * alpha + image * (1 - alpha)
         overlayed = np.clip(overlayed, 0, 1)
         
@@ -160,25 +160,25 @@ class GradCAM:
                  show_plot: bool = True,
                  title: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Visualiza Grad-CAM para una imagen.
-        
+        Visualize Grad-CAM for an image.
+
         Args:
-            image (np.ndarray): Imagen original
-            class_idx (int): Índice de clase (None = predicha)
-            save_path (str): Ruta para guardar visualización
-            show_plot (bool): Si mostrar el plot
-            title (str): Título personalizado
-        
+            image (np.ndarray): Original image
+            class_idx (int): Class index (None = predicted)
+            save_path (str): Path to save visualization
+            show_plot (bool): Whether to show the plot
+            title (str): Custom title
+
         Returns:
             tuple: (heatmap, overlayed_image)
         """
-        # Calcular heatmap
+        # Compute heatmap
         heatmap = self.compute_heatmap(image, class_idx)
         
-        # Superponer heatmap
+        # Overlay heatmap
         overlayed = self.overlay_heatmap(image, heatmap)
         
-        # Obtener predicción
+        # Get prediction
         if len(image.shape) == 3:
             image_batch = np.expand_dims(image, axis=0)
         else:
@@ -188,37 +188,37 @@ class GradCAM:
         predicted_class = np.argmax(predictions[0])
         confidence = predictions[0][predicted_class]
         
-        # Visualizar
+        # Visualize
         if show_plot or save_path:
             fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-            
-            # Imagen original
+
+            # Original image
             axes[0].imshow(image if image.max() <= 1 else image / 255.0)
-            axes[0].set_title('Imagen Original')
+            axes[0].set_title('Original Image')
             axes[0].axis('off')
-            
+
             # Heatmap
             axes[1].imshow(heatmap, cmap='jet')
             axes[1].set_title('Grad-CAM Heatmap')
             axes[1].axis('off')
-            
+
             # Overlay
             axes[2].imshow(overlayed)
-            axes[2].set_title('Superposición')
+            axes[2].set_title('Overlay')
             axes[2].axis('off')
-            
-            # Título general
+
+            # Overall title
             if title is None:
-                class_name = CLASS_NAMES_FULL.get(predicted_class, f"Clase {predicted_class}")
-                title = f"Predicción: {class_name} ({confidence:.2%})\nCapa: {self.layer_name}"
-            
+                class_name = CLASS_NAMES_FULL.get(predicted_class, f"Class {predicted_class}")
+                title = f"Prediction: {class_name} ({confidence:.2%})\nLayer: {self.layer_name}"
+
             fig.suptitle(title, fontsize=14, fontweight='bold')
             plt.tight_layout()
-            
+
             if save_path:
                 plt.savefig(save_path, dpi=300, bbox_inches='tight')
-                print(f"Visualización guardada en: {save_path}")
-            
+                print(f"Visualization saved to: {save_path}")
+
             if show_plot:
                 plt.show()
             else:
@@ -274,10 +274,10 @@ class GradCAM:
         
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            print(f"Visualización guardada en: {save_path}")
-        
+            print(f"Visualization saved to: {save_path}")
+
         plt.show()
-        
+
         return heatmaps
 
 
@@ -286,16 +286,16 @@ def apply_gradcam_to_batch(model: keras.Model,
                            layer_name: Optional[str] = None,
                            save_dir: Optional[str] = None) -> list:
     """
-    Aplica Grad-CAM a un batch de imágenes.
-    
+    Apply Grad-CAM to a batch of images.
+
     Args:
-        model: Modelo
-        images: Batch de imágenes
-        layer_name: Capa convolucional
-        save_dir: Directorio para guardar visualizaciones
-    
+        model: Model
+        images: Batch of images
+        layer_name: Convolutional layer
+        save_dir: Directory to save visualizations
+
     Returns:
-        list: Lista de heatmaps
+        list: List of heatmaps
     """
     gradcam = GradCAM(model, layer_name)
     heatmaps = []
@@ -318,26 +318,26 @@ def apply_gradcam_to_batch(model: keras.Model,
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    print("Probando Grad-CAM...")
-    
-    # Crear modelo dummy
+    print("Testing Grad-CAM...")
+
+    # Create dummy model
     from models.cnn_model import create_cnn_model, compile_model
-    
+
     model = create_cnn_model()
     model = compile_model(model)
-    
-    # Imagen dummy
+
+    # Dummy image
     dummy_image = np.random.rand(224, 224, 3).astype(np.float32)
-    
-    # Crear Grad-CAM
+
+    # Create Grad-CAM
     gradcam = GradCAM(model)
-    print(f"Usando capa: {gradcam.layer_name}")
-    
-    # Calcular heatmap
+    print(f"Using layer: {gradcam.layer_name}")
+
+    # Compute heatmap
     heatmap = gradcam.compute_heatmap(dummy_image)
     print(f"Heatmap shape: {heatmap.shape}")
     print(f"Heatmap range: [{heatmap.min():.3f}, {heatmap.max():.3f}]")
-    
-    # Visualizar (sin mostrar)
+
+    # Visualize (without showing)
     heatmap, overlayed = gradcam.visualize(dummy_image, show_plot=False)
-    print("✓ Grad-CAM funcionando correctamente")
+    print("✓ Grad-CAM working correctly")

@@ -1,12 +1,12 @@
 """
-Carga de datasets de lesiones cutáneas para Federated Learning.
+Skin lesion dataset loaders for Federated Learning.
 
-Datasets soportados:
-- HAM10000 (base principal)
-- ISIC 2018
-- ISIC 2019
-- ISIC 2020
-- PH2 (validación externa)
+Supported datasets:
+ - HAM10000 (primary)
+ - ISIC 2018
+ - ISIC 2019
+ - ISIC 2020
+
 """
 
 import os
@@ -20,16 +20,16 @@ from config.config import DATA_CONFIG, CLASS_NAMES
 
 class DatasetLoader:
     """
-    Clase base para cargar datasets de lesiones cutáneas.
+    Base class for skin lesion dataset loaders.
     """
     
     def __init__(self, dataset_name: str, dataset_path: str):
         """
-        Inicializa el cargador de datos.
-        
+        Initialize the dataset loader.
+
         Args:
-            dataset_name (str): Nombre del dataset ('HAM10000', 'ISIC2018', etc.)
-            dataset_path (str): Ruta al directorio del dataset
+            dataset_name (str): Dataset name ('HAM10000', 'ISIC2018', etc.)
+            dataset_path (str): Path to the dataset directory
         """
         self.dataset_name = dataset_name
         self.dataset_path = Path(dataset_path)
@@ -39,39 +39,39 @@ class DatasetLoader:
     
     def load_data(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
-        Carga el dataset completo.
-        
+        Load the full dataset.
+
         Returns:
-            tuple: (imágenes, etiquetas, metadata)
+            tuple: (images, labels, metadata)
         """
         raise NotImplementedError("Subclases deben implementar load_data()")
     
     def get_class_distribution(self) -> Dict[str, int]:
         """
-        Obtiene la distribución de clases en el dataset.
-        
+        Return class distribution for the dataset.
+
         Returns:
-            dict: Diccionario con conteo por clase
+            dict: Mapping class -> count
         """
-        # TODO: Implementar conteo de clases
+        # TODO: implement class counting
         pass
     
     def get_statistics(self) -> Dict:
         """
-        Obtiene estadísticas del dataset.
-        
+        Return dataset statistics.
+
         Returns:
-            dict: Estadísticas (tamaño, clases, distribución, etc.)
+            dict: Statistics (size, classes, distribution, etc.)
         """
-        # TODO: Implementar estadísticas
+        # TODO: implement statistics
         pass
 
 
 class HAM10000Loader(DatasetLoader):
     """
-    Cargador específico para el dataset HAM10000.
-    
-    Estructura esperada:
+    Loader for the HAM10000 dataset.
+
+    Expected structure:
     HAM10000/
     ├── images/
     │   ├── ISIC_0024306.jpg
@@ -84,28 +84,28 @@ class HAM10000Loader(DatasetLoader):
     
     def load_data(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
-        Carga datos de HAM10000.
-        
+        Load HAM10000 data.
+
         Returns:
-            tuple: (imágenes, etiquetas, metadata)
+            tuple: (images, labels, metadata)
         """
-        # TODO: Implementar carga de HAM10000
-        # 1. Leer metadata CSV
-        # 2. Cargar imágenes desde carpeta images/
-        # 3. Mapear diagnósticos a índices de clase
-        # 4. Retornar arrays numpy
-        
-        print(f"Cargando {self.dataset_name} desde {self.dataset_path}...")
-        
+        # TODO: implement HAM10000 loading
+        # 1. Read metadata CSV
+        # 2. Load images from images/ folder
+        # 3. Map diagnoses to class indices
+        # 4. Return numpy arrays
+
+        print(f"Loading {self.dataset_name} from {self.dataset_path}...")
+
         # Placeholder
         return None, None, None
 
 
 class ISIC2018Loader(DatasetLoader):
     """
-    Cargador específico para el dataset ISIC 2018.
-    
-    Estructura esperada:
+    Loader for the ISIC 2018 dataset.
+
+    Expected structure:
     ISIC2018/
     ├── ISIC2018_Task3_Training_Input/
     │   ├── ISIC_0000000.jpg
@@ -118,20 +118,20 @@ class ISIC2018Loader(DatasetLoader):
     
     def load_data(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
-        Carga datos de ISIC 2018.
-        
+        Load ISIC 2018 data.
+
         Returns:
-            tuple: (imágenes, etiquetas, metadata)
+            tuple: (images, labels, metadata)
         """
-        # TODO: Implementar carga de ISIC2018
-        print(f"Cargando {self.dataset_name} desde {self.dataset_path}...")
-        
+        # TODO: implement ISIC2018 loading
+        print(f"Loading {self.dataset_name} from {self.dataset_path}...")
+
         return None, None, None
 
 
 class ISIC2019Loader(DatasetLoader):
     """
-    Cargador específico para el dataset ISIC 2019.
+    Loader for the ISIC 2019 dataset.
     """
     
     def __init__(self, dataset_path: str):
@@ -139,20 +139,20 @@ class ISIC2019Loader(DatasetLoader):
     
     def load_data(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
-        Carga datos de ISIC 2019.
-        
+        Load ISIC 2019 data.
+
         Returns:
-            tuple: (imágenes, etiquetas, metadata)
+            tuple: (images, labels, metadata)
         """
-        # TODO: Implementar carga de ISIC2019
-        print(f"Cargando {self.dataset_name} desde {self.dataset_path}...")
-        
+        # TODO: implement ISIC2019 loading
+        print(f"Loading {self.dataset_name} from {self.dataset_path}...")
+
         return None, None, None
 
 
 class ISIC2020Loader(DatasetLoader):
     """
-    Cargador específico para el dataset ISIC 2020.
+    Loader for the ISIC 2020 dataset.
     """
     
     def __init__(self, dataset_path: str):
@@ -160,187 +160,157 @@ class ISIC2020Loader(DatasetLoader):
     
     def load_data(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
         """
-        Carga datos de ISIC 2020.
-        
+        Load ISIC 2020 data.
+
         Returns:
-            tuple: (imágenes, etiquetas, metadata)
+            tuple: (images, labels, metadata)
         """
-        # TODO: Implementar carga de ISIC2020
-        print(f"Cargando {self.dataset_name} desde {self.dataset_path}...")
-        
+        # TODO: implement ISIC2020 loading
+        print(f"Loading {self.dataset_name} from {self.dataset_path}...")
+
         return None, None, None
-
-
-class PH2Loader(DatasetLoader):
-    """
-    Cargador específico para el dataset PH2 (validación externa).
-    """
-    
-    def __init__(self, dataset_path: str):
-        super().__init__('PH2', dataset_path)
-    
-    def load_data(self) -> Tuple[np.ndarray, np.ndarray, pd.DataFrame]:
-        """
-        Carga datos de PH2.
-        
-        Returns:
-            tuple: (imágenes, etiquetas, metadata)
-        """
-        # TODO: Implementar carga de PH2
-        print(f"Cargando {self.dataset_name} desde {self.dataset_path}...")
-        
-        return None, None, None
-
-
 # ==================== FUNCIONES DE UTILIDAD ====================
 
 def get_dataset_loader(dataset_name: str, dataset_path: str) -> DatasetLoader:
     """
-    Factory para obtener el loader apropiado según el dataset.
-    
+    Factory to obtain the appropriate loader for a dataset.
+
     Args:
-        dataset_name (str): Nombre del dataset
-        dataset_path (str): Ruta al dataset
-    
+        dataset_name (str): Dataset name
+        dataset_path (str): Path to the dataset
+
     Returns:
-        DatasetLoader: Loader específico para el dataset
+        DatasetLoader: Specific loader for the dataset
     """
     loaders = {
         'HAM10000': HAM10000Loader,
         'ISIC2018': ISIC2018Loader,
         'ISIC2019': ISIC2019Loader,
         'ISIC2020': ISIC2020Loader,
-        'PH2': PH2Loader
     }
     
     loader_class = loaders.get(dataset_name)
     if loader_class is None:
-        raise ValueError(f"Dataset {dataset_name} no soportado. Opciones: {list(loaders.keys())}")
+        raise ValueError(f"Dataset {dataset_name} not supported. Options: {list(loaders.keys())}")
     
     return loader_class(dataset_path)
 
 
 def load_node_data(node_id: int, nodes_config: Dict) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Carga los datos para un nodo específico en FL.
-    
+    Load data for a specific FL node.
+
     Args:
-        node_id (int): ID del nodo
-        nodes_config (dict): Configuración de nodos
-    
+        node_id (int): Node ID
+        nodes_config (dict): Nodes configuration
+
     Returns:
-        tuple: (X_train, y_train) para el nodo
+        tuple: (X_train, y_train) for the node
     """
-    # TODO: Implementar carga de datos por nodo
-    # 1. Obtener configuración del nodo
-    # 2. Cargar dataset correspondiente
-    # 3. Aplicar estrategia de distribución (IID/no-IID)
-    # 4. Retornar datos asignados al nodo
-    
-    print(f"Cargando datos para nodo {node_id}...")
-    
+    # TODO: implement node-level data loading
+    # 1. Read node configuration
+    # 2. Load the corresponding dataset
+    # 3. Apply distribution strategy (IID/non-IID)
+    # 4. Return samples assigned to the node
+
+    print(f"Loading data for node {node_id}...")
+
     return None, None
 
 
 def split_data_iid(X: np.ndarray, y: np.ndarray, num_clients: int) -> List[Tuple[np.ndarray, np.ndarray]]:
     """
-    Divide datos de forma IID entre clientes.
-    
+    Split data IID among clients.
+
     Args:
-        X (np.ndarray): Imágenes
-        y (np.ndarray): Etiquetas
-        num_clients (int): Número de clientes
-    
+        X (np.ndarray): Images
+        y (np.ndarray): Labels
+        num_clients (int): Number of clients
+
     Returns:
-        list: Lista de tuplas (X_client, y_client) para cada cliente
+        list: List of (X_client, y_client) tuples for each client
     """
-    # TODO: Implementar división IID
-    # 1. Shuffle datos
-    # 2. Dividir equitativamente
-    # 3. Verificar distribución de clases similar
-    
+    # TODO: implement IID splitting
+    # 1. Shuffle data
+    # 2. Split evenly
+    # 3. Verify class distribution
+
     pass
 
 
 def split_data_non_iid(X: np.ndarray, y: np.ndarray, num_clients: int, alpha: float = 0.5) -> List[Tuple[np.ndarray, np.ndarray]]:
     """
-    Divide datos de forma no-IID usando distribución Dirichlet.
-    
+    Split data non-IID using a Dirichlet distribution.
+
     Args:
-        X (np.ndarray): Imágenes
-        y (np.ndarray): Etiquetas
-        num_clients (int): Número de clientes
-        alpha (float): Parámetro de concentración (más bajo = más heterogéneo)
-    
+        X (np.ndarray): Images
+        y (np.ndarray): Labels
+        num_clients (int): Number of clients
+        alpha (float): Concentration parameter (lower = more heterogeneous)
+
     Returns:
-        list: Lista de tuplas (X_client, y_client) para cada cliente
+        list: List of (X_client, y_client) tuples for each client
     """
-    # TODO: Implementar división no-IID con Dirichlet
-    # 1. Aplicar distribución Dirichlet por clase
-    # 2. Asignar muestras según proporciones
-    # 3. Garantizar que cada cliente tenga datos
-    
+    # TODO: implement Dirichlet non-IID splitting
+    # 1. Sample proportions per class from Dirichlet
+    # 2. Assign samples accordingly
+    # 3. Ensure each client has data
+
     pass
 
 
 def load_external_validation_data() -> Tuple[np.ndarray, np.ndarray]:
     """
-    Carga el dataset de validación externa (PH2).
-    
+    Placeholder for external validation dataset loader. External validation
+    dataset support was removed from the project; this function returns
+    (None, None) to indicate no external validation dataset is configured.
+
     Returns:
-        tuple: (X_test, y_test)
+        tuple: (None, None)
     """
-    # TODO: Implementar carga de PH2
-    ph2_path = DATA_CONFIG.get('ph2_path')
-    if not ph2_path or not os.path.exists(ph2_path):
-        print("Advertencia: Dataset PH2 no encontrado para validación externa")
-        return None, None
-    
-    loader = PH2Loader(ph2_path)
-    X, y, _ = loader.load_data()
-    
-    return X, y
+    print("No external validation dataset configured")
+    return None, None
 
 
 def print_dataset_info(dataset_name: str, X: np.ndarray, y: np.ndarray):
     """
-    Imprime información sobre un dataset.
-    
+    Print information about a dataset.
+
     Args:
-        dataset_name (str): Nombre del dataset
-        X (np.ndarray): Imágenes
-        y (np.ndarray): Etiquetas
+        dataset_name (str): Dataset name
+        X (np.ndarray): Images
+        y (np.ndarray): Labels
     """
     print("\n" + "=" * 60)
-    print(f"INFORMACIÓN DEL DATASET: {dataset_name}")
+    print(f"DATASET INFORMATION: {dataset_name}")
     print("=" * 60)
-    
+
     if X is not None:
-        print(f"Número de muestras: {len(X)}")
-        print(f"Forma de imágenes: {X[0].shape if len(X) > 0 else 'N/A'}")
-    
+        print(f"Number of samples: {len(X)}")
+        print(f"Image shape: {X[0].shape if len(X) > 0 else 'N/A'}")
+
     if y is not None:
         unique, counts = np.unique(y, return_counts=True)
-        print(f"Número de clases: {len(unique)}")
-        print("\nDistribución de clases:")
+        print(f"Number of classes: {len(unique)}")
+        print("\nClass distribution:")
         for class_idx, count in zip(unique, counts):
-            class_name = CLASS_NAMES.get(class_idx, f"Clase {class_idx}")
+            class_name = CLASS_NAMES.get(class_idx, f"Class {class_idx}")
             percentage = (count / len(y)) * 100
             print(f"  {class_name}: {count} ({percentage:.1f}%)")
-    
+
     print("=" * 60 + "\n")
 
 
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    # Probar carga de datos
-    print("Probando cargadores de datos...")
-    
-    # Ejemplo: cargar HAM10000
+    # Test data loaders
+    print("Testing data loaders...")
+
+    # Example: load HAM10000
     try:
         loader = get_dataset_loader('HAM10000', DATA_CONFIG['ham10000_path'])
         X, y, metadata = loader.load_data()
         print_dataset_info('HAM10000', X, y)
     except Exception as e:
-        print(f"Error al cargar HAM10000: {e}")
+        print(f"Error loading HAM10000: {e}")

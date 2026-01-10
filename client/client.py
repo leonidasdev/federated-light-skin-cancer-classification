@@ -1,11 +1,11 @@
 """
-Cliente federado para entrenamiento local con Flower.
+Federated client for local training with Flower.
 
-Responsabilidades:
-- Cargar datos locales del nodo
-- Entrenar modelo localmente
-- Enviar parámetros actualizados al servidor
-- Evaluar modelo local
+Responsibilities:
+ - Load local node data
+ - Train model locally
+ - Send updated parameters to the server
+ - Evaluate the local model
 """
 
 import flwr as fl
@@ -23,7 +23,7 @@ from utils.metrics import calculate_metrics
 
 class FederatedClient(fl.client.NumPyClient):
     """
-    Cliente para entrenamiento federado local.
+    Client for local federated training.
     """
     
     def __init__(self, 
@@ -31,12 +31,12 @@ class FederatedClient(fl.client.NumPyClient):
                  dataset_name: str,
                  model: tf.keras.Model = None):
         """
-        Inicializa el cliente federado.
-        
+        Initialize the federated client.
+
         Args:
-            node_id (int): ID del nodo
-            dataset_name (str): Nombre del dataset asignado
-            model (keras.Model): Modelo local (si None, se crea uno nuevo)
+            node_id (int): Node ID
+            dataset_name (str): Assigned dataset name
+            model (keras.Model): Local model (if None, a new one is created)
         """
         super().__init__()
         
@@ -61,65 +61,65 @@ class FederatedClient(fl.client.NumPyClient):
         self.local_epochs = TRAINING_CONFIG['local_epochs']
         self.batch_size = TRAINING_CONFIG['batch_size']
         
-        self.logger.info(f"Cliente {node_id} inicializado - Dataset: {dataset_name}")
+        self.logger.info(f"Client {node_id} initialized - Dataset: {dataset_name}")
     
     def load_data(self):
         """
-        Carga los datos asignados a este nodo.
+        Load data assigned to this node.
         """
-        self.logger.info(f"Cargando datos para nodo {self.node_id}...")
-        
-        # TODO: Implementar carga real de datos
-        # Por ahora, usar placeholder
-        
+        self.logger.info(f"Loading data for node {self.node_id}...")
+
+        # TODO: implement real data loading
+        # For now, use placeholder
+
         try:
-            # Cargar datos del nodo
+            # Load node data
             self.X_train, self.y_train = load_node_data(
                 node_id=self.node_id,
                 nodes_config=NODES_CONFIG
             )
-            
-            # Dividir en train y validación local
-            # TODO: Implementar división
-            
-            self.logger.info(f"Datos cargados: {len(self.X_train) if self.X_train is not None else 0} muestras de entrenamiento")
-        
+
+            # Split into local train/validation
+            # TODO: implement splitting
+
+            self.logger.info(f"Data loaded: {len(self.X_train) if self.X_train is not None else 0} training samples")
+
         except Exception as e:
-            self.logger.error(f"Error al cargar datos: {e}", exc_info=True)
+            self.logger.error(f"Error loading data: {e}", exc_info=True)
             raise
     
     def get_parameters(self, config: Dict) -> List[np.ndarray]:
         """
-        Obtiene los parámetros actuales del modelo local.
-        
+        Get current parameters of the local model.
+
         Args:
-            config (dict): Configuración del servidor
-        
+            config (dict): Server configuration
+
         Returns:
-            List[np.ndarray]: Pesos del modelo
+            List[np.ndarray]: Model weights
         """
         return self.model.get_weights()
     
     def set_parameters(self, parameters: List[np.ndarray]):
         """
-        Actualiza los parámetros del modelo local con los del servidor.
-        
+        Update local model parameters with those from the server.
+
         Args:
-            parameters (List[np.ndarray]): Nuevos pesos
+            parameters (List[np.ndarray]): New weights
         """
         self.model.set_weights(parameters)
-        self.logger.debug("Parámetros del modelo actualizados desde el servidor")
+        self.logger.debug("Model parameters updated from server")
     
     def fit(self, parameters: List[np.ndarray], config: Dict) -> Tuple[List[np.ndarray], int, Dict]:
         """
-        Entrena el modelo localmente.
-        
+        Train the model locally.
+
         Args:
-            parameters (List[np.ndarray]): Parámetros globales del servidor
-            config (dict): Configuración de entrenamiento
-        
+            parameters (List[np.ndarray]): Global server parameters
+            config (dict): Training configuration
+
         Returns:
-            tuple: (parámetros actualizados, número de muestras, métricas)
+            tuple: (updated parameters, number of samples, metrics)
         """
         # Actualizar modelo con parámetros globales
         self.set_parameters(parameters)
@@ -129,17 +129,17 @@ class FederatedClient(fl.client.NumPyClient):
         local_epochs = config.get('local_epochs', self.local_epochs)
         batch_size = config.get('batch_size', self.batch_size)
         
-        self.logger.info(f"Ronda {server_round}: Iniciando entrenamiento local ({local_epochs} epochs)")
+        self.logger.info(f"Round {server_round}: Starting local training ({local_epochs} epochs)")
         
         # TODO: Implementar entrenamiento real
         # Por ahora, placeholder
         
         try:
-            # Cargar datos si no están cargados
+            # Load data if not yet loaded
             if self.X_train is None:
                 self.load_data()
-            
-            # Entrenar modelo
+
+            # Train model
             history = self.model.fit(
                 self.X_train,
                 self.y_train,
@@ -159,7 +159,7 @@ class FederatedClient(fl.client.NumPyClient):
                 metrics['val_loss'] = float(history.history['val_loss'][-1])
                 metrics['val_accuracy'] = float(history.history['val_accuracy'][-1])
             
-            self.logger.info(f"Entrenamiento completado - Loss: {metrics['loss']:.4f}, Acc: {metrics['accuracy']:.4f}")
+            self.logger.info(f"Training completed - Loss: {metrics['loss']:.4f}, Acc: {metrics['accuracy']:.4f}")
             
             # Retornar parámetros actualizados
             num_samples = len(self.X_train) if self.X_train is not None else 0
@@ -167,32 +167,32 @@ class FederatedClient(fl.client.NumPyClient):
             return self.get_parameters(config), num_samples, metrics
         
         except Exception as e:
-            self.logger.error(f"Error durante entrenamiento: {e}", exc_info=True)
+            self.logger.error(f"Error during training: {e}", exc_info=True)
             raise
     
     def evaluate(self, parameters: List[np.ndarray], config: Dict) -> Tuple[float, int, Dict]:
         """
-        Evalúa el modelo local.
-        
+        Evaluate the local model.
+
         Args:
-            parameters (List[np.ndarray]): Parámetros del servidor
-            config (dict): Configuración de evaluación
-        
+            parameters (List[np.ndarray]): Server parameters
+            config (dict): Evaluation configuration
+
         Returns:
-            tuple: (loss, número de muestras, métricas)
+            tuple: (loss, number of samples, metrics)
         """
         # Actualizar modelo
         self.set_parameters(parameters)
         
         server_round = config.get('server_round', 0)
-        self.logger.info(f"Ronda {server_round}: Evaluando modelo local")
+        self.logger.info(f"Round {server_round}: Evaluating local model")
         
         # TODO: Implementar evaluación real
         
         try:
             # Evaluar en datos de validación local
             if self.X_val is None:
-                self.logger.warning("No hay datos de validación disponibles")
+                self.logger.warning("No validation data available")
                 return 0.0, 0, {}
             
             # Evaluar
@@ -216,7 +216,7 @@ class FederatedClient(fl.client.NumPyClient):
             
             num_samples = len(self.X_val)
             
-            self.logger.info(f"Evaluación completada - Loss: {loss:.4f}, Acc: {accuracy:.4f}")
+            self.logger.info(f"Evaluation completed - Loss: {loss:.4f}, Acc: {accuracy:.4f}")
             
             return loss, num_samples, metrics
         
@@ -225,18 +225,18 @@ class FederatedClient(fl.client.NumPyClient):
             raise
 
 
-# ==================== FUNCIONES DE UTILIDAD ====================
+# ==================== UTILITY FUNCTIONS ====================
 
 def create_client(node_id: int, dataset_name: str) -> FederatedClient:
     """
-    Factory para crear cliente federado.
-    
+    Factory to create a federated client.
+
     Args:
-        node_id (int): ID del nodo
-        dataset_name (str): Nombre del dataset
-    
+        node_id (int): Node ID
+        dataset_name (str): Dataset name
+
     Returns:
-        FederatedClient: Cliente configurado
+        FederatedClient: Configured client
     """
     client = FederatedClient(node_id=node_id, dataset_name=dataset_name)
     client.load_data()
@@ -247,44 +247,44 @@ def start_client(node_id: int,
                 dataset_name: str,
                 server_address: str = '[::]:8080') -> None:
     """
-    Inicia un cliente y lo conecta al servidor.
-    
+    Start a client and connect it to the server.
+
     Args:
-        node_id (int): ID del nodo
-        dataset_name (str): Nombre del dataset
-        server_address (str): Dirección del servidor
+        node_id (int): Node ID
+        dataset_name (str): Dataset name
+        server_address (str): Server address
     """
     logger = setup_logger(f'ClientStarter_{node_id}')
-    
+
     logger.info("=" * 60)
-    logger.info(f"INICIANDO CLIENTE {node_id}")
+    logger.info(f"STARTING CLIENT {node_id}")
     logger.info("=" * 60)
     logger.info(f"Dataset: {dataset_name}")
-    logger.info(f"Servidor: {server_address}")
+    logger.info(f"Server: {server_address}")
     logger.info("=" * 60)
-    
+
     try:
-        # Crear cliente
+        # Create client
         client = create_client(node_id=node_id, dataset_name=dataset_name)
-        
-        # Conectar al servidor
+
+        # Connect to server
         fl.client.start_numpy_client(
             server_address=server_address,
             client=client
         )
-        
-        logger.info("Cliente finalizado correctamente")
-    
+
+        logger.info("Client finished successfully")
+
     except Exception as e:
-        logger.error(f"Error en cliente: {e}", exc_info=True)
+        logger.error(f"Error in client: {e}", exc_info=True)
         raise
 
 
-# ==================== CALLBACKS PERSONALIZADOS ====================
+# ==================== CUSTOM CALLBACKS ====================
 
 class FederatedCallback(tf.keras.callbacks.Callback):
     """
-    Callback personalizado para entrenamiento federado.
+    Custom callback for federated training.
     """
     
     def __init__(self, node_id: int, logger=None):
@@ -293,33 +293,33 @@ class FederatedCallback(tf.keras.callbacks.Callback):
         self.logger = logger or setup_logger(f'Callback_{node_id}')
     
     def on_epoch_begin(self, epoch, logs=None):
-        """Inicio de época."""
-        self.logger.debug(f"Nodo {self.node_id} - Época {epoch + 1} iniciada")
+        """Epoch begin."""
+        self.logger.debug(f"Node {self.node_id} - Epoch {epoch + 1} started")
     
     def on_epoch_end(self, epoch, logs=None):
-        """Fin de época."""
+        """Epoch end."""
         logs = logs or {}
         self.logger.info(
-            f"Nodo {self.node_id} - Época {epoch + 1}: "
+            f"Node {self.node_id} - Epoch {epoch + 1}: "
             f"Loss={logs.get('loss', 0):.4f}, "
             f"Acc={logs.get('accuracy', 0):.4f}"
         )
     
     def on_train_begin(self, logs=None):
-        """Inicio de entrenamiento."""
-        self.logger.info(f"Nodo {self.node_id} - Iniciando entrenamiento local")
+        """Train begin."""
+        self.logger.info(f"Node {self.node_id} - Starting local training")
     
     def on_train_end(self, logs=None):
-        """Fin de entrenamiento."""
-        self.logger.info(f"Nodo {self.node_id} - Entrenamiento local completado")
+        """Train end."""
+        self.logger.info(f"Node {self.node_id} - Local training completed")
 
 
 # ==================== TESTING ====================
 
 if __name__ == '__main__':
-    print("Probando cliente federado...")
-    
-    # Crear cliente de prueba
+    print("Testing federated client...")
+
+    # Create test client
     test_client = create_client(node_id=0, dataset_name='HAM10000')
-    
-    print(f"Cliente creado con {len(test_client.get_parameters({}))} arrays de parámetros")
+
+    print(f"Client created with {len(test_client.get_parameters({}))} parameter arrays")

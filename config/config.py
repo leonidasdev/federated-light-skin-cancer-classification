@@ -1,9 +1,9 @@
 """
-Configuración global del sistema de Federated Learning
-para clasificación de cáncer de piel.
+Global configuration for the Federated Learning system
+for skin cancer classification.
 """
 
-# ==================== CONFIGURACIÓN DEL MODELO ====================
+# ==================== MODEL CONFIGURATION ====================
 MODEL_CONFIG = {
     # Dimensiones de entrada
     'input_shape': (224, 224, 3),
@@ -27,7 +27,7 @@ MODEL_CONFIG = {
     'final_activation': 'softmax'
 }
 
-# ==================== CONFIGURACIÓN DE ENTRENAMIENTO ====================
+# ==================== TRAINING CONFIGURATION ====================
 TRAINING_CONFIG = {
     # Hiperparámetros locales
     'local_epochs': 5,
@@ -67,7 +67,7 @@ TRAINING_CONFIG = {
     'validation_split': 0.15
 }
 
-# ==================== CONFIGURACIÓN DEL SERVIDOR FEDERADO ====================
+# ==================== FEDERATED SERVER CONFIGURATION ====================
 FEDERATED_CONFIG = {
     # Configuración del servidor
     'server_address': '[::]:8080',
@@ -94,7 +94,7 @@ FEDERATED_CONFIG = {
     'weighted_aggregation': True,  # Ponderar por número de muestras
 }
 
-# ==================== CONFIGURACIÓN DE DATOS ====================
+# ==================== DATA CONFIGURATION ====================
 DATA_CONFIG = {
     # Rutas de datasets (ajustar según tu estructura)
     'data_root': './datasets',
@@ -102,7 +102,7 @@ DATA_CONFIG = {
     'isic2018_path': './datasets/ISIC2018',
     'isic2019_path': './datasets/ISIC2019',
     'isic2020_path': './datasets/ISIC2020',
-    'ph2_path': './datasets/PH2',
+    
     
     # Preprocesamiento
     'image_size': (224, 224),
@@ -140,7 +140,7 @@ DATA_CONFIG = {
     'oversample_minority': False,  # Aplicar oversampling (SMOTE)
 }
 
-# ==================== CONFIGURACIÓN DE NODOS ====================
+# ==================== NODES CONFIGURATION ====================
 NODES_CONFIG = {
     'nodes': [
         {
@@ -169,15 +169,10 @@ NODES_CONFIG = {
         }
     ],
     
-    # Dataset de validación externa (no participa en FL)
-    'external_validation': {
-        'name': 'PH2',
-        'dataset': 'PH2',
-        'use_for_final_eval': True
-    }
+    # No external validation dataset configured
 }
 
-# ==================== CONFIGURACIÓN DE MÉTRICAS ====================
+# ==================== METRICS CONFIGURATION ====================
 METRICS_CONFIG = {
     # Métricas generales
     'track_metrics': ['accuracy', 'precision', 'recall', 'f1_macro', 'auc_macro', 'auc_micro'],
@@ -198,7 +193,7 @@ METRICS_CONFIG = {
     'save_model_interval': 5,  # Cada cuántas rondas se guarda el modelo
 }
 
-# ==================== CONFIGURACIÓN DE SEGURIDAD ====================
+# ==================== SECURITY CONFIGURATION ====================
 SECURITY_CONFIG = {
     # Cifrado de comunicaciones
     'use_encryption': True,
@@ -220,7 +215,7 @@ SECURITY_CONFIG = {
     'allowed_client_ids': None  # Lista de IDs permitidos, None = todos
 }
 
-# ==================== CONFIGURACIÓN DE LOGGING ====================
+# ==================== LOGGING CONFIGURATION ====================
 LOGGING_CONFIG = {
     'log_dir': './logs',
     'tensorboard_dir': './logs/tensorboard',
@@ -239,7 +234,7 @@ LOGGING_CONFIG = {
     'log_filename': 'federated_training.log'
 }
 
-# ==================== MAPEO DE CLASES ====================
+# ==================== CLASS MAPPING ====================
 CLASS_NAMES = {
     0: 'MEL',   # Melanoma
     1: 'NV',    # Melanocytic Nevus
@@ -260,16 +255,16 @@ CLASS_NAMES_FULL = {
     6: 'Vascular Lesion'
 }
 
-# ==================== UTILIDADES ====================
+# ==================== UTILITIES ====================
 def get_config(config_name):
     """
-    Obtiene una configuración específica por nombre.
-    
+    Get a specific configuration by name.
+
     Args:
-        config_name (str): Nombre de la configuración
-    
+        config_name (str): Name of the configuration
+
     Returns:
-        dict: Diccionario de configuración
+        dict: Configuration dictionary
     """
     configs = {
         'model': MODEL_CONFIG,
@@ -285,18 +280,18 @@ def get_config(config_name):
 
 
 def print_config_summary():
-    """Imprime un resumen de la configuración actual."""
+    """Print a summary of the current configuration."""
     print("=" * 60)
-    print("CONFIGURACIÓN DEL SISTEMA")
+    print("SYSTEM CONFIGURATION")
     print("=" * 60)
-    print(f"Modelo: CNN Ligera (3 bloques conv)")
-    print(f"Clases: {MODEL_CONFIG['num_classes']}")
-    print(f"Imagen: {MODEL_CONFIG['input_shape']}")
-    print(f"Estrategia FL: {FEDERATED_CONFIG['strategy']}")
-    print(f"Rondas federadas: {FEDERATED_CONFIG['num_rounds']}")
-    print(f"Nodos activos: {len(NODES_CONFIG['nodes'])}")
-    print(f"Distribución: {DATA_CONFIG['distribution_strategy']}")
-    print(f"Seguridad: {'Activa' if SECURITY_CONFIG['use_encryption'] else 'Desactivada'}")
+    print(f"Model: Lightweight CNN (3 conv blocks)")
+    print(f"Num classes: {MODEL_CONFIG['num_classes']}")
+    print(f"Input shape: {MODEL_CONFIG['input_shape']}")
+    print(f"FL strategy: {FEDERATED_CONFIG['strategy']}")
+    print(f"Federated rounds: {FEDERATED_CONFIG['num_rounds']}")
+    print(f"Active nodes: {len(NODES_CONFIG['nodes'])}")
+    print(f"Distribution: {DATA_CONFIG['distribution_strategy']}")
+    print(f"Security: {'Enabled' if SECURITY_CONFIG['use_encryption'] else 'Disabled'}")
     print("=" * 60)
 
 
