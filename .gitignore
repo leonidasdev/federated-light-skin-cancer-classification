@@ -1,40 +1,12 @@
-# .gitignore for the Federated Learning project
-
-# Datasets (these can be very large)
-datasets/
-*.csv
-*.jpg
-*.jpeg
-*.png
-*.bmp
-
-# Trained models and checkpoints
-checkpoints/
-*.h5
-*.hdf5
-*.pb
-*.ckpt
-*.weights
-saved_models/
-
-# Logs and results
-logs/
-results/
-*.log
-tensorboard/
-wandb/
-
-# Certificates and security keys
-*.crt
-*.key
-*.pem
-certs/
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -48,44 +20,106 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# Virtual environments
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Environments
+.env
+.venv
+env/
 venv/
 ENV/
-env/
-.venv
+env.bak/
+venv.bak/
 
-# IDEs
-.vscode/
+# IDE
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
-.DS_Store
 
 # Jupyter Notebook
 .ipynb_checkpoints
-*.ipynb
 
-# Local configurations
-config_local.py
-.env
-.env.local
+# pyenv
+.python-version
 
-# Cache
-.cache/
-*.cache
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Data directories
+data/
+datasets/
+
+# Model checkpoints and logs
+checkpoints/
+logs/
+runs/
+outputs/
+results/
+
+# Weights & Biases
+wandb/
+
+# TensorBoard
+tensorboard/
+
+# Large files
+*.h5
+*.hdf5
+*.ckpt
+*.pth
+*.pt
+*.pkl
+*.pickle
+
+# OS files
+.DS_Store
+Thumbs.db
 
 # Temporary files
-tmp/
-temp/
 *.tmp
+*.temp
+*.bak
 
-# System files
-Thumbs.db
-desktop.ini
+# Docker
+.docker/
+
+# Azure
+.azure/
+
+# Secrets
+*.key
+*.pem
+secrets.yaml
+secrets.yml

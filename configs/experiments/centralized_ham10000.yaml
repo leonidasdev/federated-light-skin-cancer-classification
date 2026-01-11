@@ -1,0 +1,23 @@
+# Centralized training configuration for HAM10000
+# Baseline experiment without federated learning
+
+_base_: "default.yaml"
+
+experiment:
+  name: "centralized_ham10000"
+  description: "Centralized training on HAM10000 dataset for baseline comparison"
+
+model:
+  name: "lms_vit"
+  num_classes: 7
+
+data:
+  dataset: "ham10000"
+  batch_size: 32
+
+training:
+  epochs: 100
+  learning_rate: 0.0001
+  
+federated:
+  enabled: false

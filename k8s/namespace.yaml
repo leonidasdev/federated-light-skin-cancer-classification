@@ -1,6 +1,9 @@
+# Namespace for Federated Learning
+# =================================
+
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: federated-ml
+  name: federated-learning
   labels:
-    name: federated-ml
+    app: federated-skin-cancer

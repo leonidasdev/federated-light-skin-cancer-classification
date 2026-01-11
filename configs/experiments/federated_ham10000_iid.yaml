@@ -1,0 +1,28 @@
+# Federated learning configuration for HAM10000
+# FedAvg with IID data distribution
+
+_base_: "../default.yaml"
+
+experiment:
+  name: "federated_ham10000_iid"
+  description: "Federated learning on HAM10000 with IID data distribution"
+
+model:
+  name: "lms_vit"
+  num_classes: 7
+
+data:
+  dataset: "ham10000"
+  batch_size: 16  # Smaller batch for clients
+
+federated:
+  enabled: true
+  num_clients: 10
+  rounds: 100
+  epochs_per_round: 5
+  fraction_fit: 1.0
+  
+  partition:
+    strategy: "iid"
+  
+  strategy: "fedavg"
