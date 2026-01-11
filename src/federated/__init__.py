@@ -2,31 +2,40 @@
 Federated Learning Module
 =========================
 
-Federated learning server and client implementations.
+Flower-based federated learning for LMS-ViT skin cancer classification.
+
+This module provides:
+- LMSViTFlowerClient: NumPy-based client for Flower framework
+- create_client_fn: Factory function for creating clients in simulation
+- run_flower_server: Start a Flower gRPC server for distributed training
+- run_flower_simulation: Run local simulation with Ray
+- create_strategy: Create Flower aggregation strategies (FedAvg, FedProx, etc.)
 """
 
-from .server import FederatedServer
-from .client import FederatedClient
-from .aggregation import (
-    federated_averaging,
-    weighted_averaging,
-    fedprox_aggregation,
-)
-from .strategies import (
-    FedAvg,
-    FedProx,
-    FedNova,
-    Scaffold,
+from .flower_client import LMSViTFlowerClient, create_client_fn
+from .flower_server import (
+    run_flower_server,
+    run_flower_simulation,
+    create_strategy,
+    get_initial_parameters,
+    print_history,
+    weighted_average,
+    fit_metrics_aggregation_fn,
+    evaluate_metrics_aggregation_fn,
 )
 
 __all__ = [
-    "FederatedServer",
-    "FederatedClient",
-    "federated_averaging",
-    "weighted_averaging",
-    "fedprox_aggregation",
-    "FedAvg",
-    "FedProx",
-    "FedNova",
-    "Scaffold",
+    # Flower Client
+    "LMSViTFlowerClient",
+    "create_client_fn",
+    # Flower Server
+    "run_flower_server",
+    "run_flower_simulation",
+    "create_strategy",
+    "get_initial_parameters",
+    "print_history",
+    # Metrics aggregation
+    "weighted_average",
+    "fit_metrics_aggregation_fn",
+    "evaluate_metrics_aggregation_fn",
 ]

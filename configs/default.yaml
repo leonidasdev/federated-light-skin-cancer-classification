@@ -98,5 +98,6 @@ logging:
 # =============================================================================
 hardware:
   device: "cuda"  # cuda, cpu
+  seed: 42  # Random seed for reproducibility
   seed: 42
   deterministic: true

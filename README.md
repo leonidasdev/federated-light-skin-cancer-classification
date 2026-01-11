@@ -10,7 +10,7 @@ This project investigates the performance of LMS-ViT on skin lesion classificati
 
 - 🔬 **LMS-ViT Model**: Lightweight Multi-Scale Vision Transformer optimized for medical imaging
 - 🏥 **Multiple Datasets**: Support for HAM10000, ISIC 2018, ISIC 2019, and ISIC 2020
-- 🔄 **Federated Learning**: FedAvg, FedProx, FedNova, and SCAFFOLD algorithms
+- 🔄 **Federated Learning**: Flower framework with FedAvg, FedProx, FedAdam, and FedAdagrad strategies
 - 📊 **Non-IID Support**: IID, Dirichlet, and pathological data partitioning
 - 🐳 **Container-Ready**: Docker and Kubernetes configurations for Azure deployment
 
@@ -33,11 +33,9 @@ federated-light-skin-cancer-classification/
 │   │   ├── trainer.py           # Base trainer class
 │   │   ├── centralized.py       # Centralized training
 │   │   └── callbacks.py         # Training callbacks
-│   ├── federated/                # Federated learning
-│   │   ├── server.py            # FL server
-│   │   ├── client.py            # FL client
-│   │   ├── aggregation.py       # Aggregation functions
-│   │   └── strategies.py        # FL algorithms
+│   ├── federated/                # Federated learning (Flower)
+│   │   ├── flower_client.py     # Flower client implementation
+│   │   └── flower_server.py     # Flower server and simulation
 │   └── utils/                    # Utilities
 │       ├── logging.py           # Logging utilities
 │       ├── metrics.py           # Evaluation metrics
@@ -48,7 +46,7 @@ federated-light-skin-cancer-classification/
 │   └── experiments/             # Experiment-specific configs
 ├── scripts/                      # Training and evaluation scripts
 │   ├── train_centralized.py     # Centralized training
-│   ├── train_federated.py       # Federated training
+│   ├── train_federated_flower.py # Flower federated training
 │   └── evaluate.py              # Model evaluation
 ├── notebooks/                    # Jupyter notebooks
 │   ├── 01_data_exploration.ipynb
@@ -108,14 +106,15 @@ pip install -r requirements.txt
 python scripts/train_centralized.py --config configs/experiments/centralized_ham10000.yaml
 ```
 
-### Federated Learning
+### Federated Learning (Flower Simulation)
 
 ```bash
 # IID data distribution
-python scripts/train_federated.py --config configs/experiments/federated_ham10000_iid.yaml
+python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml
 
-# Non-IID data distribution
-python scripts/train_federated.py --config configs/experiments/federated_ham10000_noniid.yaml
+# Non-IID data distribution (Dirichlet)
+python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml \
+    --partition-strategy dirichlet --dirichlet-alpha 0.5
 ```
 
 ### Evaluation
@@ -151,7 +150,7 @@ data/
 1. **Centralized Baseline**: Standard training on pooled data
 2. **FL with IID Data**: Federated learning with balanced data across clients
 3. **FL with Non-IID Data**: Federated learning with heterogeneous data distributions
-4. **Algorithm Comparison**: FedAvg vs FedProx vs FedNova vs SCAFFOLD
+4. **Strategy Comparison**: FedAvg vs FedProx vs FedAdam vs FedAdagrad
 5. **Communication Efficiency**: Analysis of rounds vs accuracy tradeoff
 
 ## Configuration

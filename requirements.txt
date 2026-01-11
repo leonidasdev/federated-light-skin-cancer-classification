@@ -40,9 +40,10 @@ mypy>=1.5.0
 types-PyYAML>=6.0.0
 types-Pillow>=10.0.0
 
-# Federated Learning (optional frameworks)
-# flower>=1.5.0  # Uncomment for Flower FL framework
-# pysyft>=0.8.0  # Uncomment for PySyft
+# Federated Learning
+flwr>=1.5.0           # Flower FL framework
+ray>=2.8.0            # Required for Flower simulation
+# pysyft>=0.8.0       # Uncomment for PySyft (alternative FL framework)
 
 # Development
 pre-commit>=3.4.0
