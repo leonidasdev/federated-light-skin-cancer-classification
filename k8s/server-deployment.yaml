@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fl-server
+  namespace: federated-ml
+  labels:
+    app: fl-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fl-server
+  template:
+    metadata:
+      labels:
+        app: fl-server
+    spec:
+      containers:
+        - name: fl-server
+          # Replace <ACR_NAME> with your Azure Container Registry name
+          image: <ACR_NAME>.azurecr.io/fed-skin-server:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: EXPERIMENT_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: federated-config
+                  key: EXPERIMENT_NAME
+            - name: SERVER_ADDRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: federated-config
+                  key: SERVER_ADDRESS
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+      # If pulling from private ACR, ensure imagePullSecrets or use AAD pod identity
+      # imagePullSecrets:
+      #   - name: acr-registry-secret

@@ -12,8 +12,8 @@ import argparse
 import sys
 from pathlib import Path
 
-# Add root directory to path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add repository root directory to path (so imports like `from client.client` work)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config.config import FEDERATED_CONFIG, NODES_CONFIG
 from client.client import start_client

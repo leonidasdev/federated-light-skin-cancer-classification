@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fl-client
+  namespace: federated-ml
+  labels:
+    app: fl-client
+spec:
+  replicas: 3 # scale to number of simulated clients required
+  selector:
+    matchLabels:
+      app: fl-client
+  template:
+    metadata:
+      labels:
+        app: fl-client
+    spec:
+      containers:
+        - name: fl-client
+          image: <ACR_NAME>.azurecr.io/fed-skin-client:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SERVER
+              valueFrom:
+                configMapKeyRef:
+                  name: federated-config
+                  key: SERVER_ADDRESS
+            - name: DATASET
+              valueFrom:
+                configMapKeyRef:
+                  name: federated-config
+                  key: DEFAULT_DATASET
+            # NODE_ID should typically be unique per client; here Kubernetes' POD name or an init script could map to an ID
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+      restartPolicy: Always
+      # imagePullSecrets:
+      #   - name: acr-registry-secret

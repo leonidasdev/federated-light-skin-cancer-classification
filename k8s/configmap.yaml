@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: federated-config
+  namespace: federated-ml
+data:
+  # Server address used by clients (override at deploy time if needed)
+  SERVER_ADDRESS: "[::]:8080"
+  # Default dataset for simulated clients
+  DEFAULT_DATASET: "HAM10000"
+  # Experiment name used by logging
+  EXPERIMENT_NAME: "federated_skin_cancer"
