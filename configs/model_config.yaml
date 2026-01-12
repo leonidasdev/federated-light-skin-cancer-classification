@@ -1,0 +1,52 @@
+# DSCATNet Model Configuration
+# Dual-Scale Cross-Attention Vision Transformer
+
+model:
+  name: "DSCATNet"
+  
+  # Input configuration
+  img_size: 224
+  in_channels: 3
+  num_classes: 7
+  
+  # Architecture parameters
+  embed_dim: 384
+  depth: 6
+  num_heads: 6
+  mlp_ratio: 4.0
+  
+  # Dual-scale patch sizes
+  fine_patch_size: 8      # More patches, fine details
+  coarse_patch_size: 16   # Fewer patches, global context
+  
+  # Regularization
+  drop_rate: 0.1
+  attn_drop_rate: 0.0
+  
+  # Feature fusion method
+  fusion_method: "concat"  # Options: concat, add, attention
+
+# Model variants for ablation studies
+variants:
+  tiny:
+    embed_dim: 192
+    depth: 4
+    num_heads: 3
+    mlp_ratio: 3.0
+    
+  small:
+    embed_dim: 384
+    depth: 6
+    num_heads: 6
+    mlp_ratio: 4.0
+    
+  base:
+    embed_dim: 384
+    depth: 8
+    num_heads: 6
+    mlp_ratio: 4.0
+
+# Approximate parameter counts
+# Tiny:  ~5M parameters
+# Small: ~15M parameters  
+# Base:  ~20M parameters

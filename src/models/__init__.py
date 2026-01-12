@@ -1,31 +1,9 @@
 """
-Models module
-=============
-
-Contains the LMS-ViT model implementation and related components.
+Model architectures for skin cancer classification.
 """
 
-from .lms_vit import LMSViT, lmsvit_tiny, lmsvit_small, lmsvit_base
-from .components import (
-    MultiScaleAttention,
-    MultiScalePatchEmbedding,
-    LightweightBlock,
-    LightweightMLP,
-    PatchEmbedding,
-    PositionalEncoding,
-    DropPath,
-)
+from .dscatnet import DSCATNet
+from .patch_embedding import DualScalePatchEmbedding
+from .cross_attention import CrossScaleAttention
 
-__all__ = [
-    "LMSViT",
-    "lmsvit_tiny",
-    "lmsvit_small",
-    "lmsvit_base",
-    "MultiScaleAttention",
-    "MultiScalePatchEmbedding",
-    "LightweightBlock",
-    "LightweightMLP",
-    "PatchEmbedding",
-    "PositionalEncoding",
-    "DropPath",
-]
+__all__ = ["DSCATNet", "DualScalePatchEmbedding", "CrossScaleAttention"]

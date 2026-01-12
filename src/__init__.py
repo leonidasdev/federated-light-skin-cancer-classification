@@ -1,10 +1,6 @@
 """
-Federated Light Skin Cancer Classification
-==========================================
-
-A research project evaluating the LMS-ViT (Lightweight Multi-Scale Vision Transformer)
-model under federated learning conditions for skin cancer classification.
+Federated Learning for Skin Cancer Classification with DSCATNet
 """
 
 __version__ = "0.1.0"
-__author__ = "Leonardo Chen"
+__author__ = "Leonidas Brando"

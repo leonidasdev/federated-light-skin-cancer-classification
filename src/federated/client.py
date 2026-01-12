@@ -1,340 +1,340 @@
 """
-Client Implementation
-=====================
+Flower FL Client for Skin Cancer Classification.
 
-flwr client utilities for federated learning with LMS-ViT.
-Implements the NumPyClient interface used for simulation and distributed training.
-
-This module provides:
-- LMSViTFlowerClient: NumPy-based client helper
-- client_fn: Factory function for creating clients in simulation
+Each client represents a hospital/institution with its own dermoscopy dataset:
+- Client 1: HAM10000
+- Client 2: ISIC 2018
+- Client 3: ISIC 2019
+- Client 4: ISIC 2020
 """
 
-from collections import OrderedDict
-from typing import Dict, List, Tuple, Callable, Optional, Any
-
-import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Dataset
-
+from torch.utils.data import DataLoader
 import flwr as fl
-from flwr.common import NDArrays, Scalar
+from flwr.common import (
+    NDArrays,
+    Scalar,
+    Parameters,
+    FitRes,
+    EvaluateRes,
+    GetParametersRes,
+    Status,
+    Code
+)
+from typing import Dict, List, Tuple, Optional
+from collections import OrderedDict
+import numpy as np
 
-from ..models import LMSViT, lmsvit_tiny, lmsvit_small, lmsvit_base
-from ..data import get_train_transforms, get_val_transforms
-from ..utils.logging import get_logger
-from ..utils.metrics import MetricsCalculator
+from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
 
 
-class LMSViTFlowerClient(fl.client.NumPyClient):
+class SkinCancerClient(fl.client.NumPyClient):
     """
-    Flower NumPyClient implementation for LMS-ViT federated learning.
+    Flower client for skin cancer classification with DSCATNet.
     
-    This client:
-    - Loads a local dataset partition
-    - Creates DataLoaders for train/val
-    - Initializes an LMS-ViT model
-    - Loads received global parameters into the model
-    - Trains locally for E epochs
-    - Evaluates on local validation data
-    - Returns model parameters as NumPy arrays, plus metrics
+    This client handles local training and evaluation for a single
+    dermoscopy dataset in the federated learning setup.
     
     Args:
-        client_id: Unique identifier for this client
-        train_dataset: Training dataset partition for this client
-        val_dataset: Validation dataset partition for this client (optional)
-        model_name: LMS-ViT variant ('tiny', 'small', 'base')
-        num_classes: Number of output classes
-        batch_size: Batch size for training
-        learning_rate: Learning rate for optimizer
-        device: Device to train on ('cuda' or 'cpu')
+        client_id: Unique identifier for this client (1-4)
+        model: DSCATNet model instance
+        train_loader: DataLoader for training data
+        val_loader: DataLoader for validation data
+        device: Device to run training on
         local_epochs: Number of local training epochs per round
+        learning_rate: Learning rate for optimizer
     """
     
     def __init__(
         self,
         client_id: int,
-        train_dataset: Dataset,
-        val_dataset: Optional[Dataset] = None,
-        model_name: str = "small",
-        num_classes: int = 7,
-        batch_size: int = 32,
-        learning_rate: float = 1e-4,
-        device: str = "cuda",
+        model: DSCATNet,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        device: torch.device,
         local_epochs: int = 1,
+        learning_rate: float = 1e-3
     ):
-        super().__init__()
         self.client_id = client_id
-        self.train_dataset = train_dataset
-        self.val_dataset = val_dataset
-        self.batch_size = batch_size
-        self.learning_rate = learning_rate
-        self.device = device if torch.cuda.is_available() else "cpu"
+        self.model = model
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        self.device = device
         self.local_epochs = local_epochs
+        self.learning_rate = learning_rate
         
-        self.logger = get_logger(f"FederatedClient-{client_id}")
-        self.metrics_calculator = MetricsCalculator(num_classes=num_classes)
-        
-        # Create data loaders
-        self.train_loader = DataLoader(
-            train_dataset,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=0,  # For simulation, use 0 to avoid multiprocessing issues
-            pin_memory=True if self.device == "cuda" else False,
-        )
-        
-        self.val_loader = None
-        if val_dataset is not None and len(val_dataset) > 0:
-            self.val_loader = DataLoader(
-                val_dataset,
-                batch_size=batch_size,
-                shuffle=False,
-                num_workers=0,
-                pin_memory=True if self.device == "cuda" else False,
-            )
-        
-        # Initialize model
-        self.model = self._create_model(model_name, num_classes)
+        # Move model to device
         self.model.to(self.device)
         
         # Loss function
         self.criterion = nn.CrossEntropyLoss()
         
-        self.logger.info(
-            f"Client {client_id} initialized with {len(train_dataset)} training samples"
+        # Optimizer
+        self.optimizer = torch.optim.Adam(
+            self.model.parameters(),
+            lr=learning_rate,
+            weight_decay=1e-4
         )
-    
-    def _create_model(self, model_name: str, num_classes: int) -> nn.Module:
-        """Create LMS-ViT model based on variant name."""
-        model_factories = {
-            "tiny": lmsvit_tiny,
-            "small": lmsvit_small,
-            "base": lmsvit_base,
+        
+        # Scheduler for learning rate decay
+        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            self.optimizer,
+            T_max=100,  # Will be adjusted based on FL rounds
+            eta_min=1e-6
+        )
+        
+        # Training history
+        self.history: Dict[str, List[float]] = {
+            'train_loss': [],
+            'train_acc': [],
+            'val_loss': [],
+            'val_acc': []
         }
         
-        if model_name not in model_factories:
-            raise ValueError(
-                f"Unknown model variant: {model_name}. "
-                f"Choose from: {list(model_factories.keys())}"
-            )
-        
-        return model_factories[model_name](num_classes=num_classes)
-    
     def get_parameters(self, config: Dict[str, Scalar]) -> NDArrays:
-        """
-        Get current model parameters as NumPy arrays.
-        
-        Args:
-            config: Configuration dictionary from server
-            
-        Returns:
-            List of NumPy arrays representing model parameters
-        """
-        return [val.cpu().numpy() for _, val in self.model.state_dict().items()]
+        """Return current model parameters as numpy arrays."""
+        return get_model_parameters(self.model)
     
     def set_parameters(self, parameters: NDArrays) -> None:
-        """
-        Set model parameters from NumPy arrays.
+        """Set model parameters from numpy arrays."""
+        set_model_parameters(self.model, parameters)
         
-        Args:
-            parameters: List of NumPy arrays from server
-        """
-        params_dict = zip(self.model.state_dict().keys(), parameters)
-        state_dict = OrderedDict(
-            {k: torch.tensor(v, dtype=torch.float32) for k, v in params_dict}
-        )
-        self.model.load_state_dict(state_dict, strict=True)
-    
     def fit(
         self,
         parameters: NDArrays,
-        config: Dict[str, Scalar],
+        config: Dict[str, Scalar]
     ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
         """
-        Train the model on local data.
+        Train model on local dataset.
         
         Args:
             parameters: Global model parameters from server
             config: Training configuration from server
             
         Returns:
-            Tuple of:
-            - Updated model parameters as NumPy arrays
-            - Number of training samples
-            - Dictionary of training metrics
+            Tuple of (updated parameters, num_examples, metrics)
         """
-        # Load global parameters
+        # Update model with global parameters
         self.set_parameters(parameters)
         
-        # Get training config (can be overridden by server)
-        local_epochs = config.get("local_epochs", self.local_epochs)
-        learning_rate = config.get("learning_rate", self.learning_rate)
+        # Get config values
+        epochs = int(config.get("local_epochs", self.local_epochs))
+        current_round = int(config.get("current_round", 0))
         
-        # Create optimizer (recreate each round to handle potential LR changes)
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(),
-            lr=learning_rate,
-            weight_decay=0.01,
-        )
+        # Train locally
+        train_loss, train_acc = self._train_epoch(epochs)
         
-        # Training loop
+        # Record history
+        self.history['train_loss'].append(train_loss)
+        self.history['train_acc'].append(train_acc)
+        
+        # Step scheduler
+        self.scheduler.step()
+        
+        # Prepare metrics
+        metrics = {
+            "client_id": self.client_id,
+            "train_loss": train_loss,
+            "train_accuracy": train_acc,
+            "round": current_round,
+            "learning_rate": self.optimizer.param_groups[0]['lr']
+        }
+        
+        return self.get_parameters(config), len(self.train_loader.dataset), metrics
+    
+    def evaluate(
+        self,
+        parameters: NDArrays,
+        config: Dict[str, Scalar]
+    ) -> Tuple[float, int, Dict[str, Scalar]]:
+        """
+        Evaluate model on local validation set.
+        
+        Args:
+            parameters: Model parameters to evaluate
+            config: Evaluation configuration
+            
+        Returns:
+            Tuple of (loss, num_examples, metrics)
+        """
+        # Update model with parameters
+        self.set_parameters(parameters)
+        
+        # Evaluate
+        loss, accuracy, metrics = self._evaluate()
+        
+        # Record history
+        self.history['val_loss'].append(loss)
+        self.history['val_acc'].append(accuracy)
+        
+        # Add client ID to metrics
+        metrics["client_id"] = self.client_id
+        
+        return loss, len(self.val_loader.dataset), metrics
+    
+    def _train_epoch(self, epochs: int = 1) -> Tuple[float, float]:
+        """
+        Train for specified number of epochs.
+        
+        Returns:
+            Tuple of (average_loss, accuracy)
+        """
         self.model.train()
         total_loss = 0.0
-        total_samples = 0
+        correct = 0
+        total = 0
         
-        for epoch in range(int(local_epochs)):
+        for epoch in range(epochs):
             epoch_loss = 0.0
+            
             for batch_idx, (images, labels) in enumerate(self.train_loader):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 
-                optimizer.zero_grad()
+                # Forward pass
+                self.optimizer.zero_grad()
                 outputs = self.model(images)
                 loss = self.criterion(outputs, labels)
+                
+                # Backward pass
                 loss.backward()
                 
                 # Gradient clipping for stability
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
                 
-                optimizer.step()
+                self.optimizer.step()
                 
-                epoch_loss += loss.item() * images.size(0)
-                total_samples += images.size(0)
-            
+                # Statistics
+                epoch_loss += loss.item()
+                _, predicted = outputs.max(1)
+                total += labels.size(0)
+                correct += predicted.eq(labels).sum().item()
+                
             total_loss += epoch_loss
         
-        # Calculate metrics
-        avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
+        avg_loss = total_loss / (len(self.train_loader) * epochs)
+        accuracy = 100.0 * correct / total
         
-        metrics = {
-            "client_id": self.client_id,
-            "train_loss": float(avg_loss),
-            "train_samples": len(self.train_dataset),
-            "local_epochs": int(local_epochs),
-        }
-        
-        self.logger.info(
-            f"Client {self.client_id} - Round complete: "
-            f"loss={avg_loss:.4f}, samples={len(self.train_dataset)}"
-        )
-        
-        return self.get_parameters(config={}), len(self.train_dataset), metrics
+        return avg_loss, accuracy
     
-    def evaluate(
-        self,
-        parameters: NDArrays,
-        config: Dict[str, Scalar],
-    ) -> Tuple[float, int, Dict[str, Scalar]]:
+    def _evaluate(self) -> Tuple[float, float, Dict[str, Scalar]]:
         """
-        Evaluate the model on local validation data.
+        Evaluate model on validation set.
         
-        Args:
-            parameters: Global model parameters from server
-            config: Evaluation configuration from server
-            
         Returns:
-            Tuple of:
-            - Loss value
-            - Number of evaluation samples
-            - Dictionary of evaluation metrics
+            Tuple of (loss, accuracy, detailed_metrics)
         """
-        # Load global parameters
-        self.set_parameters(parameters)
-        
-        # Use validation loader if available, otherwise use training loader
-        eval_loader = self.val_loader if self.val_loader is not None else self.train_loader
-        num_samples = len(self.val_dataset) if self.val_dataset else len(self.train_dataset)
-        
         self.model.eval()
         total_loss = 0.0
+        correct = 0
+        total = 0
+        
+        # Per-class statistics
+        class_correct = {}
+        class_total = {}
         all_preds = []
         all_labels = []
         
         with torch.no_grad():
-            for images, labels in eval_loader:
+            for images, labels in self.val_loader:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 
                 outputs = self.model(images)
                 loss = self.criterion(outputs, labels)
                 
-                total_loss += loss.item() * images.size(0)
-                
+                total_loss += loss.item()
                 _, predicted = outputs.max(1)
+                total += labels.size(0)
+                correct += predicted.eq(labels).sum().item()
+                
+                # Store predictions for detailed metrics
                 all_preds.extend(predicted.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
+                
+                # Per-class accuracy
+                for label, pred in zip(labels, predicted):
+                    label = label.item()
+                    if label not in class_correct:
+                        class_correct[label] = 0
+                        class_total[label] = 0
+                    class_total[label] += 1
+                    if label == pred.item():
+                        class_correct[label] += 1
         
-        # Calculate metrics
-        avg_loss = total_loss / num_samples if num_samples > 0 else 0.0
-        metrics = self.metrics_calculator.calculate(
-            y_pred=np.array(all_preds),
-            y_true=np.array(all_labels),
-        )
+        avg_loss = total_loss / len(self.val_loader)
+        accuracy = 100.0 * correct / total
         
-        # Add client info
-        metrics["client_id"] = self.client_id
-        metrics["eval_samples"] = num_samples
+        # Compute detailed metrics
+        metrics = {
+            "accuracy": accuracy,
+            "loss": avg_loss,
+            "num_samples": total
+        }
         
-        self.logger.info(
-            f"Client {self.client_id} - Evaluation: "
-            f"loss={avg_loss:.4f}, accuracy={metrics['accuracy']:.4f}"
-        )
+        # Add per-class accuracy
+        for cls in class_total:
+            metrics[f"class_{cls}_accuracy"] = (
+                100.0 * class_correct[cls] / class_total[cls]
+                if class_total[cls] > 0 else 0.0
+            )
         
-        return float(avg_loss), num_samples, metrics
-
-
-def create_client_fn(
-    client_datasets: Dict[int, Tuple[Dataset, Optional[Dataset]]],
-    model_name: str = "small",
-    num_classes: int = 7,
-    batch_size: int = 32,
-    learning_rate: float = 1e-4,
-    device: str = "cuda",
-    local_epochs: int = 1,
-) -> Callable[[str], LMSViTFlowerClient]:
-    """
-    Create a client factory function for Flower simulation.
+        return avg_loss, accuracy, metrics
     
-    This function returns a callable that creates LMSViTFlowerClient
-    instances for each client ID in the simulation.
+    def get_history(self) -> Dict[str, List[float]]:
+        """Return training history."""
+        return self.history
+
+
+def create_client(
+    client_id: int,
+    model: DSCATNet,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    device: torch.device,
+    **kwargs
+) -> SkinCancerClient:
+    """
+    Factory function to create a Flower client.
     
     Args:
-        client_datasets: Dictionary mapping client IDs to (train_dataset, val_dataset) tuples
-        model_name: LMS-ViT variant
-        num_classes: Number of output classes
-        batch_size: Batch size for training
-        learning_rate: Learning rate
-        device: Device to train on
-        local_epochs: Number of local epochs per round
+        client_id: Client identifier (1-4 for each dataset)
+        model: DSCATNet model
+        train_loader: Training data loader
+        val_loader: Validation data loader
+        device: Computation device
+        **kwargs: Additional arguments (local_epochs, learning_rate)
         
     Returns:
-        Client factory function that takes a client ID string and returns a client
+        Configured SkinCancerClient
     """
-    def client_fn(cid: str) -> LMSViTFlowerClient:
-        """Create a Flower client for the given client ID."""
-        client_id = int(cid)
-        train_dataset, val_dataset = client_datasets[client_id]
-        
-        return LMSViTFlowerClient(
-            client_id=client_id,
-            train_dataset=train_dataset,
-            val_dataset=val_dataset,
-            model_name=model_name,
-            num_classes=num_classes,
-            batch_size=batch_size,
-            learning_rate=learning_rate,
-            device=device,
-            local_epochs=local_epochs,
-        )
+    return SkinCancerClient(
+        client_id=client_id,
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        device=device,
+        **kwargs
+    )
+
+
+def client_fn(client_id: str, model_config: dict, data_config: dict) -> fl.client.Client:
+    """
+    Client function for Flower's simulation mode.
     
-    return client_fn
-
-
-# TODO: Future extensions
-# - Add FedProx support with proximal term in fit()
-# - Add differential privacy support
-# - Add secure aggregation hooks
-# - Add personalization layers that stay local
-# - Add support for heterogeneous models across clients
+    This function is called by Flower to create client instances.
+    
+    Args:
+        client_id: String client identifier
+        model_config: Model configuration dictionary
+        data_config: Data configuration dictionary
+        
+    Returns:
+        Flower Client instance
+    """
+    # This will be implemented when we set up the full simulation
+    # For now, return a placeholder
+    raise NotImplementedError(
+        "client_fn should be implemented with actual data loaders"
+    )

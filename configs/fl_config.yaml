@@ -1,0 +1,86 @@
+# Federated Learning Configuration
+# Using Flower Framework with FedAvg
+
+federated:
+  # Framework settings
+  framework: "flower"
+  strategy: "FedAvg"
+  
+  # Client configuration
+  num_clients: 4
+  clients:
+    - id: 1
+      dataset: "HAM10000"
+      description: "Human Against Machine - 10k images"
+    - id: 2
+      dataset: "ISIC2018"
+      description: "ISIC 2018 Task 3 - ~10k images"
+    - id: 3
+      dataset: "ISIC2019"
+      description: "ISIC 2019 - ~25k images"
+    - id: 4
+      dataset: "ISIC2020"
+      description: "ISIC 2020 - ~33k images (binary)"
+  
+  # Training rounds
+  num_rounds: 100
+  rounds_early_stop: 50   # Minimum rounds before early stopping
+  early_stopping_patience: 20
+  
+  # Client participation
+  fraction_fit: 1.0       # Fraction of clients for training (all 4)
+  fraction_evaluate: 1.0  # Fraction of clients for evaluation
+  min_fit_clients: 4
+  min_evaluate_clients: 4
+  min_available_clients: 4
+  
+  # Local training
+  local_epochs: 3
+  local_batch_size: 32
+  
+  # Optimizer
+  optimizer: "Adam"
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  
+  # Learning rate schedule
+  lr_scheduler: "cosine"
+  warmup_epochs: 5
+  min_lr: 0.000001
+  
+  # Communication
+  save_every_rounds: 10
+  evaluate_every_rounds: 1
+  
+  # Server settings
+  server_address: "[::]:8080"
+
+# Data distribution scenarios
+scenarios:
+  natural_noniid:
+    description: "Each client uses its own dataset (natural non-IID)"
+    alpha: null  # Not applicable
+    
+  iid_pooled:
+    description: "All datasets pooled and uniformly distributed"
+    alpha: 1000  # Very high = IID
+    
+  moderate_noniid:
+    description: "Dirichlet distribution with alpha=0.5"
+    alpha: 0.5
+    
+  extreme_noniid:
+    description: "Dirichlet distribution with alpha=0.1"
+    alpha: 0.1
+
+# Aggregation strategies to compare
+strategies:
+  - name: "FedAvg"
+    description: "Federated Averaging"
+    
+  - name: "FedProx"
+    description: "FedAvg with proximal term"
+    mu: 0.01
+    
+  - name: "FedNova"
+    description: "Normalized averaging"
