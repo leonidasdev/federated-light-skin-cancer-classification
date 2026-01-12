@@ -7,10 +7,10 @@ Script for running federated learning experiments using Flower framework.
 Supports local simulation mode for development and testing.
 
 Usage:
-    python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml
+    python scripts/train_federated.py --config configs/experiments/federated_ham10000.yaml
     
     # Quick test with defaults
-    python scripts/train_federated_flower.py --num-clients 4 --num-rounds 5
+    python scripts/train_federated.py --num-clients 4 --num-rounds 5
 """
 
 import argparse
@@ -39,8 +39,8 @@ from src.data.federated import (
     iid_partition,
     dirichlet_partition,
 )
-from src.federated.flower_client import create_client_fn
-from src.federated.flower_server import (
+from src.federated.client import create_client_fn
+from src.federated.server import (
     run_flower_simulation,
     create_strategy,
     get_initial_parameters,
@@ -60,8 +60,8 @@ def get_default_config() -> dict:
     """Get default configuration for quick testing."""
     return {
         "experiment": {
-            "name": "federated_flower_test",
-            "description": "Federated learning with Flower - test run",
+            "name": "federated_test",
+            "description": "Federated learning - test run",
         },
         "model": {
             "name": "lmsvit_small",
@@ -216,7 +216,7 @@ def main(args):
     seed = config.get("hardware", {}).get("seed", 42)
     set_seed(seed)
     setup_logging(log_dir="./logs/federated", log_to_file=True)
-    logger = get_logger("FederatedFlower")
+    logger = get_logger("Federated")
     
     # Device
     device = config.get("hardware", {}).get("device", "cuda")
@@ -243,7 +243,7 @@ def main(args):
     learning_rate = config["training"]["learning_rate"]
     
     logger.info("=" * 60)
-    logger.info("FEDERATED LEARNING WITH FLOWER")
+    logger.info("FEDERATED LEARNING")
     logger.info("=" * 60)
     logger.info(f"Experiment: {config.get('experiment', {}).get('name', 'unnamed')}")
     logger.info(f"Model: LMS-ViT {model_name} ({num_classes} classes)")
@@ -319,7 +319,7 @@ def main(args):
         client_resources["num_gpus"] = min(0.5, 1.0 / num_clients)
     
     # Run simulation
-    logger.info("Starting Flower simulation...")
+    logger.info("Starting federated simulation...")
     
     try:
         history = run_flower_simulation(

@@ -7,4 +7,4 @@ model under federated learning conditions for skin cancer classification.
 """
 
 __version__ = "0.1.0"
-__author__ = "Leonidas Brando"
+__author__ = "Leonardo Chen"

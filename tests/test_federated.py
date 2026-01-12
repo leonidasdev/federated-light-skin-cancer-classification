@@ -1,8 +1,8 @@
 """
-Federated Learning Tests (Flower)
-==================================
+Federated Learning Tests
+=========================
 
-Unit tests for Flower-based federated learning components.
+Unit tests for federated learning components.
 """
 
 import pytest
@@ -79,8 +79,8 @@ class TestWeightedAverage:
         assert abs(result["loss"] - 0.4) < 1e-5
 
 
-class TestFlowerClient:
-    """Tests for Flower client implementation."""
+class TestClient:
+    """Tests for client implementation."""
     
     @pytest.fixture
     def dummy_model(self):
@@ -95,8 +95,8 @@ class TestFlowerClient:
         dataset = TensorDataset(X, y)
         return DataLoader(dataset, batch_size=8)
     
-    def test_flower_client_init(self, dummy_model, dummy_dataloader):
-        """Test FlowerClient initialization."""
+    def test_client_init(self, dummy_model, dummy_dataloader):
+        """Test client initialization."""
         client = LMSViTFlowerClient(
             model=dummy_model,
             trainloader=dummy_dataloader,
@@ -109,7 +109,7 @@ class TestFlowerClient:
         assert client.num_classes == 2
         assert client.device == "cpu"
     
-    def test_flower_client_get_parameters(self, dummy_model, dummy_dataloader):
+    def test_client_get_parameters(self, dummy_model, dummy_dataloader):
         """Test getting parameters from client."""
         client = LMSViTFlowerClient(
             model=dummy_model,
@@ -129,7 +129,7 @@ class TestFlowerClient:
         for p1, p2 in zip(params, model_params):
             assert p1.shape == p2.shape
     
-    def test_flower_client_set_parameters(self, dummy_model, dummy_dataloader):
+    def test_client_set_parameters(self, dummy_model, dummy_dataloader):
         """Test setting parameters on client."""
         client = LMSViTFlowerClient(
             model=dummy_model,

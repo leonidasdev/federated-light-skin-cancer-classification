@@ -33,9 +33,9 @@ federated-light-skin-cancer-classification/
 │   │   ├── trainer.py           # Base trainer class
 │   │   ├── centralized.py       # Centralized training
 │   │   └── callbacks.py         # Training callbacks
-│   ├── federated/                # Federated learning (Flower)
-│   │   ├── flower_client.py     # Flower client implementation
-│   │   └── flower_server.py     # Flower server and simulation
+│   ├── federated/                # Federated learning
+│   │   ├── client.py            # Client implementation
+│   │   └── server.py            # Server and simulation
 │   └── utils/                    # Utilities
 │       ├── logging.py           # Logging utilities
 │       ├── metrics.py           # Evaluation metrics
@@ -46,7 +46,7 @@ federated-light-skin-cancer-classification/
 │   └── experiments/             # Experiment-specific configs
 ├── scripts/                      # Training and evaluation scripts
 │   ├── train_centralized.py     # Centralized training
-│   ├── train_federated_flower.py # Flower federated training
+│   ├── train_federated.py       # Federated training
 │   └── evaluate.py              # Model evaluation
 ├── notebooks/                    # Jupyter notebooks
 │   ├── 01_data_exploration.ipynb
@@ -110,11 +110,11 @@ python scripts/train_centralized.py --config configs/experiments/centralized_ham
 
 ```bash
 # IID data distribution
-python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml
+python scripts/train_federated.py --config configs/experiments/federated_ham10000.yaml
 
 # Non-IID data distribution (Dirichlet)
-python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml \
-    --partition-strategy dirichlet --dirichlet-alpha 0.5
+python scripts/train_federated.py --config configs/experiments/federated_ham10000.yaml \
+  --partition-strategy dirichlet --dirichlet-alpha 0.5
 ```
 
 ### Evaluation

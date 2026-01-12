@@ -78,15 +78,19 @@ venv.bak/
 dmypy.json
 
 # Data directories
-data/
-datasets/
+/data/*
+!/data/README.md
+/datasets/*
 
 # Model checkpoints and logs
 checkpoints/
+!checkpoints/.gitkeep
 logs/
+!logs/.gitkeep
 runs/
 outputs/
 results/
+!results/.gitkeep
 
 # Weights & Biases
 wandb/

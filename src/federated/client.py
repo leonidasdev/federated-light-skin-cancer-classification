@@ -1,12 +1,12 @@
 """
-Flower Client Implementation
-============================
+Client Implementation
+=====================
 
-Flower (flwr) client for federated learning with LMS-ViT.
-Implements NumPyClient interface for simulation and distributed training.
+flwr client utilities for federated learning with LMS-ViT.
+Implements the NumPyClient interface used for simulation and distributed training.
 
 This module provides:
-- LMSViTFlowerClient: NumPy-based client for Flower framework
+- LMSViTFlowerClient: NumPy-based client helper
 - client_fn: Factory function for creating clients in simulation
 """
 
@@ -73,7 +73,7 @@ class LMSViTFlowerClient(fl.client.NumPyClient):
         self.device = device if torch.cuda.is_available() else "cpu"
         self.local_epochs = local_epochs
         
-        self.logger = get_logger(f"FlowerClient-{client_id}")
+        self.logger = get_logger(f"FederatedClient-{client_id}")
         self.metrics_calculator = MetricsCalculator(num_classes=num_classes)
         
         # Create data loaders

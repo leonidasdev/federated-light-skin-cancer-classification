@@ -1,18 +1,18 @@
 # =============================================================================
-# Federated Learning Configuration for HAM10000 with Flower
+# Federated Learning Configuration for HAM10000
 # =============================================================================
-# This configuration runs federated learning simulation using Flower framework.
-# 
+# This configuration runs a federated learning simulation.
+#
 # Usage:
-#   python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml
+#   python scripts/train_federated.py --config configs/experiments/federated_ham10000.yaml
 #
 # For quick tests, you can override settings via command line:
-#   python scripts/train_federated_flower.py --config configs/experiments/federated_ham10000_flower.yaml \
+#   python scripts/train_federated.py --config configs/experiments/federated_ham10000.yaml \
 #       --num-clients 4 --num-rounds 5 --strategy fedavg
 
 experiment:
-  name: "federated_ham10000_flower"
-  description: "Federated learning on HAM10000 with Flower - FedAvg baseline"
+  name: "federated_ham10000"
+  description: "Federated learning on HAM10000 - FedAvg baseline"
 
 # =============================================================================
 # Model Configuration
@@ -22,11 +22,6 @@ model:
   num_classes: 7        # HAM10000 has 7 skin lesion classes
   img_size: 224
   
-  # LMS-ViT architecture (inherited from model variant)
-  # embed_dim: 384 (small), 192 (tiny), 768 (base)
-  # depth: 12
-  # num_heads: 6
-
 # =============================================================================
 # Data Configuration
 # =============================================================================

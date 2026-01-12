@@ -1,13 +1,13 @@
 """
-Flower Server Implementation
-============================
+Federated Server Implementation
+===============================
 
-Flower (flwr) server for federated learning with LMS-ViT.
+flwr server utilities for federated learning with LMS-ViT.
 Provides server configuration, strategy setup, and execution functions.
 
 This module provides:
-- run_flower_server: Start a Flower server for distributed training
-- run_flower_simulation: Run a Flower simulation locally
+- run_flower_server: Start a flwr server for distributed training
+- run_flower_simulation: Run a flwr simulation locally
 - Custom strategy configurations
 """
 
@@ -26,7 +26,7 @@ from ..models import LMSViT, lmsvit_tiny, lmsvit_small, lmsvit_base
 from ..utils.logging import get_logger, setup_logging
 
 
-logger = get_logger("FlowerServer")
+logger = get_logger("FederatedServer")
 
 
 def get_initial_parameters(
