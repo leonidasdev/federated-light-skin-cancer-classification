@@ -4,7 +4,7 @@ torchvision>=0.15.0
 timm>=0.9.0
 
 # Federated Learning
-flwr>=1.5.0
+flwr>=1.13.0
 
 # Data Processing
 numpy>=1.24.0

@@ -12,6 +12,8 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import flwr as fl
+from flwr.client import NumPyClient
+from flwr.client import Client as FLClient
 from flwr.common import (
     NDArrays,
     Scalar,
@@ -22,14 +24,14 @@ from flwr.common import (
     Status,
     Code
 )
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any, Sized, cast
 from collections import OrderedDict
 import numpy as np
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
 
 
-class SkinCancerClient(fl.client.NumPyClient):
+class SkinCancerClient(NumPyClient):
     """
     Flower client for skin cancer classification with DSCATNet.
     
@@ -141,7 +143,8 @@ class SkinCancerClient(fl.client.NumPyClient):
             "learning_rate": self.optimizer.param_groups[0]['lr']
         }
         
-        return self.get_parameters(config), len(self.train_loader.dataset), metrics
+        num_examples = len(cast(Sized, self.train_loader.dataset))
+        return self.get_parameters(config), num_examples, metrics
     
     def evaluate(
         self,
@@ -171,7 +174,8 @@ class SkinCancerClient(fl.client.NumPyClient):
         # Add client ID to metrics
         metrics["client_id"] = self.client_id
         
-        return loss, len(self.val_loader.dataset), metrics
+        num_val = len(cast(Sized, self.val_loader.dataset))
+        return loss, num_val, metrics
     
     def _train_epoch(self, epochs: int = 1) -> Tuple[float, float]:
         """
@@ -319,7 +323,7 @@ def create_client(
     )
 
 
-def client_fn(client_id: str, model_config: dict, data_config: dict) -> fl.client.Client:
+def client_fn(client_id: str, model_config: dict, data_config: dict) -> FLClient:
     """
     Client function for Flower's simulation mode.
     

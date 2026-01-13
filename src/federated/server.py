@@ -7,7 +7,9 @@ aggregating model updates and managing the training rounds.
 
 import flwr as fl
 from flwr.server import ServerConfig
+from flwr.server import start_server
 from flwr.server.strategy import Strategy
+from flwr.server.history import History
 from flwr.common import Parameters, Scalar
 from typing import Dict, Optional, List, Tuple, Callable
 import torch
@@ -73,7 +75,7 @@ def start_server(
     num_rounds: int = 50,
     strategy: Optional[Strategy] = None,
     **kwargs
-) -> fl.server.History:
+) -> History:
     """
     Start the Flower FL server.
     
@@ -99,7 +101,7 @@ def start_server(
     )
     
     # Start server
-    history = fl.server.start_server(
+    history = start_server(
         server_address=server_address,
         config=config,
         strategy=strategy
