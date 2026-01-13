@@ -116,26 +116,34 @@ class MetricsTracker:
             self.csv_writer.writeheader()
         
         row = {"step": step, **metrics}
-        
-        # Check if headers match
-        if set(row.keys()) != set(self.csv_writer.fieldnames):
+
+        # Check if headers match (ensure writer exists before accessing attributes)
+        if self.csv_writer is None or set(row.keys()) != set(self.csv_writer.fieldnames):
             # Reopen with new headers
-            self.csv_file.close()
+            try:
+                if self.csv_file:
+                    self.csv_file.close()
+            except Exception:
+                pass
+
             existing_data = self._read_existing_csv()
-            
+
             all_headers = set(["step"])
             for data in existing_data:
                 all_headers.update(data.keys())
             all_headers.update(metrics.keys())
-            
+
             self.csv_file = open(self.csv_path, "w", newline="")
             self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=sorted(all_headers))
             self.csv_writer.writeheader()
             for data in existing_data:
                 self.csv_writer.writerow(data)
-        
+
+        # At this point csv_writer is guaranteed to be not None
+        assert self.csv_writer is not None
         self.csv_writer.writerow(row)
-        self.csv_file.flush()
+        if self.csv_file:
+            self.csv_file.flush()
     
     def _read_existing_csv(self) -> List[Dict]:
         """Read existing CSV data."""
