@@ -138,12 +138,12 @@ class CentralizedTrainer:
         logger.info("Setting up combined dataset for centralized training")
         
         train_transform = get_train_transforms(
-            image_size=self.config.image_size,
+            img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         val_transform = get_val_transforms(
-            image_size=self.config.image_size,
+            img_size=self.config.image_size,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         
@@ -210,31 +210,37 @@ class CentralizedTrainer:
         total_loss = 0.0
         correct = 0
         total = 0
-        
-        for batch_idx, (images, labels) in enumerate(self.train_loader):
+
+        if self.train_loader is None:
+            raise RuntimeError("train_loader is not initialized. Call setup_data() before training.")
+
+        loader = self.train_loader
+
+        for batch_idx, (images, labels) in enumerate(loader):
             images, labels = images.to(self.device), labels.to(self.device)
-            
+
             optimizer.zero_grad()
             outputs = self.model(images)
             loss = criterion(outputs, labels)
             loss.backward()
-            
+
             # Gradient clipping
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            
+
             optimizer.step()
-            
+
             total_loss += loss.item()
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
-            
+
             if batch_idx % 50 == 0:
-                logger.debug(f"Batch {batch_idx}/{len(self.train_loader)}: loss={loss.item():.4f}")
-        
-        avg_loss = total_loss / len(self.train_loader)
-        accuracy = correct / total
-        
+                total_batches = len(loader)
+                logger.debug(f"Batch {batch_idx}/{total_batches}: loss={loss.item():.4f}")
+
+        avg_loss = total_loss / len(loader) if len(loader) > 0 else 0.0
+        accuracy = correct / total if total > 0 else 0.0
+
         return avg_loss, accuracy
     
     @torch.no_grad()
@@ -246,45 +252,50 @@ class CentralizedTrainer:
             Tuple of (loss, accuracy, per-class metrics).
         """
         self.model.eval()
+
+        if self.val_loader is None:
+            raise RuntimeError("val_loader is not initialized. Call setup_data() before evaluation.")
+
+        loader = self.val_loader
+
         total_loss = 0.0
         correct = 0
         total = 0
-        
+
         criterion = nn.CrossEntropyLoss()
-        
+
         # Per-class tracking
         class_correct = {}
         class_total = {}
-        
-        for images, labels in self.val_loader:
+
+        for images, labels in loader:
             images, labels = images.to(self.device), labels.to(self.device)
-            
+
             outputs = self.model(images)
             loss = criterion(outputs, labels)
-            
+
             total_loss += loss.item() * labels.size(0)
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
-            
+
             # Per-class accuracy
             for label, pred in zip(labels.cpu().numpy(), predicted.cpu().numpy()):
                 label = int(label)
-                if label not in class_total:
-                    class_total[label] = 0
-                    class_correct[label] = 0
+                class_total.setdefault(label, 0)
+                class_correct.setdefault(label, 0)
                 class_total[label] += 1
                 if label == pred:
                     class_correct[label] += 1
-        
-        avg_loss = total_loss / total
-        accuracy = correct / total
-        
+
+        avg_loss = total_loss / total if total > 0 else 0.0
+        accuracy = correct / total if total > 0 else 0.0
+
         per_class = {
-            f"class_{k}_acc": class_correct[k] / class_total[k] 
+            f"class_{k}_acc": (class_correct[k] / class_total[k]) if class_total[k] > 0 else 0.0
             for k in class_total.keys()
         }
-        
+
         return avg_loss, accuracy, per_class
     
     def save_checkpoint(self, epoch: int, optimizer, scheduler, metrics: Dict) -> None:
@@ -302,16 +313,6 @@ class CentralizedTrainer:
         torch.save(checkpoint, path)
         logger.debug(f"Saved checkpoint: {path}")
     
-    def save_best_model(self, epoch: int) -> None:
-        """Save the best model."""
-        path = self.checkpoint_dir / "best_model.pt"
-        torch.save({
-            "epoch": epoch,
-            "model_state_dict": self.model.state_dict(),
-            "val_accuracy": self.best_val_accuracy,
-            "config": self.config.to_dict(),
-        }, path)
-        logger.info(f"Saved best model (epoch {epoch}, acc={self.best_val_accuracy:.4f})")
     
     def run(self) -> Dict[str, Any]:
         """
@@ -321,17 +322,17 @@ class CentralizedTrainer:
             Dictionary with training history and results.
         """
         logger.info("Starting centralized training")
-        
+
         # Setup data
         self.setup_data()
-        
+
         # Setup optimizer
         optimizer = torch.optim.AdamW(
             self.model.parameters(),
             lr=self.config.learning_rate,
             weight_decay=self.config.weight_decay,
         )
-        
+
         # Setup scheduler
         if self.config.scheduler_type == "cosine":
             scheduler = CosineAnnealingLR(
@@ -347,37 +348,37 @@ class CentralizedTrainer:
                 patience=5,
                 min_lr=self.config.min_lr,
             )
-        
+
         criterion = nn.CrossEntropyLoss()
-        
+
         # Save config
         config_path = self.output_dir / "config.json"
         with open(config_path, "w") as f:
             json.dump(self.config.to_dict(), f, indent=2)
-        
+
         # Training loop
         start_time = time.time()
-        
+
         for epoch in range(1, self.config.num_epochs + 1):
             epoch_start = time.time()
-            
+
             # Train
             train_loss, train_acc = self.train_epoch(optimizer, criterion)
-            
+
             # Evaluate
             val_loss, val_acc, per_class = self.evaluate()
-            
+
             # Get current learning rate
             current_lr = optimizer.param_groups[0]["lr"]
-            
-            # Update scheduler
-            if self.config.scheduler_type == "cosine":
-                scheduler.step()
-            else:
+
+            # Update scheduler (call with metric only for ReduceLROnPlateau)
+            if isinstance(scheduler, ReduceLROnPlateau):
                 scheduler.step(val_acc)
-            
+            else:
+                scheduler.step()
+
             epoch_time = time.time() - epoch_start
-            
+
             # Update history
             self.history["epochs"].append(epoch)
             self.history["train_loss"].append(train_loss)
@@ -385,57 +386,59 @@ class CentralizedTrainer:
             self.history["val_loss"].append(val_loss)
             self.history["val_accuracy"].append(val_acc)
             self.history["learning_rate"].append(current_lr)
-            
+
             logger.info(
-                f"Epoch {epoch}/{self.config.num_epochs}: "
-                f"train_loss={train_loss:.4f}, train_acc={train_acc:.4f}, "
-                f"val_loss={val_loss:.4f}, val_acc={val_acc:.4f}, "
-                f"lr={current_lr:.2e}, time={epoch_time:.1f}s"
+                f"Epoch {epoch}/{self.config.num_epochs} | "
+                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
+                f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f} | "
+                f"Time: {epoch_time:.1f}s"
             )
-            
-            # Check for improvement
+
+            # Checkpointing
+            metrics = {
+                "train_loss": float(train_loss),
+                "train_accuracy": float(train_acc),
+                "val_loss": float(val_loss),
+                "val_accuracy": float(val_acc),
+            }
+
+            if epoch % self.config.checkpoint_interval == 0:
+                self.save_checkpoint(epoch, optimizer, scheduler, metrics)
+
+            # Best model tracking
             if val_acc > self.best_val_accuracy:
-                self.best_val_accuracy = val_acc
+                self.best_val_accuracy = float(val_acc)
                 self.best_epoch = epoch
                 self.epochs_without_improvement = 0
-                self.save_best_model(epoch)
+                # Save best model
+                best_path = self.checkpoint_dir / "best_model.pt"
+                torch.save(self.model.state_dict(), best_path)
+                logger.info(f"Saved best model (epoch {epoch}, acc={self.best_val_accuracy:.4f})")
             else:
                 self.epochs_without_improvement += 1
-            
-            # Save checkpoint
-            if epoch % self.config.checkpoint_interval == 0:
-                self.save_checkpoint(epoch, optimizer, scheduler, {
-                    "train_loss": train_loss,
-                    "train_acc": train_acc,
-                    "val_loss": val_loss,
-                    "val_acc": val_acc,
-                })
-            
+
             # Early stopping
             if self.epochs_without_improvement >= self.config.early_stopping_patience:
-                logger.info(f"Early stopping at epoch {epoch}")
+                logger.info("Early stopping triggered")
                 break
-        
+
         total_time = time.time() - start_time
-        
-        # Final results
+
+        # Save final results
         results = {
             "history": self.history,
-            "best_val_accuracy": self.best_val_accuracy,
-            "best_epoch": self.best_epoch,
+            "best_val_accuracy": float(self.best_val_accuracy),
+            "best_epoch": int(self.best_epoch),
             "total_time_seconds": total_time,
-            "total_epochs": len(self.history["epochs"]),
-            "config": self.config.to_dict(),
         }
-        
-        # Save results
+
         results_path = self.output_dir / "results.json"
         with open(results_path, "w") as f:
             json.dump(results, f, indent=2)
-        
+
         logger.info(f"Training complete. Best accuracy: {self.best_val_accuracy:.4f} at epoch {self.best_epoch}")
         logger.info(f"Total time: {total_time/60:.2f} minutes")
-        
+
         return results
 
 
