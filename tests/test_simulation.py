@@ -162,11 +162,18 @@ class TestClientData:
     def test_client_data_creation(self):
         """Test ClientData dataclass."""
         from src.federated.simulation import ClientData
-        
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+
+        # Small dummy DataLoader for testing
+        dummy_data = torch.randn(8, 3, 32, 32)
+        dummy_labels = torch.randint(0, 2, (8,))
+        dummy_loader = DataLoader(TensorDataset(dummy_data, dummy_labels), batch_size=2)
+
         client = ClientData(
             client_id=0,
-            train_loader=None,  # Mock
-            val_loader=None,    # Mock
+            train_loader=dummy_loader,
+            val_loader=dummy_loader,
             num_train_samples=100,
             num_val_samples=20,
             class_distribution={0: 50, 1: 50},
