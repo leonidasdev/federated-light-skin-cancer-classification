@@ -197,7 +197,7 @@ def run_comparison(args: argparse.Namespace) -> Dict[str, Any]:
         )
     
     # Summary comparison
-    comparison_summary = {
+    comparison_summary: Dict[str, Any] = {
         "centralized": {
             "best_accuracy": centralized_results.get("best_val_accuracy"),
             "best_epoch": centralized_results.get("best_epoch"),
