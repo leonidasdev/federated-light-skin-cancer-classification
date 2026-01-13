@@ -10,7 +10,7 @@ import time
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Callable
+from typing import Dict, List, Optional, Tuple, Any, Callable, Sized, cast
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 
@@ -179,12 +179,12 @@ class FLSimulator:
         logger.info("Setting up natural non-IID distribution (each client = different dataset)")
         
         train_transform = get_train_transforms(
-            image_size=self.config.image_size,
+            img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         val_transform = get_val_transforms(
-            image_size=self.config.image_size,
+            img_size=self.config.image_size,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         
@@ -259,27 +259,39 @@ class FLSimulator:
         """
         logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
         
+        # Determine dataset length in a type-safe way for Pylance
+        try:
+            ds_len = len(cast(Sized, combined_dataset))
+        except TypeError:
+            # Fallback: iterate to count (may be expensive for large datasets)
+            ds_len = sum(1 for _ in combined_dataset)
+
         # Get all labels
-        labels = np.array([combined_dataset[i][1] for i in range(len(combined_dataset))])
+        labels = np.array([combined_dataset[i][1] for i in range(ds_len)])
         
+        # Convert labels to a plain Python list of ints for the split function
+        labels_list: List[int] = [int(x) for x in labels]
+
         # Create non-IID split
         client_indices = create_noniid_split(
-            labels=labels,
+            labels=labels_list,
             num_clients=self.config.num_clients,
             alpha=self.config.dirichlet_alpha,
         )
         
         train_transform = get_train_transforms(
-            image_size=self.config.image_size,
+            img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         val_transform = get_val_transforms(
-            image_size=self.config.image_size,
+            img_size=self.config.image_size,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         
-        for client_id, indices in enumerate(client_indices):
+        # `create_noniid_split` returns a dict; enumerate over its values
+        # so `indices` is a list of indices (not the dict key int).
+        for client_id, indices in enumerate(client_indices.values()):
             # Split into train/val
             np.random.shuffle(indices)
             split_idx = int(len(indices) * 0.8)

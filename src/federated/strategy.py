@@ -126,13 +126,25 @@ class DSCATNetFedAvg(FedAvg):
             
             client_metrics.append({
                 'client_id': client_metric.get('client_id', 'unknown'),
-                'train_loss': client_metric.get('train_loss', 0),
-                'train_accuracy': client_metric.get('train_accuracy', 0),
+                'train_loss': float(client_metric.get('train_loss', 0) or 0.0),
+                'train_accuracy': float(client_metric.get('train_accuracy', 0) or 0.0),
                 'num_samples': num_samples
             })
-            
-            total_train_loss += client_metric.get('train_loss', 0) * num_samples
-            total_train_acc += client_metric.get('train_accuracy', 0) * num_samples
+            # Safely coerce client-provided metrics to floats to avoid type issues
+            try:
+                client_loss_val = client_metric.get('train_loss', 0)
+                client_loss = float(client_loss_val) if client_loss_val is not None else 0.0
+            except (TypeError, ValueError):
+                client_loss = 0.0
+
+            try:
+                client_acc_val = client_metric.get('train_accuracy', 0)
+                client_acc = float(client_acc_val) if client_acc_val is not None else 0.0
+            except (TypeError, ValueError):
+                client_acc = 0.0
+
+            total_train_loss += client_loss * num_samples
+            total_train_acc += client_acc * num_samples
             total_samples += num_samples
         
         # Compute weighted averages
@@ -184,8 +196,14 @@ class DSCATNetFedAvg(FedAvg):
         
         for client_proxy, eval_res in results:
             num_samples = eval_res.num_examples
-            accuracy = eval_res.metrics.get('accuracy', 0)
-            total_acc += accuracy * num_samples
+            # Safely coerce reported accuracy to float to avoid mixing types
+            try:
+                acc_val = eval_res.metrics.get('accuracy', 0)
+                acc = float(acc_val) if acc_val is not None else 0.0
+            except (TypeError, ValueError):
+                acc = 0.0
+
+            total_acc += acc * num_samples
             total_samples += num_samples
         
         avg_accuracy = total_acc / total_samples if total_samples > 0 else 0
@@ -201,8 +219,12 @@ class DSCATNetFedAvg(FedAvg):
             
             # Save best model
             if self.save_path:
+                # Some Flower versions store current parameters on the strategy;
+                # use getattr to avoid static-analysis errors if the attribute
+                # isn't present in the environment.
+                params_to_save = getattr(self, "parameters", None)
                 self._save_checkpoint(
-                    self.parameters,  # Current global parameters
+                    params_to_save,
                     server_round,
                     suffix='best'
                 )
@@ -292,25 +314,27 @@ def create_fedavg_strategy(
     
     # Default metrics aggregation if not provided
     if evaluate_metrics_aggregation_fn is None:
-        def evaluate_metrics_aggregation_fn(metrics):
+        def _default_evaluate_metrics_aggregation_fn(metrics):
             if not metrics:
                 return {}
-            
+
             total_samples = sum(n for n, _ in metrics)
             aggregated = {}
-            
+
             for key in metrics[0][1].keys():
                 if key == 'client_id':
                     continue
                 values = [m[key] for _, m in metrics if key in m]
                 weights = [n for n, m in metrics if key in m]
-                
+
                 if values and all(isinstance(v, (int, float)) for v in values):
                     aggregated[key] = sum(
                         v * w for v, w in zip(values, weights)
                     ) / sum(weights)
-            
+
             return aggregated
+
+        evaluate_metrics_aggregation_fn = _default_evaluate_metrics_aggregation_fn
     
     strategy = DSCATNetFedAvg(
         initial_parameters=initial_params,

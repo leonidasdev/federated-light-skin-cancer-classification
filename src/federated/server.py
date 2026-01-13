@@ -7,7 +7,7 @@ aggregating model updates and managing the training rounds.
 
 import flwr as fl
 from flwr.server import ServerConfig
-from flwr.server import start_server
+from flwr.server import start_server as fl_start_server
 from flwr.server.strategy import Strategy
 from flwr.server.history import History
 from flwr.common import Parameters, Scalar
@@ -100,8 +100,8 @@ def start_server(
         **kwargs
     )
     
-    # Start server
-    history = start_server(
+    # Start server (uses Flower's start_server; deprecated in newer Flower)
+    history = fl_start_server(
         server_address=server_address,
         config=config,
         strategy=strategy
@@ -196,9 +196,10 @@ class FederatedServer:
             weights = [n for n, m in metrics if key in m]
             
             if values and all(isinstance(v, (int, float)) for v in values):
-                aggregated[key] = sum(
-                    v * w for v, w in zip(values, weights)
-                ) / sum(weights)
+                # Ensure numeric types and explicit float conversion to satisfy type checkers
+                numerator = sum([float(v) * float(w) for v, w in zip(values, weights)])
+                total_weight = float(sum(weights)) if sum(weights) != 0 else 0.0
+                aggregated[key] = (numerator / total_weight) if total_weight != 0.0 else 0.0
         
         return aggregated
     
