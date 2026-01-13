@@ -11,7 +11,6 @@ for federated learning experiments:
 import numpy as np
 from typing import List, Tuple, Dict, Optional, Any
 from collections import defaultdict
-import torch
 
 
 def train_val_split(

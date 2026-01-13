@@ -8,7 +8,7 @@ exchange between fine-scale and coarse-scale representations.
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Tuple, Optional
+from typing import Tuple
 
 
 class CrossScaleAttention(nn.Module):

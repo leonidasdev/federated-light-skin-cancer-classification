@@ -5,30 +5,19 @@ This module provides the complete FL simulation infrastructure for running
 federated experiments with DSCATNet on dermoscopy datasets.
 """
 
-import os
 import time
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Callable, Sized, cast
-from dataclasses import dataclass, field, asdict
-from datetime import datetime
+from typing import Dict, List, Optional, Tuple, Any, Sized, cast
+from dataclasses import dataclass, asdict
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
 
-import flwr as fl
-from flwr.common import (
-    Parameters,
-    FitRes,
-    EvaluateRes,
-    Scalar,
-    ndarrays_to_parameters,
-    parameters_to_ndarrays,
-)
-from flwr.server.client_proxy import ClientProxy
+from flwr.common import Scalar
 
 from ..models.dscatnet import create_dscatnet, get_model_parameters, set_model_parameters
 from ..data.datasets import (
@@ -36,10 +25,9 @@ from ..data.datasets import (
     ISIC2018Dataset,
     ISIC2019Dataset,
     ISIC2020Dataset,
-    UNIFIED_CLASSES,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
-from ..data.splits import create_iid_split, create_noniid_split
+from ..data.splits import create_noniid_split
 
 logger = logging.getLogger(__name__)
 

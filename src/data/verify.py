@@ -8,16 +8,12 @@ Provides comprehensive verification of dermoscopy datasets including:
 - Cross-dataset compatibility checks
 """
 
-import os
-import json
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any
-from collections import Counter, defaultdict
+from typing import Dict, Any
 import numpy as np
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
-import warnings
 
 
 class DatasetVerifier:

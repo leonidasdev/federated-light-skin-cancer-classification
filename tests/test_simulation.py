@@ -6,8 +6,6 @@ Tests the federated learning simulation infrastructure.
 
 import pytest
 import numpy as np
-from unittest.mock import MagicMock, patch
-from pathlib import Path
 
 
 class TestSimulationConfig:

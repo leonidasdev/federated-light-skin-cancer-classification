@@ -11,22 +11,13 @@ Each client represents a hospital/institution with its own dermoscopy dataset:
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import flwr as fl
 from flwr.client import NumPyClient
 from flwr.client import Client as FLClient
 from flwr.common import (
     NDArrays,
     Scalar,
-    Parameters,
-    FitRes,
-    EvaluateRes,
-    GetParametersRes,
-    Status,
-    Code
 )
-from typing import Dict, List, Tuple, Optional, Any, Sized, cast
-from collections import OrderedDict
-import numpy as np
+from typing import Dict, List, Tuple, Sized, cast
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
 

@@ -14,7 +14,7 @@ Reference: Adapted for Federated Learning based on the original DSCATNet paper (
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock

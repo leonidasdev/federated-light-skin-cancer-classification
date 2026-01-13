@@ -5,15 +5,13 @@ The server coordinates the federated learning process across all clients,
 aggregating model updates and managing the training rounds.
 """
 
-import flwr as fl
 from flwr.server import ServerConfig
 from flwr.server import start_server as fl_start_server
 from flwr.server.strategy import Strategy
 from flwr.server.history import History
-from flwr.common import Parameters, Scalar
-from typing import Dict, Optional, List, Tuple, Callable
+from flwr.common import Scalar
+from typing import Dict, Optional, List, Tuple
 import torch
-import numpy as np
 from pathlib import Path
 
 from ..models.dscatnet import DSCATNet, get_model_parameters

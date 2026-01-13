@@ -11,15 +11,10 @@ Note: Some datasets require manual download from Kaggle or ISIC Archive.
 This script provides guidance and verifies the setup.
 """
 
-import os
-import sys
-import zipfile
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, List, Any
-import requests
+from typing import Optional, Dict, Any
 from tqdm import tqdm
-import hashlib
 
 
 # Dataset information and expected structure

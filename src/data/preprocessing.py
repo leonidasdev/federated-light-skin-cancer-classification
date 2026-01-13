@@ -13,7 +13,7 @@ Key preprocessing steps:
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
-from typing import Tuple, Optional, Dict, Any, Sequence, cast
+from typing import Tuple, Any, Sequence, cast
 
 
 # ImageNet normalization statistics

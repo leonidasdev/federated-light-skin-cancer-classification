@@ -5,8 +5,6 @@ Tests the centralized training baseline implementation.
 """
 
 import pytest
-import numpy as np
-from pathlib import Path
 
 
 class TestCentralizedConfig:

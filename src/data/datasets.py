@@ -11,7 +11,6 @@ Each dataset is assigned to a different FL client to create
 a realistic non-IID federated learning scenario.
 """
 
-import os
 import pandas as pd
 import numpy as np
 from PIL import Image

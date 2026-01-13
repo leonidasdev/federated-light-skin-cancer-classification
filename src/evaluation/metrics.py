@@ -6,9 +6,8 @@ accuracy, F1-score, AUC-ROC, confusion matrix, and per-class metrics.
 """
 
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
-from pathlib import Path
 
 import numpy as np
 import torch

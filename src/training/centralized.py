@@ -5,15 +5,13 @@ Provides centralized (non-federated) training for comparison with FL approaches.
 This serves as the upper-bound baseline for model performance.
 """
 
-import os
 import time
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, ConcatDataset, random_split

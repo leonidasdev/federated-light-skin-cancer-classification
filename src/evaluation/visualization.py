@@ -6,7 +6,7 @@ and other analysis outputs.
 """
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional
 from pathlib import Path
 
 import numpy as np
