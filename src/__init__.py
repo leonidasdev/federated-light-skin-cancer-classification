@@ -6,7 +6,7 @@ for federated learning using the Flower framework.
 """
 
 __version__ = "0.1.0"
-__author__ = "Leonidas Brando"
+__author__ = "Leonardo Chen"
 
 # Make key modules accessible at package level
 from . import models

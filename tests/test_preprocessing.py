@@ -13,6 +13,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from PIL import Image
+from typing import Optional
 import matplotlib.pyplot as plt
 
 # Add project root to path
@@ -162,7 +163,7 @@ def test_with_real_image(image_path: str):
     return train_result['image'], val_result['image']
 
 
-def visualize_transforms(image_path: str, output_path: str = None):
+def visualize_transforms(image_path: str, output_path: Optional[str] = None):
     """Visualize transform effects on a dermoscopy image."""
     img = Image.open(image_path).convert('RGB')
     img_array = np.array(img)

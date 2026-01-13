@@ -16,7 +16,7 @@ import sys
 import zipfile
 import shutil
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 import requests
 from tqdm import tqdm
 import hashlib
@@ -114,7 +114,7 @@ def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Pa
     return paths
 
 
-def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[str, any]:
+def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[str, Any]:
     """
     Verify that a dataset is properly set up.
     

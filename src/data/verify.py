@@ -376,7 +376,7 @@ def compute_dataset_statistics(
     )
     
     stats = {}
-    data_root = Path(data_root)
+    data_root_path = Path(data_root)
     
     datasets = {
         "HAM10000": (HAM10000Dataset, "HAM10000", "HAM10000_metadata.csv"),
@@ -391,8 +391,8 @@ def compute_dataset_statistics(
         if verbose:
             print(f"\nAnalyzing {name}...")
         
-        img_path = data_root / img_dir.split("/")[0]
-        csv_path = data_root / csv_file
+        img_path = data_root_path / img_dir.split("/")[0]
+        csv_path = data_root_path / csv_file
         
         if not csv_path.exists():
             if verbose:
@@ -404,7 +404,7 @@ def compute_dataset_statistics(
             widths = []
             heights = []
             
-            img_folder = data_root / img_dir
+            img_folder = data_root_path / img_dir
             if img_folder.exists():
                 images = list(img_folder.glob("*.jpg"))[:sample_size]
                 

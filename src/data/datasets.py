@@ -138,6 +138,15 @@ class BaseDermoscopyDataset(Dataset):
         if self.transform:
             transformed = self.transform(image=image)
             image = transformed['image']
+
+        # Ensure return type is a torch.Tensor in CHW float format
+        if not isinstance(image, torch.Tensor):
+            # NumPy HWC -> Tensor CHW, scale to [0,1]
+            image = torch.from_numpy(image).permute(2, 0, 1).contiguous().float() / 255.0
+        else:
+            # If tensor is HWC (last dim channels), convert to CHW
+            if image.ndim == 3 and image.shape[-1] in (1, 3):
+                image = image.permute(2, 0, 1).contiguous()
         
         if self.target_transform:
             label = self.target_transform(label)
@@ -324,7 +333,7 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
 
 def get_client_dataloader(
     client_id: int,
-    data_root: str,
+    data_root: Union[str, Path],
     batch_size: int = 32,
     train_transform: Optional[Callable] = None,
     val_transform: Optional[Callable] = None,
@@ -428,10 +437,14 @@ def get_client_dataloader(
 
 
 class DatasetSubset(Dataset):
-    """Subset of a dataset with separate transform."""
+    """Subset of a dataset with separate transform.
+
+    Accepts a `BaseDermoscopyDataset` so attribute access (e.g. `image_paths`)
+    is recognized by static type checkers like Pylance.
+    """
     
-    def __init__(self, dataset: Dataset, indices: List[int], transform: Optional[Callable] = None):
-        self.dataset = dataset
+    def __init__(self, dataset: "BaseDermoscopyDataset", indices: List[int], transform: Optional[Callable] = None):
+        self.dataset: BaseDermoscopyDataset = dataset
         self.indices = indices
         self.transform = transform
         
@@ -449,10 +462,17 @@ class DatasetSubset(Dataset):
         # Load image
         image = Image.open(img_path).convert('RGB')
         image = np.array(image)
-        
+
         # Apply transform
         if self.transform:
             transformed = self.transform(image=image)
             image = transformed['image']
-        
+
+        # Ensure torch.Tensor CHW float
+        if not isinstance(image, torch.Tensor):
+            image = torch.from_numpy(image).permute(2, 0, 1).contiguous().float() / 255.0
+        else:
+            if image.ndim == 3 and image.shape[-1] in (1, 3):
+                image = image.permute(2, 0, 1).contiguous()
+
         return image, label

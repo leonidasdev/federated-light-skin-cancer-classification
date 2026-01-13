@@ -9,7 +9,7 @@ for federated learning experiments:
 """
 
 import numpy as np
-from typing import List, Tuple, Dict, Optional
+from typing import List, Tuple, Dict, Optional, Any
 from collections import defaultdict
 import torch
 
@@ -97,15 +97,15 @@ def create_noniid_split(
     """
     np.random.seed(seed)
     
-    labels = np.array(labels)
-    num_classes = len(np.unique(labels[labels >= 0]))
-    num_samples = len(labels)
+    np_labels = np.array(labels)
+    num_classes = len(np.unique(np_labels[np_labels >= 0]))
+    num_samples = len(np_labels)
     
     # Group indices by class
     class_indices = defaultdict(list)
-    for idx, label in enumerate(labels):
+    for idx, label in enumerate(np_labels):
         if label >= 0:
-            class_indices[label].append(idx)
+            class_indices[int(label)].append(idx)
     
     # Sample proportions from Dirichlet distribution
     client_data = {i + 1: [] for i in range(num_clients)}
@@ -157,8 +157,8 @@ def create_label_skew_split(
     """
     np.random.seed(seed)
     
-    labels = np.array(labels)
-    unique_classes = np.unique(labels[labels >= 0])
+    np_labels = np.array(labels)
+    unique_classes = np.unique(np_labels[np_labels >= 0])
     num_classes = len(unique_classes)
     
     # Assign classes to clients (with overlap possible)
@@ -174,9 +174,9 @@ def create_label_skew_split(
     
     # Group indices by class
     class_indices = defaultdict(list)
-    for idx, label in enumerate(labels):
+    for idx, label in enumerate(np_labels):
         if label >= 0:
-            class_indices[label].append(idx)
+            class_indices[int(label)].append(idx)
     
     # Distribute to clients
     client_data = {i + 1: [] for i in range(num_clients)}
@@ -255,7 +255,7 @@ def create_quantity_skew_split(
 def get_dataset_statistics(
     client_data: Dict[int, List[int]],
     labels: List[int]
-) -> Dict[str, any]:
+) -> Dict[str, Any]:
     """
     Compute statistics about the data distribution across clients.
     
@@ -266,8 +266,8 @@ def get_dataset_statistics(
     Returns:
         Dictionary with distribution statistics
     """
-    labels = np.array(labels)
-    num_classes = len(np.unique(labels[labels >= 0]))
+    np_labels = np.array(labels)
+    num_classes = len(np.unique(np_labels[np_labels >= 0]))
     
     stats = {
         'num_clients': len(client_data),
@@ -281,7 +281,7 @@ def get_dataset_statistics(
     # Per-client statistics
     client_class_dist = {}
     for client_id, indices in client_data.items():
-        client_labels = labels[indices]
+        client_labels = np_labels[indices]
         unique, counts = np.unique(client_labels[client_labels >= 0], return_counts=True)
         
         stats['samples_per_client'][client_id] = len(indices)

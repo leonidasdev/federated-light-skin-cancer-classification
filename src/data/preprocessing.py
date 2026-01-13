@@ -13,7 +13,7 @@ Key preprocessing steps:
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
-from typing import Tuple, Optional, Dict, Any
+from typing import Tuple, Optional, Dict, Any, Sequence, cast
 
 
 # ImageNet normalization statistics
@@ -119,13 +119,10 @@ def get_train_transforms(
                 ),
             ], p=0.4),
             A.CoarseDropout(
-                max_holes=8,
-                max_height=img_size // 8,
-                max_width=img_size // 8,
-                min_holes=1,
-                min_height=img_size // 16,
-                min_width=img_size // 16,
-                fill_value=0,
+                num_holes_range=(1, 8),
+                hole_height_range=(img_size // 16, img_size // 8),
+                hole_width_range=(img_size // 16, img_size // 8),
+                fill=0,
                 p=0.3
             ),
         ]
@@ -138,7 +135,10 @@ def get_train_transforms(
         ToTensorV2(),
     ]
     
-    return A.Compose(base_transforms + aug_transforms + final_transforms)
+    # use a Sequence annotation and cast when calling Compose to satisfy
+    # different albumentations type signatures across environments
+    transforms: Sequence[Any] = base_transforms + aug_transforms + final_transforms
+    return A.Compose(cast(Any, transforms))
 
 
 def get_val_transforms(
