@@ -130,13 +130,13 @@ class ModelEvaluator:
         labels = np.array(all_labels)
         probabilities = np.array(all_probabilities)
         
-        # Compute metrics
-        accuracy = accuracy_score(labels, predictions)
-        balanced_acc = balanced_accuracy_score(labels, predictions)
-        precision = precision_score(labels, predictions, average="macro", zero_division=0)
-        recall = recall_score(labels, predictions, average="macro", zero_division=0)
-        f1_macro = f1_score(labels, predictions, average="macro", zero_division=0)
-        f1_weighted = f1_score(labels, predictions, average="weighted", zero_division=0)
+        # Compute metrics (cast to native Python types to satisfy type checkers)
+        accuracy = float(accuracy_score(labels, predictions))
+        balanced_acc = float(balanced_accuracy_score(labels, predictions))
+        precision = float(precision_score(labels, predictions, average="macro", zero_division=0))
+        recall = float(recall_score(labels, predictions, average="macro", zero_division=0))
+        f1_macro = float(f1_score(labels, predictions, average="macro", zero_division=0))
+        f1_weighted = float(f1_score(labels, predictions, average="weighted", zero_division=0))
         
         # AUC-ROC (one-vs-rest)
         auc = None
@@ -145,12 +145,12 @@ class ModelEvaluator:
                 # Check if all classes are present
                 unique_labels = np.unique(labels)
                 if len(unique_labels) >= 2:
-                    auc = roc_auc_score(
+                    auc = float(roc_auc_score(
                         labels,
                         probabilities,
                         multi_class="ovr",
                         average="macro",
-                    )
+                    ))
             except ValueError as e:
                 logger.warning(f"Could not compute AUC: {e}")
         
@@ -165,9 +165,9 @@ class ModelEvaluator:
                 class_pred = predictions[class_mask]
                 class_true = labels[class_mask]
                 per_class[class_name] = {
-                    "accuracy": (class_pred == class_true).mean(),
-                    "precision": precision_score([i] * len(class_pred), class_pred, labels=[i], zero_division=0),
-                    "recall": recall_score(class_true, class_pred, labels=[i], average="micro", zero_division=0),
+                    "accuracy": float((class_pred == class_true).mean()),
+                    "precision": float(precision_score([i] * len(class_pred), class_pred, labels=[i], zero_division=0)),
+                    "recall": float(recall_score(class_true, class_pred, labels=[i], average="micro", zero_division=0)),
                     "support": int(class_mask.sum()),
                 }
             else:
@@ -296,7 +296,7 @@ def compute_federated_metrics(
     # AUC if available
     auc_values = [r.auc_macro for r in client_results if r.auc_macro is not None]
     if auc_values:
-        metrics["auc_macro"] = np.mean(auc_values)
+        metrics["auc_macro"] = float(np.mean(auc_values))
     
     return metrics
 

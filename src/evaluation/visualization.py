@@ -163,10 +163,11 @@ def plot_client_comparison(
     
     fig, ax = plt.subplots(figsize=(10, 6))
     
+    cmap = plt.get_cmap("tab10")
     bars = ax.bar(
         [f"Client {c}" for c in clients],
         values,
-        color=plt.cm.tab10.colors[:len(clients)],
+        color=[cmap(i) for i in range(len(clients))],
         edgecolor="black",
         linewidth=1,
     )
@@ -238,7 +239,8 @@ def plot_noniid_distribution(
     width = 0.6
     bottom = np.zeros(num_clients)
     
-    colors = plt.cm.tab10.colors[:num_classes]
+    cmap = plt.get_cmap("tab10")
+    colors = [cmap(i) for i in range(num_classes)]
     
     for i, (class_name, color) in enumerate(zip(class_names, colors)):
         ax.bar(x, data_pct[:, i], width, bottom=bottom, label=class_name, color=color)
