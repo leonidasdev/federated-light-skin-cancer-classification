@@ -5,20 +5,20 @@
 [![Flower 1.13+](https://img.shields.io/badge/flower-1.13+-green.svg)](https://flower.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-## 📖 Overview
+## Overview
 
 This project evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCATNet)** in a **Federated Learning** setting using the **Flower** framework for dermoscopic skin lesion classification.
 
 **This is a thesis project** investigating whether lightweight Vision Transformers can maintain their accuracy under federated learning constraints, specifically with non-IID data distributions across multiple hospitals/institutions.
 
-## 🎯 Research Contribution
+## Research Contribution
 
 - **Novel evaluation**: First adaptation and evaluation of DSCATNet in federated learning
 - **Real-world non-IID scenario**: Each FL client holds a different dermoscopy dataset
 - **Comprehensive comparison**: Centralized vs. IID-FL vs. Non-IID-FL
 - **Benchmarking**: Comparison with literature on lightweight FL models
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 federated-light-skin-cancer-classification/
@@ -67,7 +67,7 @@ federated-light-skin-cancer-classification/
 └── README.md
 ```
 
-## 📊 Datasets (FL Clients)
+## Datasets (FL Clients)
 
 Each client simulates a different hospital/institution with its own dermoscopy dataset:
 
@@ -87,12 +87,20 @@ Each client simulates a different hospital/institution with its own dermoscopy d
 - `NV` - Melanocytic Nevus
 - `VASC` - Vascular Lesion
 
-### 📥 Dataset Download
+### Dataset Download
 
 All datasets are downloaded from the **official ISIC Archive** (CC-BY-NC license).
 No API key required.
 
-**Option 1: Automatic Download via ISIC Archive API (Recommended)**
+Recommended: for faster bulk downloads, we recommend downloading the official archives directly from the dataset pages below and placing the images/CSV into the respective `data/<DATASET>/` folders. The repository includes an API-based downloader, but archive downloads from the challenge pages (or Kaggle for HAM10000) are much quicker.
+
+Direct dataset pages:
+- HAM10000 (Kaggle): https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000
+- ISIC 2018 challenge data: https://challenge.isic-archive.com/data/#2018
+- ISIC 2019 challenge data: https://challenge.isic-archive.com/data/#2019
+- ISIC 2020 challenge data: https://challenge.isic-archive.com/data/#2020
+
+**Option 1: Automatic Download via ISIC Archive API (also available)**
 ```bash
 # Download all datasets (~78,000 images, may take several hours)
 python run_download.py --download-all
@@ -146,7 +154,7 @@ data/
         └── *.jpg
 ```
 
-## 🧠 DSCATNet Architecture
+## DSCATNet Architecture
 
 | Component | Description |
 |-----------|-------------|
@@ -157,7 +165,7 @@ data/
 
 **Model Parameters:** ~5.8M (lightweight compared to ViT-Base: 86M)
 
-## ⚙️ Federated Learning Configuration
+## Federated Learning Configuration
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
@@ -170,7 +178,7 @@ data/
 | Optimizer | Adam | lr=1e-3, weight_decay=1e-4 |
 | Image Size | 224×224 | Input resolution |
 
-## 🚀 Installation
+## Installation
 
 ```bash
 # Clone repository
@@ -195,7 +203,7 @@ python -c "import torch; import flwr; print('Installation successful!')"
 - ~16GB RAM
 - ~50GB disk space (for datasets)
 
-## 📈 Usage
+## Usage
 
 ### 1. Dataset Exploration
 ```bash
@@ -224,7 +232,7 @@ python run_experiment.py --mode federated --scenario moderate_noniid --rounds 10
 python run_experiment.py --mode comparison --config configs/experiment_config.yaml
 ```
 
-## 📊 Evaluation Metrics
+## Evaluation Metrics
 
 ### Classification Metrics
 - Accuracy, Balanced Accuracy
@@ -240,7 +248,7 @@ python run_experiment.py --mode comparison --config configs/experiment_config.ya
 - Client drift
 - Training time per round
 
-## 📚 Literature Comparison
+## Literature Comparison
 
 | Paper | Model | Setting | Accuracy |
 |-------|-------|---------|----------|
@@ -249,7 +257,7 @@ python run_experiment.py --mode comparison --config configs/experiment_config.ya
 | Lightweight FL (Sci. Reports 2025) | EfficientNetV2S | Federated | ~90% |
 | **This Work** | DSCATNet | Federated | TBD |
 
-## 📁 Experiment Outputs
+## Experiment Outputs
 
 Results are saved in `experiments/`:
 ```
@@ -269,7 +277,7 @@ experiments/
         └── plots/
 ```
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run all tests
@@ -279,7 +287,7 @@ python run_tests.py
 pytest tests/test_simulation.py -v
 ```
 
-## 📝 Citation
+## Citation
 
 If you use this code in your research, please cite:
 
@@ -301,11 +309,11 @@ If you use this code in your research, please cite:
 }
 ```
 
-## 📄 License
+## License
 
 This project is licensed under the Apache 2.0 License - see [LICENSE](LICENSE) for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - DSCATNet authors for the original architecture
 - Flower team for the FL framework
