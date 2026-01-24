@@ -12,7 +12,7 @@ class TestCentralizedConfig:
     
     def test_default_config(self):
         """Test default configuration values."""
-        from src.training.centralized import CentralizedConfig
+        from src.centralized.centralized import CentralizedConfig
         
         config = CentralizedConfig()
         
@@ -23,7 +23,7 @@ class TestCentralizedConfig:
     
     def test_config_serialization(self):
         """Test config to/from dict."""
-        from src.training.centralized import CentralizedConfig
+        from src.centralized.centralized import CentralizedConfig
         
         config = CentralizedConfig(
             num_epochs=50,
@@ -44,7 +44,7 @@ class TestCentralizedTrainer:
     
     def test_trainer_init(self, tmp_path):
         """Test trainer initialization."""
-        from src.training.centralized import CentralizedConfig, CentralizedTrainer
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -60,7 +60,7 @@ class TestCentralizedTrainer:
     
     def test_output_directories(self, tmp_path):
         """Test output directory creation."""
-        from src.training.centralized import CentralizedConfig, CentralizedTrainer
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -74,7 +74,7 @@ class TestCentralizedTrainer:
     
     def test_history_structure(self, tmp_path):
         """Test history tracking structure."""
-        from src.training.centralized import CentralizedConfig, CentralizedTrainer
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -99,7 +99,7 @@ class TestCentralizedTrainerIntegration:
     
     def test_full_training_run(self, tmp_path):
         """Test complete training with actual data."""
-        from src.training.centralized import CentralizedConfig, CentralizedTrainer
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         
         config = CentralizedConfig(
             output_dir=str(tmp_path),

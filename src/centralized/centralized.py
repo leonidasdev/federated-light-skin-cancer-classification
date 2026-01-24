@@ -176,7 +176,21 @@ class CentralizedTrainer:
                 candidate1 = root_path / "train.csv"
                 candidate2 = root_path / "ISIC_2020_Training_GroundTruth.csv"
                 csv_path = candidate1 if candidate1.exists() else candidate2
-                dataset_root = root_path / "train"
+                # Accept several common image-folder names for ISIC2020
+                possible_image_dirs = [
+                    "train",
+                    "ISIC_2020_Training_JPEG",
+                    "ISIC_2020_Training_JPEG/train",
+                ]
+                dataset_root = None
+                for d in possible_image_dirs:
+                    p = root_path / d
+                    if p.exists():
+                        dataset_root = p
+                        break
+                # Fallback to the dataset root itself if no subdir matched
+                if dataset_root is None:
+                    dataset_root = root_path
             else:
                 logger.warning(f"Unknown dataset name: {name}")
                 continue

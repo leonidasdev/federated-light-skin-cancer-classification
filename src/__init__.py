@@ -12,6 +12,6 @@ __author__ = "Leonardo Chen"
 from . import models
 from . import federated
 from . import data
-from . import training
+from . import centralized
 from . import evaluation
 from . import utils

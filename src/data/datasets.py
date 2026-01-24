@@ -386,7 +386,8 @@ def get_client_dataloader(
         },
         4: {
             'class': ISIC2020Dataset,
-            'root': data_root / 'ISIC2020' / 'train',
+            # use the ISIC2020 folder as base; select specific image subdir later
+            'root': data_root / 'ISIC2020',
             'csv': data_root / 'ISIC2020' / 'train.csv'
         }
     }
@@ -400,8 +401,17 @@ def get_client_dataloader(
     if client_id == 4:
         t1 = data_root / 'ISIC2020' / 'train.csv'
         t2 = data_root / 'ISIC2020' / 'ISIC_2020_Training_GroundTruth.csv'
-        # prefer existing file; fall back to the other candidate
+        # prefer existing CSV file; fall back to the other candidate
         dataset_configs[4]['csv'] = t1 if t1.exists() else t2
+
+        # Detect common image-folder names for ISIC2020
+        possible_image_dirs = [
+            data_root / 'ISIC2020' / 'train',
+            data_root / 'ISIC2020' / 'ISIC_2020_Training_JPEG',
+            data_root / 'ISIC2020'
+        ]
+        selected_root = next((p for p in possible_image_dirs if p.exists()), data_root / 'ISIC2020')
+        dataset_configs[4]['root'] = selected_root
         config = dataset_configs[4]
     
     # Create full dataset with training transform initially

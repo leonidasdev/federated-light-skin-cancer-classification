@@ -1,7 +1,8 @@
 """
-Training Module.
+Centralized training package.
 
-This module provides centralized and federated training utilities.
+This package exposes the centralized training trainer and config used
+for the non-federated (centralized) baseline experiments.
 """
 
 from .centralized import (

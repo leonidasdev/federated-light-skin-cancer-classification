@@ -50,7 +50,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
     """Run centralized training experiment."""
-    from src.training.centralized import CentralizedConfig, CentralizedTrainer
+    from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
     
     # Load config if provided
     if args.config:
