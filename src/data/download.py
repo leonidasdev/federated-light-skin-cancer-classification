@@ -229,7 +229,7 @@ class ISICArchiveClient:
         Returns:
             List of image metadata dictionaries
         """
-        params = {
+        params: Dict[str, Any] = {
             "limit": limit,
             "offset": offset
         }
