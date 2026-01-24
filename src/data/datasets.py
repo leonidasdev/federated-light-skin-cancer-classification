@@ -395,6 +395,14 @@ def get_client_dataloader(
         raise ValueError(f"Invalid client_id: {client_id}. Must be 1-4.")
     
     config = dataset_configs[client_id]
+
+    # Accept alternative ISIC2020 ground-truth filename if `train.csv` is not present
+    if client_id == 4:
+        t1 = data_root / 'ISIC2020' / 'train.csv'
+        t2 = data_root / 'ISIC2020' / 'ISIC_2020_Training_GroundTruth.csv'
+        # prefer existing file; fall back to the other candidate
+        dataset_configs[4]['csv'] = t1 if t1.exists() else t2
+        config = dataset_configs[4]
     
     # Create full dataset with training transform initially
     full_dataset = config['class'](
@@ -420,7 +428,7 @@ def get_client_dataloader(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        pin_memory=True,
+        pin_memory=torch.cuda.is_available(),
         drop_last=True
     )
     
@@ -429,7 +437,7 @@ def get_client_dataloader(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        pin_memory=True
+        pin_memory=torch.cuda.is_available()
     )
     
     return train_loader, val_loader

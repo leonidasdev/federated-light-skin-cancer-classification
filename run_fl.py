@@ -52,7 +52,7 @@ def main():
             experiment_name="fl_quick_test",
             data_root=args.data_root,
         )
-        print("🚀 Quick test mode: 5 rounds, 1 local epoch")
+        print("Quick test mode: 5 rounds, 1 local epoch")
     elif args.full:
         config = SimulationConfig(
             num_rounds=50,
@@ -63,7 +63,7 @@ def main():
             experiment_name="fl_full_experiment",
             data_root=args.data_root,
         )
-        print("🔬 Full experiment mode: 50 rounds, 3 local epochs")
+        print("Full experiment mode: 50 rounds, 3 local epochs")
     else:
         config = SimulationConfig(
             num_rounds=20,
@@ -74,14 +74,14 @@ def main():
             experiment_name="fl_default",
             data_root=args.data_root,
         )
-        print("⚙️  Default mode: 20 rounds, 2 local epochs")
+        print("Default mode: 20 rounds, 2 local epochs")
     
     # Print device info
     device = "CUDA" if torch.cuda.is_available() else "CPU"
     if torch.cuda.is_available():
         device += f" ({torch.cuda.get_device_name(0)})"
-    print(f"📱 Device: {device}")
-    print(f"📂 Data root: {args.data_root}")
+    print(f"Device: {device}")
+    print(f"Data root: {args.data_root}")
     print()
     
     # Run simulation
@@ -90,7 +90,7 @@ def main():
     
     # Print summary
     print("\n" + "=" * 50)
-    print("📊 RESULTS SUMMARY")
+    print("RESULTS SUMMARY")
     print("=" * 50)
     print(f"Best Accuracy:     {results['best_val_accuracy']:.4f}")
     print(f"Best Round:        {results['best_round']}")

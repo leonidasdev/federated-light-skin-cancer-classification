@@ -50,9 +50,9 @@ def run_tests():
     # Summary
     print("\n" + "=" * 70)
     if all_passed:
-        print("ALL TESTS PASSED ✓")
+        print("ALL TESTS PASSED")
     else:
-        print("SOME TESTS FAILED ✗")
+        print("SOME TESTS FAILED")
     print("=" * 70)
     
     return all_passed
@@ -83,7 +83,7 @@ def setup_project():
     for dir_name in dirs_to_create:
         dir_path = project_root / dir_name
         dir_path.mkdir(parents=True, exist_ok=True)
-        print(f"  ✓ Created: {dir_path}")
+        print(f"  Created: {dir_path}")
     
     print("\nProject structure ready!")
     

@@ -56,3 +56,9 @@ results.json
 # dotenv
 .env
 .env.*
+
+# Dataset files (large) - ignore dataset directories to avoid committing images/archives
+data/HAM10000/
+data/ISIC2018/
+data/ISIC2019/
+data/ISIC2020/

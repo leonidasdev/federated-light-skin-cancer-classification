@@ -52,7 +52,7 @@ def test_transform_output_shape():
     assert result['image'].shape == torch.Size([3, 224, 224]), \
         f"Expected (3, 224, 224), got {result['image'].shape}"
     
-    print("  ✓ Output shape test passed")
+    print("  OK Output shape test passed")
 
 
 def test_normalization():
@@ -72,7 +72,7 @@ def test_normalization():
     assert tensor.min() < 1.0, "Values should be normalized"
     assert tensor.max() < 3.0, "Values should be normalized"
     
-    print("  ✓ Normalization test passed")
+    print("  OK Normalization test passed")
 
 
 def test_augmentation_levels():
@@ -88,7 +88,7 @@ def test_augmentation_levels():
         assert result['image'].shape == torch.Size([3, 224, 224]), \
             f"Failed for augmentation level: {level}"
     
-    print("  ✓ Augmentation levels test passed")
+    print("  OK Augmentation levels test passed")
 
 
 def test_dermoscopy_normalization():
@@ -109,7 +109,7 @@ def test_dermoscopy_normalization():
     assert not torch.allclose(result_imagenet['image'], result_derm['image']), \
         "ImageNet and dermoscopy normalization should produce different results"
     
-    print("  ✓ Dermoscopy normalization test passed")
+    print("  OK Dermoscopy normalization test passed")
 
 
 def test_standardized_transforms():
@@ -132,7 +132,7 @@ def test_standardized_transforms():
     
     assert result_train['image'].shape == result_val['image'].shape
     
-    print("  ✓ Standardized transforms test passed")
+    print("  OK Standardized transforms test passed")
 
 
 def test_with_real_image(image_path: str):
@@ -158,7 +158,7 @@ def test_with_real_image(image_path: str):
     assert train_result['image'].dtype == torch.float32
     assert val_result['image'].dtype == torch.float32
     
-    print("  ✓ Real image test passed")
+    print("  OK Real image test passed")
     
     return train_result['image'], val_result['image']
 
@@ -238,15 +238,15 @@ def run_all_tests():
         test_standardized_transforms()
         
         print("\n" + "=" * 60)
-        print("ALL TESTS PASSED ✓")
+        print("ALL TESTS PASSED")
         print("=" * 60)
         return True
         
     except AssertionError as e:
-        print(f"\n✗ Test failed: {e}")
+        print(f"\nFAIL Test failed: {e}")
         return False
     except Exception as e:
-        print(f"\n✗ Error during testing: {e}")
+        print(f"\nFAIL Error during testing: {e}")
         return False
 
 

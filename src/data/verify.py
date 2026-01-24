@@ -311,7 +311,7 @@ class DatasetVerifier:
         valid_datasets = 0
         
         for name, result in self.results.items():
-            status = "✓ VALID" if result["valid"] else "✗ INVALID"
+            status = "VALID" if result["valid"] else "INVALID"
             print(f"\n{status}: {name}")
             print("-" * 40)
             print(f"  Path: {result['path']}")

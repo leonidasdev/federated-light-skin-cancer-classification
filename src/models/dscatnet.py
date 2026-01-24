@@ -15,6 +15,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Any
+import warnings
 
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock
@@ -257,11 +258,33 @@ def create_dscatnet(
     
     config = variants[variant]
     config.update(kwargs)
-    
+
+    # Handle `pretrained` flag gracefully: not currently supported but commonly
+    # provided via configs. Pop it to avoid confusing warnings and optionally
+    # inform the user.
+    if 'pretrained' in config:
+        pretrained_flag = bool(config.pop('pretrained'))
+        if pretrained_flag:
+            warnings.warn("create_dscatnet: 'pretrained' requested but no pretrained weights are available; ignoring.")
+
+    # Filter config to only keys accepted by DSCATNet.__init__
+    accepted_keys = {
+        'in_channels', 'embed_dim', 'depth', 'num_heads', 'mlp_ratio',
+        'fine_patch_size', 'coarse_patch_size', 'drop_rate', 'attn_drop_rate',
+        'fusion_method'
+    }
+
+    extra_keys = set(config.keys()) - accepted_keys
+    if extra_keys:
+        # Warn the user that some provided kwargs will be ignored
+        warnings.warn(f"create_dscatnet: ignoring unknown keys: {sorted(list(extra_keys))}")
+
+    filtered_config = {k: v for k, v in config.items() if k in accepted_keys}
+
     return DSCATNet(
         img_size=img_size,
         num_classes=num_classes,
-        **config
+        **filtered_config
     )
 
 

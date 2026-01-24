@@ -24,6 +24,7 @@ from ..data.datasets import (
     ISIC2019Dataset,
     ISIC2020Dataset,
 )
+from ..data.datasets import DatasetSubset
 from ..data.preprocessing import get_train_transforms, get_val_transforms
 
 logger = logging.getLogger(__name__)
@@ -145,27 +146,75 @@ class CentralizedTrainer:
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         
-        # Load all datasets
+        # Load all datasets and split into train/val using indices so transforms
+        # can be different for train and val (use DatasetSubset).
         datasets_train = []
         datasets_val = []
-        
+
         dataset_classes = [
-            (HAM10000Dataset, "ham10000"),
-            (ISIC2018Dataset, "isic2018"),
-            (ISIC2019Dataset, "isic2019"),
-            (ISIC2020Dataset, "isic2020"),
+            (HAM10000Dataset, "HAM10000"),
+            (ISIC2018Dataset, "ISIC2018"),
+            (ISIC2019Dataset, "ISIC2019"),
+            (ISIC2020Dataset, "ISIC2020"),
         ]
-        
+
         for dataset_cls, name in dataset_classes:
-            data_path = Path(self.config.data_root) / name
+            root_path = Path(self.config.data_root) / name
+
+            # Determine csv path per dataset
+            if name == "HAM10000":
+                csv_path = root_path / "HAM10000_metadata.csv"
+                dataset_root = root_path
+            elif name == "ISIC2018":
+                csv_path = root_path / "ISIC2018_Task3_Training_GroundTruth.csv"
+                dataset_root = root_path / "ISIC2018_Task3_Training_Input"
+            elif name == "ISIC2019":
+                csv_path = root_path / "ISIC_2019_Training_GroundTruth.csv"
+                dataset_root = root_path / "ISIC_2019_Training_Input"
+            elif name == "ISIC2020":
+                # accept either train.csv or the challenge ground truth filename
+                candidate1 = root_path / "train.csv"
+                candidate2 = root_path / "ISIC_2020_Training_GroundTruth.csv"
+                csv_path = candidate1 if candidate1.exists() else candidate2
+                dataset_root = root_path / "train"
+            else:
+                logger.warning(f"Unknown dataset name: {name}")
+                continue
+
+            if not dataset_root.exists() or not csv_path.exists():
+                logger.warning(f"Dataset {name} missing at {root_path} (root: {dataset_root}, csv: {csv_path})")
+                continue
+
             try:
-                train_ds = dataset_cls(root=str(data_path), split="train", transform=train_transform)
-                val_ds = dataset_cls(root=str(data_path), split="val", transform=val_transform)
-                datasets_train.append(train_ds)
-                datasets_val.append(val_ds)
-                logger.info(f"Loaded {name}: {len(train_ds)} train, {len(val_ds)} val")
-            except FileNotFoundError:
-                logger.warning(f"Dataset {name} not found at {data_path}")
+                # instantiate full dataset (with train transforms for now)
+                full_dataset = dataset_cls(root_dir=str(dataset_root), csv_path=str(csv_path), transform=train_transform)
+            except Exception as e:
+                logger.warning(f"Failed loading dataset {name}: {e}")
+                continue
+
+            n = len(full_dataset)
+            if n == 0:
+                logger.warning(f"Dataset {name} contains 0 samples (csv: {csv_path})")
+                continue
+
+            # compute split sizes
+            val_n = int(n * self.config.val_split)
+            train_n = n - val_n
+
+            # reproducible random permutation
+            gen = torch.Generator()
+            gen.manual_seed(42)
+            indices = torch.randperm(n, generator=gen).tolist()
+
+            train_indices = indices[:train_n]
+            val_indices = indices[train_n:]
+
+            train_ds = DatasetSubset(full_dataset, train_indices, train_transform)
+            val_ds = DatasetSubset(full_dataset, val_indices, val_transform)
+
+            datasets_train.append(train_ds)
+            datasets_val.append(val_ds)
+            logger.info(f"Loaded {name}: {len(train_ds)} train, {len(val_ds)} val")
         
         if not datasets_train:
             raise RuntimeError("No datasets found. Please check data paths.")
@@ -180,7 +229,7 @@ class CentralizedTrainer:
             batch_size=self.config.batch_size,
             shuffle=True,
             num_workers=self.config.num_workers,
-            pin_memory=True,
+            pin_memory=(self.device.type == "cuda"),
             drop_last=True,
         )
         self.val_loader = DataLoader(
@@ -188,7 +237,7 @@ class CentralizedTrainer:
             batch_size=self.config.batch_size,
             shuffle=False,
             num_workers=self.config.num_workers,
-            pin_memory=True,
+            pin_memory=(self.device.type == "cuda"),
         )
         
         logger.info(f"Combined dataset: {len(combined_train)} train, {len(combined_val)} val")

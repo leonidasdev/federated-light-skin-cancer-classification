@@ -63,7 +63,7 @@ def test_train_val_split():
     train_idx2, val_idx2 = train_val_split(total, val_split=0.2, seed=42)
     assert train_idx == train_idx2, "Same seed should produce same split"
     
-    print("  ✓ Train/val split test passed")
+    print("  OK Train/val split test passed")
 
 
 def test_iid_split():
@@ -104,7 +104,7 @@ def test_iid_split():
             assert max(props) - min(props) < 0.15, \
                 f"IID split should have similar distributions, class {cls} varies too much"
     
-    print("  ✓ IID split test passed")
+    print("  OK IID split test passed")
 
 
 def test_noniid_dirichlet_split():
@@ -132,7 +132,7 @@ def test_noniid_dirichlet_split():
             assert stats['heterogeneity_score'] > 0.3, \
                 f"Low alpha should be heterogeneous, got {stats['heterogeneity_score']}"
     
-    print("  ✓ Non-IID Dirichlet split test passed")
+    print("  OK Non-IID Dirichlet split test passed")
 
 
 def test_label_skew_split():
@@ -157,7 +157,7 @@ def test_label_skew_split():
         assert unique_classes <= 5, \
             f"Client {client_id} has too many classes: {unique_classes}"
     
-    print("  ✓ Label skew split test passed")
+    print("  OK Label skew split test passed")
 
 
 def test_quantity_skew_split():
@@ -178,7 +178,7 @@ def test_quantity_skew_split():
     assert max(sizes) / min(sizes) > 1.5, \
         "Quantity skew should create imbalanced client sizes"
     
-    print("  ✓ Quantity skew split test passed")
+    print("  OK Quantity skew split test passed")
 
 
 def test_statistics_computation():
@@ -205,7 +205,7 @@ def test_statistics_computation():
     assert len(stats['class_distribution']) == 4
     assert 0 <= stats['heterogeneity_score'] <= 2.0
     
-    print("  ✓ Statistics computation test passed")
+    print("  OK Statistics computation test passed")
 
 
 def test_reproducibility():
@@ -228,7 +228,7 @@ def test_reproducibility():
     for client_id in split3:
         assert split3[client_id] == split4[client_id], "Same seed should reproduce"
     
-    print("  ✓ Reproducibility test passed")
+    print("  OK Reproducibility test passed")
 
 
 def test_visualization():
@@ -243,7 +243,7 @@ def test_visualization():
     # This should not raise an error
     print_split_summary(client_data, labels, class_names)
     
-    print("  ✓ Print summary test passed")
+    print("  OK Print summary test passed")
 
 
 def compare_split_methods():
@@ -286,7 +286,7 @@ def run_all_tests():
         test_visualization()
         
         print("\n" + "=" * 60)
-        print("ALL TESTS PASSED ✓")
+        print("ALL TESTS PASSED")
         print("=" * 60)
         
         # Show comparison
@@ -295,10 +295,10 @@ def run_all_tests():
         return True
         
     except AssertionError as e:
-        print(f"\n✗ Test failed: {e}")
+        print(f"\nFAIL Test failed: {e}")
         return False
     except Exception as e:
-        print(f"\n✗ Error during testing: {e}")
+        print(f"\nFAIL Error during testing: {e}")
         import traceback
         traceback.print_exc()
         return False

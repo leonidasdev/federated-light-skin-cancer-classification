@@ -305,7 +305,7 @@ Examples:
     elif args.mode == "comparison":
         results = run_comparison(args)
     
-    print("\n✓ Experiment completed successfully!")
+    print("\nExperiment completed successfully!")
     return 0
 
 

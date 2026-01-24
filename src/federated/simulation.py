@@ -25,6 +25,7 @@ from ..data.datasets import (
     ISIC2018Dataset,
     ISIC2019Dataset,
     ISIC2020Dataset,
+    DatasetSubset,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
 from ..data.splits import create_noniid_split
@@ -189,36 +190,68 @@ class FLSimulator:
             
             data_path = Path(self.config.data_root) / dataset_name.lower()
             
-            # Create train and validation datasets
-            try:
-                train_dataset = dataset_cls(
-                    root=str(data_path),
-                    split="train",
-                    transform=train_transform,
-                )
-                val_dataset = dataset_cls(
-                    root=str(data_path),
-                    split="val",
-                    transform=val_transform,
-                )
-            except FileNotFoundError:
-                logger.warning(f"Dataset {dataset_name} not found at {data_path}, creating dummy data")
+            # Determine csv path and dataset root similar to centralized setup
+            if dataset_name == "HAM10000":
+                csv_path = data_path / "HAM10000_metadata.csv"
+                dataset_root = data_path
+            elif dataset_name == "ISIC2018":
+                csv_path = data_path / "ISIC2018_Task3_Training_GroundTruth.csv"
+                dataset_root = data_path / "ISIC2018_Task3_Training_Input"
+            elif dataset_name == "ISIC2019":
+                csv_path = data_path / "ISIC_2019_Training_GroundTruth.csv"
+                dataset_root = data_path / "ISIC_2019_Training_Input"
+            elif dataset_name == "ISIC2020":
+                candidate1 = data_path / "train.csv"
+                candidate2 = data_path / "ISIC_2020_Training_GroundTruth.csv"
+                csv_path = candidate1 if candidate1.exists() else candidate2
+                dataset_root = data_path / "train"
+            else:
+                logger.warning(f"Unknown dataset name: {dataset_name}")
                 continue
-            
-            # Create data loaders
+
+            if not dataset_root.exists() or not csv_path.exists():
+                logger.warning(f"Dataset {dataset_name} not found at {data_path} (root: {dataset_root}, csv: {csv_path})")
+                continue
+
+            # instantiate full dataset (with train transforms for now)
+            try:
+                full_dataset = dataset_cls(root_dir=str(dataset_root), csv_path=str(csv_path), transform=train_transform)
+            except Exception as e:
+                logger.warning(f"Failed loading dataset {dataset_name}: {e}")
+                continue
+
+            n = len(full_dataset)
+            if n == 0:
+                logger.warning(f"Dataset {dataset_name} contains 0 samples (csv: {csv_path})")
+                continue
+
+            # compute split sizes
+            val_n = int(n * 0.2)
+            train_n = n - val_n
+
+            gen = torch.Generator()
+            gen.manual_seed(42)
+            indices = torch.randperm(n, generator=gen).tolist()
+
+            train_indices = indices[:train_n]
+            val_indices = indices[train_n:]
+
+            train_dataset = DatasetSubset(full_dataset, train_indices, train_transform)
+            val_dataset = DatasetSubset(full_dataset, val_indices, val_transform)
+
             train_loader = DataLoader(
                 train_dataset,
                 batch_size=self.config.batch_size,
                 shuffle=True,
                 num_workers=self.config.num_workers,
-                pin_memory=True,
+                pin_memory=(self.device.type == "cuda"),
             )
             val_loader = DataLoader(
                 val_dataset,
                 batch_size=self.config.batch_size,
                 shuffle=False,
                 num_workers=self.config.num_workers,
-                pin_memory=True,
+                pin_memory=(self.device.type == "cuda"),
             )
             
             # Calculate class distribution
@@ -295,14 +328,14 @@ class FLSimulator:
                 batch_size=self.config.batch_size,
                 shuffle=True,
                 num_workers=self.config.num_workers,
-                pin_memory=True,
+                pin_memory=(self.device.type == "cuda"),
             )
             val_loader = DataLoader(
                 val_subset,
                 batch_size=self.config.batch_size,
                 shuffle=False,
                 num_workers=self.config.num_workers,
-                pin_memory=True,
+                pin_memory=(self.device.type == "cuda"),
             )
             
             # Class distribution
