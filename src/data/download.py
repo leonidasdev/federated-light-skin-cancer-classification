@@ -1,70 +1,102 @@
 """
 Dataset Download and Setup Scripts for Dermoscopy Datasets.
 
-This module provides utilities to download and organize:
+This module provides utilities to download and organize dermoscopy datasets
+from the ISIC Archive API for federated learning experiments:
 - HAM10000 (Client 1)
-- ISIC 2018 (Client 2)
+- ISIC 2018 Task 3 (Client 2)
 - ISIC 2019 (Client 3)
-- ISIC 2020 (Client 4)
+- ISIC 2020 / SIIM-ISIC (Client 4)
 
-Note: Some datasets require manual download from Kaggle or ISIC Archive.
-This script provides guidance and verifies the setup.
+Download Methods:
+1. ISIC Archive API (recommended) - No API key required
+2. Manual download from ISIC Archive website
+
+API Reference: https://isic-archive.com/api/v2
 """
 
+import csv
+import json
 import shutil
+import time
+import logging
+import concurrent.futures
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
+from urllib.parse import urljoin
+
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from tqdm import tqdm
 
+logger = logging.getLogger(__name__)
+
+# =============================================================================
+# ISIC Archive API Configuration
+# =============================================================================
+
+ISIC_API_BASE_URL = "https://api.isic-archive.com/api/v2"
+
+# Dataset names as they appear in ISIC Archive API
+ISIC_DATASET_NAMES = {
+    "HAM10000": "HAM10000",
+    "ISIC2018": "ISIC_2018_Task_3_Training",
+    "ISIC2019": "ISIC_2019_Training", 
+    "ISIC2020": "ISIC_2020_Training_JPEG",
+}
 
 # Dataset information and expected structure
 DATASET_INFO = {
     "HAM10000": {
         "description": "Human Against Machine with 10000 training images",
-        "source": "https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000",
-        "alt_source": "https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DBW86T",
+        "isic_dataset": "HAM10000",
+        "source": "https://api.isic-archive.com",
+        "archive_url": "https://isic-archive.com/",
         "classes": 7,
         "approx_images": 10015,
         "expected_files": [
-            "HAM10000_metadata.csv",
-            "HAM10000_images_part_1/",
-            "HAM10000_images_part_2/"
+            "metadata.csv",
+            "images/"
         ],
         "client_id": 1
     },
     "ISIC2018": {
         "description": "ISIC 2018 Challenge - Task 3: Lesion Diagnosis",
-        "source": "https://challenge.isic-archive.com/data/#2018",
-        "kaggle": "https://www.kaggle.com/datasets/nodoubttome/skin-cancer9-classesisic",
+        "isic_dataset": "ISIC_2018_Task_3_Training",
+        "source": "https://api.isic-archive.com",
+        "archive_url": "https://challenge.isic-archive.com/data/#2018",
         "classes": 7,
         "approx_images": 10015,
         "expected_files": [
-            "ISIC2018_Task3_Training_GroundTruth.csv",
-            "ISIC2018_Task3_Training_Input/"
+            "metadata.csv",
+            "images/"
         ],
         "client_id": 2
     },
     "ISIC2019": {
         "description": "ISIC 2019 Challenge - Dermoscopic Image Classification",
-        "source": "https://challenge.isic-archive.com/data/#2019",
-        "kaggle": "https://www.kaggle.com/datasets/andrewmvd/isic-2019",
+        "isic_dataset": "ISIC_2019_Training",
+        "source": "https://api.isic-archive.com",
+        "archive_url": "https://challenge.isic-archive.com/data/#2019",
         "classes": 8,
         "approx_images": 25331,
         "expected_files": [
-            "ISIC_2019_Training_GroundTruth.csv",
-            "ISIC_2019_Training_Input/"
+            "metadata.csv",
+            "images/"
         ],
         "client_id": 3
     },
     "ISIC2020": {
-        "description": "ISIC 2020 Challenge - Melanoma Classification",
-        "source": "https://challenge.isic-archive.com/data/#2020",
-        "kaggle": "https://www.kaggle.com/c/siim-isic-melanoma-classification/data",
+        "description": "ISIC 2020 Challenge - Melanoma Classification (SIIM-ISIC)",
+        "isic_dataset": "ISIC_2020_Training_JPEG",
+        "source": "https://api.isic-archive.com",
+        "archive_url": "https://challenge.isic-archive.com/data/#2020",
         "classes": 2,
         "approx_images": 33126,
         "expected_files": [
-            "train.csv",
-            "train/"
+            "metadata.csv",
+            "images/"
         ],
         "client_id": 4
     }
@@ -99,15 +131,480 @@ def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Pa
     for dataset_name in DATASET_INFO:
         dataset_path = data_root / dataset_name
         dataset_path.mkdir(parents=True, exist_ok=True)
+        # Create images subdirectory
+        (dataset_path / "images").mkdir(exist_ok=True)
         paths[dataset_name] = dataset_path
         
     # Also create raw and processed subdirectories
     (data_root / "raw").mkdir(exist_ok=True)
     (data_root / "processed").mkdir(exist_ok=True)
     
-    print(f"Created directory structure at: {data_root}")
+    print(f"✓ Created directory structure at: {data_root}")
     return paths
 
+
+# =============================================================================
+# ISIC Archive API Client
+# =============================================================================
+
+class ISICArchiveClient:
+    """
+    Client for ISIC Archive API v2.
+    
+    Downloads dermoscopy images and metadata from the official ISIC Archive.
+    No API key required.
+    
+    API Documentation: https://api.isic-archive.com/api/v2/docs
+    """
+    
+    def __init__(
+        self,
+        base_url: str = ISIC_API_BASE_URL,
+        max_retries: int = 5,
+        backoff_factor: float = 1.0,
+        timeout: int = 30,
+        max_workers: int = 8
+    ):
+        """
+        Initialize ISIC Archive API client.
+        
+        Args:
+            base_url: ISIC API base URL
+            max_retries: Maximum retry attempts for failed requests
+            backoff_factor: Exponential backoff factor for retries
+            timeout: Request timeout in seconds
+            max_workers: Maximum concurrent download workers
+        """
+        self.base_url = base_url.rstrip("/")
+        self.timeout = timeout
+        self.max_workers = max_workers
+        
+        # Setup session with retry logic
+        self.session = requests.Session()
+        retry_strategy = Retry(
+            total=max_retries,
+            backoff_factor=backoff_factor,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "OPTIONS"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+        
+        # Set headers
+        self.session.headers.update({
+            "Accept": "application/json",
+            "User-Agent": "ISIC-Downloader/1.0 (Federated Learning Research)"
+        })
+    
+    def _make_request(
+        self, 
+        endpoint: str, 
+        params: Optional[Dict] = None
+    ) -> requests.Response:
+        """Make API request with error handling."""
+        url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        try:
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            return response
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API request failed: {url} - {e}")
+            raise
+    
+    def get_image_list(
+        self,
+        collection: Optional[str] = None,
+        limit: int = 10000,
+        offset: int = 0
+    ) -> List[Dict[str, Any]]:
+        """
+        Get list of images from ISIC Archive.
+        
+        Args:
+            collection: Collection/dataset name filter
+            limit: Maximum images to return per request
+            offset: Offset for pagination
+            
+        Returns:
+            List of image metadata dictionaries
+        """
+        params = {
+            "limit": limit,
+            "offset": offset
+        }
+        if collection:
+            params["collections"] = collection
+        
+        response = self._make_request("/images/", params=params)
+        return response.json().get("results", [])
+    
+    def get_all_images_for_collection(
+        self,
+        collection: str,
+        batch_size: int = 1000
+    ) -> List[Dict[str, Any]]:
+        """
+        Get all images from a specific collection with pagination.
+        
+        Args:
+            collection: Collection/dataset name
+            batch_size: Number of images per API call
+            
+        Returns:
+            List of all image metadata
+        """
+        all_images = []
+        offset = 0
+        
+        print(f"  Fetching image list for collection: {collection}")
+        
+        with tqdm(desc="  Fetching metadata", unit=" images") as pbar:
+            while True:
+                batch = self.get_image_list(
+                    collection=collection,
+                    limit=batch_size,
+                    offset=offset
+                )
+                
+                if not batch:
+                    break
+                    
+                all_images.extend(batch)
+                pbar.update(len(batch))
+                offset += len(batch)
+                
+                # Small delay to be nice to the API
+                time.sleep(0.1)
+        
+        return all_images
+    
+    def download_image(
+        self,
+        image_id: str,
+        output_path: Path,
+        size: str = "full"
+    ) -> bool:
+        """
+        Download a single image from ISIC Archive.
+        
+        Args:
+            image_id: ISIC image ID (e.g., "ISIC_0024306")
+            output_path: Path to save the image
+            size: Image size - "full", "thumbnail", or pixel size
+            
+        Returns:
+            True if successful
+        """
+        try:
+            # Use the files endpoint for image download
+            url = f"{self.base_url}/images/{image_id}/files/{size}"
+            
+            response = self.session.get(url, timeout=self.timeout, stream=True)
+            response.raise_for_status()
+            
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            with open(output_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            return True
+            
+        except Exception as e:
+            logger.warning(f"Failed to download {image_id}: {e}")
+            return False
+    
+    def _download_worker(
+        self,
+        task: Tuple[str, Path]
+    ) -> Tuple[str, bool]:
+        """Worker function for parallel downloads."""
+        image_id, output_path = task
+        
+        if output_path.exists():
+            return (image_id, True)  # Skip existing
+            
+        success = self.download_image(image_id, output_path)
+        return (image_id, success)
+    
+    def download_images_parallel(
+        self,
+        images: List[Dict[str, Any]],
+        output_dir: Path,
+        max_workers: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Download multiple images in parallel.
+        
+        Args:
+            images: List of image metadata dictionaries
+            output_dir: Directory to save images
+            max_workers: Number of parallel workers
+            
+        Returns:
+            Download statistics
+        """
+        if max_workers is None:
+            max_workers = self.max_workers
+        
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Prepare download tasks
+        tasks = []
+        for img in images:
+            image_id = img.get("isic_id", img.get("_id", ""))
+            if not image_id:
+                continue
+            output_path = output_dir / f"{image_id}.jpg"
+            tasks.append((image_id, output_path))
+        
+        # Check for existing files
+        existing = sum(1 for _, path in tasks if path.exists())
+        to_download = [(id_, path) for id_, path in tasks if not path.exists()]
+        
+        print(f"  Found {existing} existing images, downloading {len(to_download)} new images")
+        
+        if not to_download:
+            return {"total": len(tasks), "success": len(tasks), "failed": 0, "skipped": existing}
+        
+        success_count = existing
+        failed_count = 0
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = {
+                executor.submit(self._download_worker, task): task 
+                for task in to_download
+            }
+            
+            with tqdm(total=len(to_download), desc="  Downloading images", unit=" img") as pbar:
+                for future in concurrent.futures.as_completed(futures):
+                    image_id, success = future.result()
+                    if success:
+                        success_count += 1
+                    else:
+                        failed_count += 1
+                    pbar.update(1)
+        
+        return {
+            "total": len(tasks),
+            "success": success_count,
+            "failed": failed_count,
+            "skipped": existing
+        }
+    
+    def save_metadata_csv(
+        self,
+        images: List[Dict[str, Any]],
+        output_path: Path
+    ) -> None:
+        """
+        Save image metadata to CSV file.
+        
+        Args:
+            images: List of image metadata dictionaries
+            output_path: Path to save CSV file
+        """
+        if not images:
+            logger.warning("No images to save metadata for")
+            return
+        
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Flatten nested metadata
+        rows = []
+        for img in images:
+            row = {
+                "isic_id": img.get("isic_id", img.get("_id", "")),
+                "attribution": img.get("attribution", ""),
+                "copyright_license": img.get("copyright_license", ""),
+            }
+            
+            # Extract diagnosis/label from metadata
+            metadata = img.get("metadata", {})
+            clinical = metadata.get("clinical", {})
+            
+            row["diagnosis"] = (
+                metadata.get("diagnosis", "") or 
+                clinical.get("diagnosis", "") or
+                img.get("diagnosis", "")
+            )
+            row["diagnosis_confirm_type"] = clinical.get("diagnosis_confirm_type", "")
+            row["melanocytic"] = clinical.get("melanocytic", "")
+            row["benign_malignant"] = (
+                metadata.get("benign_malignant", "") or
+                clinical.get("benign_malignant", "")
+            )
+            
+            # Patient/acquisition info
+            row["age_approx"] = clinical.get("age_approx", "")
+            row["sex"] = clinical.get("sex", "")
+            row["anatom_site_general"] = clinical.get("anatom_site_general", "")
+            
+            # Image acquisition
+            acquisition = metadata.get("acquisition", {})
+            row["image_type"] = acquisition.get("image_type", "")
+            row["dermoscopic_type"] = acquisition.get("dermoscopic_type", "")
+            
+            rows.append(row)
+        
+        # Write CSV
+        fieldnames = list(rows[0].keys()) if rows else []
+        with open(output_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+        
+        print(f"  ✓ Saved metadata to {output_path}")
+
+
+# =============================================================================
+# Dataset Download Functions
+# =============================================================================
+
+def download_dataset_isic(
+    dataset_name: str,
+    data_root: Optional[Path] = None,
+    max_workers: int = 8,
+    force_redownload: bool = False
+) -> bool:
+    """
+    Download a dataset from ISIC Archive.
+    
+    Args:
+        dataset_name: Name of dataset (HAM10000, ISIC2018, ISIC2019, ISIC2020)
+        data_root: Root directory for datasets
+        max_workers: Number of parallel download workers
+        force_redownload: If True, redownload even if files exist
+        
+    Returns:
+        True if successful
+    """
+    if dataset_name not in DATASET_INFO:
+        print(f"✗ Unknown dataset: {dataset_name}")
+        return False
+    
+    if data_root is None:
+        data_root = get_data_root()
+    
+    data_root = Path(data_root)
+    dataset_path = data_root / dataset_name
+    dataset_path.mkdir(parents=True, exist_ok=True)
+    images_dir = dataset_path / "images"
+    images_dir.mkdir(exist_ok=True)
+    
+    info = DATASET_INFO[dataset_name]
+    isic_collection = info.get("isic_dataset", dataset_name)
+    
+    print(f"\n{'='*60}")
+    print(f"Downloading: {dataset_name}")
+    print(f"Collection: {isic_collection}")
+    print(f"Expected images: ~{info['approx_images']:,}")
+    print(f"{'='*60}")
+    
+    # Check if already downloaded
+    if not force_redownload:
+        existing_images = len(list(images_dir.glob("*.jpg")))
+        if existing_images >= info["approx_images"] * 0.95:  # 95% threshold
+            print(f"✓ Dataset appears complete ({existing_images:,} images found)")
+            return True
+    
+    # Initialize API client
+    client = ISICArchiveClient(max_workers=max_workers)
+    
+    try:
+        # Get all images for collection
+        print("\nStep 1: Fetching image metadata from ISIC Archive...")
+        images = client.get_all_images_for_collection(isic_collection)
+        
+        if not images:
+            print(f"✗ No images found for collection: {isic_collection}")
+            print("  This may indicate the collection name has changed.")
+            print("  Please check: https://api.isic-archive.com/api/v2/collections/")
+            return False
+        
+        print(f"  ✓ Found {len(images):,} images")
+        
+        # Save metadata
+        print("\nStep 2: Saving metadata...")
+        metadata_path = dataset_path / "metadata.csv"
+        client.save_metadata_csv(images, metadata_path)
+        
+        # Download images
+        print("\nStep 3: Downloading images...")
+        stats = client.download_images_parallel(images, images_dir, max_workers)
+        
+        print(f"\n{'='*60}")
+        print(f"Download Summary for {dataset_name}:")
+        print(f"  Total images: {stats['total']:,}")
+        print(f"  Successfully downloaded: {stats['success']:,}")
+        print(f"  Failed: {stats['failed']:,}")
+        print(f"  Skipped (existing): {stats['skipped']:,}")
+        print(f"{'='*60}")
+        
+        return stats["failed"] == 0
+        
+    except Exception as e:
+        logger.error(f"Error downloading {dataset_name}: {e}")
+        print(f"✗ Download failed: {e}")
+        return False
+
+
+def download_all_datasets(
+    data_root: Optional[Path] = None,
+    datasets: Optional[List[str]] = None,
+    max_workers: int = 8
+) -> Dict[str, bool]:
+    """
+    Download all (or specified) datasets from ISIC Archive.
+    
+    Args:
+        data_root: Root directory for datasets
+        datasets: List of datasets to download (None = all)
+        max_workers: Number of parallel workers
+        
+    Returns:
+        Dictionary mapping dataset names to success status
+    """
+    if datasets is None:
+        datasets = list(DATASET_INFO.keys())
+    
+    results = {}
+    
+    print("\n" + "=" * 70)
+    print("ISIC ARCHIVE DATASET DOWNLOADER")
+    print("=" * 70)
+    print(f"Datasets to download: {', '.join(datasets)}")
+    print(f"Total estimated images: ~{sum(DATASET_INFO[d]['approx_images'] for d in datasets):,}")
+    print("=" * 70)
+    
+    for dataset_name in datasets:
+        results[dataset_name] = download_dataset_isic(
+            dataset_name,
+            data_root=data_root,
+            max_workers=max_workers
+        )
+    
+    # Print final summary
+    print("\n" + "=" * 70)
+    print("FINAL DOWNLOAD SUMMARY")
+    print("=" * 70)
+    for dataset_name, success in results.items():
+        status = "✓" if success else "✗"
+        print(f"  {status} {dataset_name}")
+    
+    successful = sum(results.values())
+    print(f"\nCompleted: {successful}/{len(results)} datasets")
+    print("=" * 70)
+    
+    return results
+
+
+# =============================================================================
+# Verification Functions
+# =============================================================================
 
 def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[str, Any]:
     """
@@ -139,7 +636,8 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
         "found_files": [],
         "missing_files": [],
         "image_count": 0,
-        "csv_found": False
+        "csv_found": False,
+        "completeness": 0.0
     }
     
     # Check expected files
@@ -151,11 +649,23 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
                 result["csv_found"] = True
         else:
             result["missing_files"].append(expected)
-            result["valid"] = False
     
-    # Count images if directory exists
-    for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
-        result["image_count"] += len(list(dataset_path.rglob(ext)))
+    # Count images
+    images_dir = dataset_path / "images"
+    if images_dir.exists():
+        for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
+            result["image_count"] += len(list(images_dir.glob(ext)))
+    
+    # Also check root directory for images (backward compatibility)
+    for ext in ["*.jpg", "*.jpeg", "*.png"]:
+        result["image_count"] += len(list(dataset_path.glob(ext)))
+    
+    # Calculate completeness
+    expected_images = info["approx_images"]
+    result["completeness"] = min(100.0, (result["image_count"] / expected_images) * 100)
+    
+    # Valid if we have enough images (>90% threshold)
+    result["valid"] = result["image_count"] >= expected_images * 0.9
     
     return result
 
@@ -175,231 +685,114 @@ def print_verification_report(results: Dict[str, Dict]) -> None:
     print("=" * 70)
     
     all_valid = True
+    total_images = 0
+    
     for dataset_name, result in results.items():
         status = "✓" if result["valid"] else "✗"
         all_valid = all_valid and result["valid"]
+        total_images += result["image_count"]
         
-        print(f"\n{status} {dataset_name}")
+        info = DATASET_INFO[dataset_name]
+        expected = info["approx_images"]
+        
+        print(f"\n{status} {dataset_name} (Client {info['client_id']})")
         print(f"  Path: {result['path']}")
-        print(f"  Images found: {result['image_count']}")
-        print(f"  CSV metadata: {'Found' if result['csv_found'] else 'Missing'}")
+        print(f"  Images: {result['image_count']:,} / ~{expected:,} ({result['completeness']:.1f}%)")
+        print(f"  Metadata CSV: {'✓ Found' if result['csv_found'] else '✗ Missing'}")
         
-        if result["missing_files"]:
+        if result["missing_files"] and not result["valid"]:
             print(f"  Missing files:")
             for f in result["missing_files"]:
                 print(f"    - {f}")
     
     print("\n" + "=" * 70)
+    print(f"Total images across all datasets: {total_images:,}")
     if all_valid:
-        print("All datasets are properly configured!")
+        print("✓ All datasets are properly configured!")
     else:
-        print("Some datasets are missing. See instructions below.")
+        print("✗ Some datasets are missing or incomplete.")
+        print("  Run: python run_download.py --download-all")
     print("=" * 70)
 
 
 def print_download_instructions() -> None:
-    """Print instructions for downloading each dataset."""
+    """Print instructions for downloading datasets."""
     instructions = """
 ================================================================================
-DATASET DOWNLOAD INSTRUCTIONS
+DATASET DOWNLOAD OPTIONS
 ================================================================================
 
-Due to data usage agreements, most dermoscopy datasets must be downloaded
-manually from their official sources or Kaggle.
-
+OPTION 1: Automatic Download via ISIC Archive API (Recommended)
 --------------------------------------------------------------------------------
-CLIENT 1: HAM10000
+No API key required. Downloads directly from the official ISIC Archive.
+
+    # Download all datasets (~80,000 images, may take several hours)
+    python run_download.py --download-all
+    
+    # Download specific dataset
+    python run_download.py --download HAM10000
+    python run_download.py --download ISIC2018
+    python run_download.py --download ISIC2019
+    python run_download.py --download ISIC2020
+
+    # Adjust parallel workers (default: 8)
+    python run_download.py --download-all --workers 16
+
+OPTION 2: Manual Download from ISIC Archive Website
 --------------------------------------------------------------------------------
-Option A (Kaggle - Recommended):
-  1. Go to: https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000
-  2. Download and extract to: data/HAM10000/
-  
-Option B (Harvard Dataverse):
-  1. Go to: https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/DBW86T
-  2. Download HAM10000_images_part_1.zip, HAM10000_images_part_2.zip
-  3. Download HAM10000_metadata.csv
-  4. Extract to: data/HAM10000/
+Visit the ISIC Archive and download datasets manually:
 
-Expected structure:
-  data/HAM10000/
-  ├── HAM10000_metadata.csv
-  ├── HAM10000_images_part_1/
-  │   └── *.jpg
-  └── HAM10000_images_part_2/
-      └── *.jpg
+    HAM10000:  https://isic-archive.com/ → Search "HAM10000"
+    ISIC 2018: https://challenge.isic-archive.com/data/#2018
+    ISIC 2019: https://challenge.isic-archive.com/data/#2019
+    ISIC 2020: https://challenge.isic-archive.com/data/#2020
 
+After downloading, organize files as:
+    data/
+    ├── HAM10000/
+    │   ├── metadata.csv
+    │   └── images/
+    │       └── *.jpg
+    ├── ISIC2018/
+    │   ├── metadata.csv
+    │   └── images/
+    │       └── *.jpg
+    ├── ISIC2019/
+    │   ├── metadata.csv
+    │   └── images/
+    │       └── *.jpg
+    └── ISIC2020/
+        ├── metadata.csv
+        └── images/
+            └── *.jpg
+
+VERIFICATION
 --------------------------------------------------------------------------------
-CLIENT 2: ISIC 2018
---------------------------------------------------------------------------------
-Option A (ISIC Archive):
-  1. Go to: https://challenge.isic-archive.com/data/#2018
-  2. Download Task 3 Training Data
-  3. Extract to: data/ISIC2018/
+After downloading, verify your datasets:
 
-Option B (Kaggle):
-  1. Search for "ISIC 2018 Task 3" on Kaggle
-  2. Download and extract to: data/ISIC2018/
-
-Expected structure:
-  data/ISIC2018/
-  ├── ISIC2018_Task3_Training_GroundTruth.csv
-  └── ISIC2018_Task3_Training_Input/
-      └── *.jpg
-
---------------------------------------------------------------------------------
-CLIENT 3: ISIC 2019
---------------------------------------------------------------------------------
-Option A (ISIC Archive):
-  1. Go to: https://challenge.isic-archive.com/data/#2019
-  2. Download Training Data and Ground Truth
-  3. Extract to: data/ISIC2019/
-
-Option B (Kaggle):
-  1. Go to: https://www.kaggle.com/datasets/andrewmvd/isic-2019
-  2. Download and extract to: data/ISIC2019/
-
-Expected structure:
-  data/ISIC2019/
-  ├── ISIC_2019_Training_GroundTruth.csv
-  └── ISIC_2019_Training_Input/
-      └── *.jpg
-
---------------------------------------------------------------------------------
-CLIENT 4: ISIC 2020
---------------------------------------------------------------------------------
-Option A (Kaggle Competition - Recommended):
-  1. Go to: https://www.kaggle.com/c/siim-isic-melanoma-classification/data
-  2. Accept competition rules
-  3. Download train.csv and jpeg/train/ folder
-  4. Extract to: data/ISIC2020/
-
-Expected structure:
-  data/ISIC2020/
-  ├── train.csv
-  └── train/
-      └── *.jpg
+    python run_download.py --verify
 
 ================================================================================
-ALTERNATIVE: Using Kaggle API
+DATASET INFORMATION
 ================================================================================
-If you have Kaggle API configured:
 
-    pip install kaggle
-    
-    # HAM10000
-    kaggle datasets download -d kmader/skin-cancer-mnist-ham10000
-    
-    # ISIC 2019
-    kaggle datasets download -d andrewmvd/isic-2019
-    
-    # ISIC 2020
-    kaggle competitions download -c siim-isic-melanoma-classification
+| Dataset   | Client | Images  | Classes | Description                    |
+|-----------|--------|---------|---------|--------------------------------|
+| HAM10000  | 1      | ~10,015 | 7       | Human Against Machine dataset  |
+| ISIC 2018 | 2      | ~10,015 | 7       | ISIC 2018 Challenge Task 3     |
+| ISIC 2019 | 3      | ~25,331 | 8       | ISIC 2019 Challenge            |
+| ISIC 2020 | 4      | ~33,126 | 2       | SIIM-ISIC Melanoma Challenge   |
+
+Total: ~78,487 dermoscopy images
 
 ================================================================================
 """
     print(instructions)
 
 
-def download_with_kaggle_api(
-    dataset_slug: str,
-    output_dir: Path,
-    is_competition: bool = False
-) -> bool:
-    """
-    Download dataset using Kaggle API.
-    
-    Args:
-        dataset_slug: Kaggle dataset identifier
-        output_dir: Directory to save files
-        is_competition: Whether this is a competition dataset
-        
-    Returns:
-        True if successful
-    """
-    try:
-        import kaggle
-        
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        if is_competition:
-            kaggle.api.competition_download_files(
-                dataset_slug,
-                path=str(output_dir),
-                quiet=False
-            )
-        else:
-            kaggle.api.dataset_download_files(
-                dataset_slug,
-                path=str(output_dir),
-                unzip=True,
-                quiet=False
-            )
-        
-        return True
-        
-    except ImportError:
-        print("Kaggle API not installed. Run: pip install kaggle")
-        return False
-    except Exception as e:
-        print(f"Error downloading from Kaggle: {e}")
-        return False
-
-
-def setup_ham10000(data_root: Optional[Path] = None) -> bool:
-    """Setup HAM10000 dataset."""
-    if data_root is None:
-        data_root = get_data_root()
-    
-    dataset_path = Path(data_root) / "HAM10000"
-    dataset_path.mkdir(parents=True, exist_ok=True)
-    
-    print("\nAttempting to download HAM10000 via Kaggle API...")
-    success = download_with_kaggle_api(
-        "kmader/skin-cancer-mnist-ham10000",
-        dataset_path
-    )
-    
-    if not success:
-        print("\nPlease download HAM10000 manually.")
-        print("See instructions above for download links.")
-    
-    return verify_dataset("HAM10000", data_root)["valid"]
-
-
-def organize_downloaded_files(data_root: Optional[Path] = None) -> None:
-    """
-    Organize downloaded files into expected structure.
-    
-    Some Kaggle downloads have different folder structures.
-    This function reorganizes them.
-    """
-    if data_root is None:
-        data_root = get_data_root()
-    
-    data_root = Path(data_root)
-    
-    # HAM10000 reorganization
-    ham_path = data_root / "HAM10000"
-    if ham_path.exists():
-        # Check if images are in root instead of subdirectories
-        root_images = list(ham_path.glob("ISIC_*.jpg"))
-        if root_images and not (ham_path / "HAM10000_images_part_1").exists():
-            print("Reorganizing HAM10000 images...")
-            part1 = ham_path / "HAM10000_images_part_1"
-            part1.mkdir(exist_ok=True)
-            for img in tqdm(root_images, desc="Moving images"):
-                shutil.move(str(img), str(part1 / img.name))
-    
-    # ISIC2020 reorganization
-    isic2020_path = data_root / "ISIC2020"
-    if isic2020_path.exists():
-        # Check for nested jpeg folder from Kaggle
-        jpeg_folder = isic2020_path / "jpeg" / "train"
-        if jpeg_folder.exists() and not (isic2020_path / "train").exists():
-            print("Reorganizing ISIC2020 images...")
-            shutil.move(str(jpeg_folder), str(isic2020_path / "train"))
-
+# =============================================================================
+# Dataset Setup Wizard
+# =============================================================================
 
 class DatasetSetupWizard:
     """Interactive wizard for setting up datasets."""
@@ -407,8 +800,13 @@ class DatasetSetupWizard:
     def __init__(self, data_root: Optional[Path] = None):
         self.data_root = Path(data_root) if data_root else get_data_root()
         
-    def run(self) -> None:
-        """Run the interactive setup wizard."""
+    def run(self, auto_download: bool = False) -> None:
+        """
+        Run the interactive setup wizard.
+        
+        Args:
+            auto_download: If True, automatically download missing datasets
+        """
         print("\n" + "=" * 70)
         print("DERMOSCOPY DATASET SETUP WIZARD")
         print("=" * 70)
@@ -426,16 +824,18 @@ class DatasetSetupWizard:
         missing = [name for name, result in results.items() if not result["valid"]]
         
         if not missing:
-            print("\nAll datasets are ready! You can proceed with training.")
+            print("\n✓ All datasets are ready! You can proceed with training.")
             return
         
-        # Print download instructions
-        print(f"\nMissing datasets: {', '.join(missing)}")
-        print_download_instructions()
+        print(f"\nMissing/incomplete datasets: {', '.join(missing)}")
         
-        # Ask about Kaggle API
-        print("\nWould you like to try automatic download via Kaggle API?")
-        print("(Requires kaggle package and API credentials)")
+        if auto_download:
+            print("\nStep 3: Downloading missing datasets...")
+            download_all_datasets(self.data_root, datasets=missing)
+        else:
+            print_download_instructions()
+            print("\nTo download automatically, run:")
+            print(f"  python -m src.data.download --download-all")
         
     def quick_verify(self) -> bool:
         """Quick verification of all datasets."""
@@ -443,34 +843,91 @@ class DatasetSetupWizard:
         return all(r["valid"] for r in results.values())
 
 
+# =============================================================================
+# Main Entry Point
+# =============================================================================
+
 if __name__ == "__main__":
     import argparse
     
-    parser = argparse.ArgumentParser(description="Dataset Setup Utility")
-    parser.add_argument("--data-root", type=str, default=None,
-                       help="Root directory for datasets")
-    parser.add_argument("--verify", action="store_true",
-                       help="Verify existing datasets")
-    parser.add_argument("--instructions", action="store_true",
-                       help="Print download instructions")
-    parser.add_argument("--setup", action="store_true",
-                       help="Run interactive setup wizard")
+    parser = argparse.ArgumentParser(
+        description="ISIC Archive Dataset Download Utility",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python run_download.py --verify
+  python run_download.py --download-all
+  python run_download.py --download HAM10000
+  python run_download.py --setup
+        """
+    )
+    parser.add_argument(
+        "--data-root", type=str, default=None,
+        help="Root directory for datasets (default: ./data)"
+    )
+    parser.add_argument(
+        "--verify", action="store_true",
+        help="Verify existing datasets"
+    )
+    parser.add_argument(
+        "--instructions", action="store_true",
+        help="Print download instructions"
+    )
+    parser.add_argument(
+        "--setup", action="store_true",
+        help="Run interactive setup wizard"
+    )
+    parser.add_argument(
+        "--download", type=str, metavar="DATASET",
+        choices=list(DATASET_INFO.keys()),
+        help="Download a specific dataset from ISIC Archive"
+    )
+    parser.add_argument(
+        "--download-all", action="store_true",
+        help="Download all datasets from ISIC Archive"
+    )
+    parser.add_argument(
+        "--workers", type=int, default=8,
+        help="Number of parallel download workers (default: 8)"
+    )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Force redownload even if files exist"
+    )
     
     args = parser.parse_args()
     
-    if args.verify:
-        results = verify_all_datasets(args.data_root)
+    # Set data root
+    data_root = Path(args.data_root) if args.data_root else None
+    
+    if args.download:
+        # Download specific dataset
+        download_dataset_isic(
+            args.download,
+            data_root=data_root,
+            max_workers=args.workers,
+            force_redownload=args.force
+        )
+    elif args.download_all:
+        # Download all datasets
+        download_all_datasets(
+            data_root=data_root,
+            max_workers=args.workers
+        )
+    elif args.verify:
+        results = verify_all_datasets(data_root)
         print_verification_report(results)
     elif args.instructions:
         print_download_instructions()
     elif args.setup:
-        wizard = DatasetSetupWizard(args.data_root)
-        wizard.run()
+        wizard = DatasetSetupWizard(data_root)
+        wizard.run(auto_download=False)
     else:
         # Default: show status and instructions
-        results = verify_all_datasets(args.data_root)
+        results = verify_all_datasets(data_root)
         print_verification_report(results)
         
         missing = [name for name, result in results.items() if not result["valid"]]
         if missing:
-            print_download_instructions()
+            print("\nRun with --download-all to download missing datasets.")
+            print("Run with --help for all options.")
