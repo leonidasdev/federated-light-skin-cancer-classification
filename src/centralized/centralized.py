@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, ConcatDataset, random_split
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
+from tqdm import tqdm
 
 from ..models.dscatnet import create_dscatnet
 from ..data.datasets import (
@@ -183,9 +184,9 @@ class CentralizedTrainer:
                 csv_path = candidate1 if candidate1.exists() else candidate2
                 # Accept several common image-folder names for ISIC2020
                 possible_image_dirs = [
-                    "train",
-                    "ISIC_2020_Training_JPEG",
                     "ISIC_2020_Training_JPEG/train",
+                    "ISIC_2020_Training_JPEG",
+                    "train",
                 ]
                 dataset_root = None
                 for d in possible_image_dirs:
@@ -320,8 +321,18 @@ class CentralizedTrainer:
             raise RuntimeError("train_loader is not initialized. Call setup_data() before training.")
 
         loader = self.train_loader
+        
+        # Progress bar for batches
+        pbar = tqdm(
+            enumerate(loader),
+            total=len(loader),
+            desc="Training",
+            leave=False,
+            ncols=100,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+        )
 
-        for batch_idx, (images, labels) in enumerate(loader):
+        for batch_idx, (images, labels) in pbar:
             images, labels = images.to(self.device), labels.to(self.device)
 
             optimizer.zero_grad()
@@ -338,10 +349,14 @@ class CentralizedTrainer:
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
-
-            if batch_idx % 50 == 0:
-                total_batches = len(loader)
-                logger.debug(f"Batch {batch_idx}/{total_batches}: loss={loss.item():.4f}")
+            
+            # Update progress bar with current metrics
+            current_loss = total_loss / (batch_idx + 1)
+            current_acc = correct / total if total > 0 else 0
+            pbar.set_postfix({
+                'loss': f'{current_loss:.4f}',
+                'acc': f'{current_acc:.4f}'
+            })
 
         avg_loss = total_loss / len(loader) if len(loader) > 0 else 0.0
         accuracy = correct / total if total > 0 else 0.0
@@ -372,8 +387,17 @@ class CentralizedTrainer:
         # Per-class tracking
         class_correct = {}
         class_total = {}
+        
+        # Progress bar for validation
+        pbar = tqdm(
+            loader,
+            desc="Validating",
+            leave=False,
+            ncols=100,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+        )
 
-        for images, labels in loader:
+        for images, labels in pbar:
             images, labels = images.to(self.device), labels.to(self.device)
 
             outputs = self.model(images)
@@ -463,9 +487,19 @@ class CentralizedTrainer:
 
         # Training loop
         start_time = time.time()
+        
+        # Epoch progress bar
+        epoch_pbar = tqdm(
+            range(1, self.config.num_epochs + 1),
+            desc="Epochs",
+            ncols=100,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+        )
 
-        for epoch in range(1, self.config.num_epochs + 1):
+        for epoch in epoch_pbar:
             epoch_start = time.time()
+            
+            epoch_pbar.set_description(f"Epoch {epoch}/{self.config.num_epochs}")
 
             # Train
             train_loss, train_acc = self.train_epoch(optimizer, criterion)
@@ -492,6 +526,13 @@ class CentralizedTrainer:
             self.history["val_accuracy"].append(val_acc)
             self.history["learning_rate"].append(current_lr)
 
+            # Update epoch progress bar with metrics
+            epoch_pbar.set_postfix({
+                'train_loss': f'{train_loss:.4f}',
+                'val_acc': f'{val_acc:.4f}',
+                'best': f'{self.best_val_accuracy:.4f}'
+            })
+            
             logger.info(
                 f"Epoch {epoch}/{self.config.num_epochs} | "
                 f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "

@@ -17,7 +17,8 @@ from flwr.common import (
     NDArrays,
     Scalar,
 )
-from typing import Dict, List, Tuple, Sized, cast
+from typing import Dict, List, Tuple, Sized, cast, Optional
+from tqdm import tqdm
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
 
@@ -49,7 +50,7 @@ class SkinCancerClient(NumPyClient):
         device: torch.device,
         local_epochs: int = 1,
         learning_rate: float = 1e-3,
-        class_weights: torch.Tensor = None
+        class_weights: Optional[torch.Tensor] = None
     ):
         self.client_id = client_id
         self.model = model
@@ -188,7 +189,17 @@ class SkinCancerClient(NumPyClient):
         for epoch in range(epochs):
             epoch_loss = 0.0
             
-            for batch_idx, (images, labels) in enumerate(self.train_loader):
+            # Progress bar for training batches
+            pbar = tqdm(
+                enumerate(self.train_loader),
+                total=len(self.train_loader),
+                desc=f"Client {self.client_id} Epoch {epoch+1}/{epochs}",
+                leave=False,
+                ncols=100,
+                bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+            )
+            
+            for batch_idx, (images, labels) in pbar:
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 
@@ -210,6 +221,12 @@ class SkinCancerClient(NumPyClient):
                 _, predicted = outputs.max(1)
                 total += labels.size(0)
                 correct += predicted.eq(labels).sum().item()
+                
+                # Update progress bar
+                pbar.set_postfix({
+                    'loss': f'{epoch_loss/(batch_idx+1):.4f}',
+                    'acc': f'{100.0*correct/total:.2f}%'
+                })
                 
             total_loss += epoch_loss
         
