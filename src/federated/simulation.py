@@ -25,6 +25,7 @@ from ..data.datasets import (
     ISIC2018Dataset,
     ISIC2019Dataset,
     ISIC2020Dataset,
+    PADUFES20Dataset,
     DatasetSubset,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
@@ -66,6 +67,11 @@ class SimulationConfig:
     # Non-IID configuration
     noniid_type: str = "natural"  # natural, dirichlet, label_skew, quantity_skew
     dirichlet_alpha: float = 0.5
+    
+    # Dataset selection: list of datasets to use, or None/empty for all
+    # Valid options: "HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"
+    # For natural non-IID, each selected dataset becomes one client
+    datasets: Optional[List[str]] = None
     
     # Experiment configuration
     experiment_name: str = "fl_experiment"
@@ -160,10 +166,13 @@ class FLSimulator:
         """
         Setup natural non-IID: each client gets a different dataset.
         
-        Client 0: HAM10000
-        Client 1: ISIC 2018
-        Client 2: ISIC 2019
-        Client 3: ISIC 2020
+        By default:
+        - Client 0: HAM10000
+        - Client 1: ISIC 2018
+        - Client 2: ISIC 2019
+        - Client 3: ISIC 2020
+        
+        If config.datasets is specified, only those datasets are used.
         """
         logger.info("Setting up natural non-IID distribution (each client = different dataset)")
         
@@ -177,18 +186,40 @@ class FLSimulator:
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         
-        dataset_classes = [
+        all_dataset_classes = [
             (HAM10000Dataset, "HAM10000"),
             (ISIC2018Dataset, "ISIC2018"),
             (ISIC2019Dataset, "ISIC2019"),
             (ISIC2020Dataset, "ISIC2020"),
+            (PADUFES20Dataset, "PAD-UFES-20"),
         ]
+        
+        # Filter datasets if specific ones are requested
+        if self.config.datasets:
+            # Normalize names for comparison (handle PAD-UFES-20 vs PADUFES20)
+            def normalize_name(name: str) -> str:
+                return name.upper().replace("-", "").replace("_", "")
+            
+            requested = [normalize_name(d) for d in self.config.datasets]
+            dataset_classes = [
+                (cls, name) for cls, name in all_dataset_classes
+                if normalize_name(name) in requested
+            ]
+            if not dataset_classes:
+                raise ValueError(
+                    f"No valid datasets found. Requested: {self.config.datasets}. "
+                    f"Valid options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20"
+                )
+            logger.info(f"Using selected datasets: {[name for _, name in dataset_classes]}")
+        else:
+            dataset_classes = all_dataset_classes
+            logger.info("Using all available datasets")
         
         for client_id, (dataset_cls, dataset_name) in enumerate(dataset_classes):
             if client_id >= self.config.num_clients:
                 break
             
-            data_path = Path(self.config.data_root) / dataset_name.lower()
+            data_path = Path(self.config.data_root) / dataset_name
             
             # Determine csv path and dataset root similar to centralized setup
             if dataset_name == "HAM10000":
@@ -205,6 +236,9 @@ class FLSimulator:
                 candidate2 = data_path / "ISIC_2020_Training_GroundTruth.csv"
                 csv_path = candidate1 if candidate1.exists() else candidate2
                 dataset_root = data_path / "train"
+            elif dataset_name == "PAD-UFES-20":
+                csv_path = data_path / "metadata.csv"
+                dataset_root = data_path
             else:
                 logger.warning(f"Unknown dataset name: {dataset_name}")
                 continue

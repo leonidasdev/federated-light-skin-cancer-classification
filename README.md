@@ -30,7 +30,8 @@ federated-light-skin-cancer-classification/
 │   ├── HAM10000/
 │   ├── ISIC2018/
 │   ├── ISIC2019/
-│   └── ISIC2020/
+│   ├── ISIC2020/
+│   └── PAD-UFES-20/
 ├── experiments/                  # Experiment outputs
 │   ├── centralized/              # Baseline results
 │   └── federated/                # FL results
@@ -77,6 +78,7 @@ Each client simulates a different hospital/institution with its own dermoscopy d
 | 2 | ISIC 2018 | 7 | ~10,015 | Similar to HAM10000 |
 | 3 | ISIC 2019 | 8 | ~25,331 | Includes SCC class |
 | 4 | ISIC 2020 | 2 | ~33,126 | Binary (benign/malignant) |
+| 5 | PAD-UFES-20 | 6 | ~2,298 | Brazilian clinical images |
 
 **Classes (7 unified):**
 - `AK` - Actinic Keratosis
@@ -87,9 +89,21 @@ Each client simulates a different hospital/institution with its own dermoscopy d
 - `NV` - Melanocytic Nevus
 - `VASC` - Vascular Lesion
 
+### PAD-UFES-20 Dataset
+
+The PAD-UFES-20 dataset is a clinical skin lesion dataset from Brazil containing smartphone-acquired images:
+- **Source:** Federal University of Espírito Santo (UFES), Brazil
+- **Images:** 2,298 clinical images (varying sizes, PNG format)
+- **Patients:** 1,373 patients, 1,641 skin lesions
+- **Classes:** BCC, SCC, ACK (Actinic Keratosis), SEK (Seborrheic Keratosis), MEL, NEV
+- **Biopsy-proven:** ~58% of samples
+- **Rich metadata:** Age, gender, Fitzpatrick skin type, lesion location, etc.
+
+**Download:** https://data.mendeley.com/datasets/zr7vgbcyr2/1
+
 ### Dataset Download
 
-All datasets are downloaded from the **official ISIC Archive** (CC-BY-NC license).
+All ISIC datasets are downloaded from the **official ISIC Archive** (CC-BY-NC license).
 No API key required.
 
 Recommended: for faster bulk downloads, we recommend downloading the official archives directly from the dataset pages below and placing the images/CSV into the respective `data/<DATASET>/` folders. The repository includes an API-based downloader, but archive downloads from the challenge pages (or Kaggle for HAM10000) are much quicker.
@@ -99,6 +113,7 @@ Direct dataset pages:
 - ISIC 2018 challenge data: https://challenge.isic-archive.com/data/#2018
 - ISIC 2019 challenge data: https://challenge.isic-archive.com/data/#2019
 - ISIC 2020 challenge data: https://challenge.isic-archive.com/data/#2020
+- PAD-UFES-20 (Mendeley): https://data.mendeley.com/datasets/zr7vgbcyr2/1
 
 **Option 1: Automatic Download via ISIC Archive API (also available)**
 ```bash
@@ -137,21 +152,28 @@ python -m src.data.download --verify
 ```
 data/
 ├── HAM10000/
-│   ├── metadata.csv
-│   └── images/
+│   ├── HAM10000_metadata.csv
+│   └── HAM10000_images_part_1/
+│   └── HAM10000_images_part_2/
 │       └── *.jpg
 ├── ISIC2018/
-│   ├── metadata.csv
-│   └── images/
+│   ├── ISIC2018_Task3_Training_GroundTruth.csv
+│   └── ISIC2018_Task3_Training_Input/
 │       └── *.jpg
 ├── ISIC2019/
-│   ├── metadata.csv
-│   └── images/
+│   ├── ISIC_2019_Training_GroundTruth.csv
+│   └── ISIC_2019_Training_Input/
 │       └── *.jpg
-└── ISIC2020/
+├── ISIC2020/
+│   ├── train.csv
+│   └── train/
+│       └── *.jpg
+└── PAD-UFES-20/
     ├── metadata.csv
-    └── images/
-        └── *.jpg
+    ├── imgs_part_1/
+    ├── imgs_part_2/
+    └── imgs_part_3/
+        └── *.png
 ```
 
 ## DSCATNet Architecture
@@ -171,7 +193,7 @@ data/
 |-----------|-------|-------------|
 | Framework | Flower | FL simulation framework |
 | Strategy | FedAvg | Federated Averaging |
-| Clients | 4 | One per dataset |
+| Clients | 5 | One per dataset |
 | Rounds | 50-100 | Communication rounds |
 | Local Epochs | 1-5 | Training per round |
 | Batch Size | 16-32 | Mini-batch size |
@@ -203,6 +225,26 @@ python -c "import torch; import flwr; print('Installation successful!')"
 - ~16GB RAM
 - ~50GB disk space (for datasets)
 
+### Troubleshooting: CUDA on Windows
+
+If you encounter CUDA-related problems when installing or running PyTorch inside the project's virtual environment on Windows, try these steps from an activated PowerShell venv. They uninstall existing PyTorch packages, clear pip's cache, and install the CUDA 11.8 wheels.
+
+```powershell
+# 1) Remove existing PyTorch packages (torch, torchvision, torchaudio)
+pip uninstall -y torch torchvision torchaudio
+
+# 2) Clear pip cache
+pip cache purge
+
+# 3) Install PyTorch + torchvision for CUDA 11.8
+pip install --index-url https://download.pytorch.org/whl/cu118 torch torchvision torchaudio
+```
+
+Notes:
+- `torchaudio` may be absent on some systems; the uninstall command will warn if it's not installed.
+- Change `cu118` to match your CUDA version (or use the CPU wheels for a CPU-only install).
+- If issues persist, follow the official PyTorch install selector: https://pytorch.org/
+
 ## Usage
 
 ### 1. Dataset Exploration
@@ -214,6 +256,41 @@ jupyter notebook notebooks/01_dataset_exploration.ipynb
 ```bash
 python run_experiment.py --mode centralized --epochs 100 --batch-size 32
 ```
+
+### CLI Flags Reference
+
+`run_experiment.py` flags:
+
+- `--mode`: Experiment mode to run. Choices: `centralized`, `federated`, `comparison`. (required)
+- `--config`: Path to YAML configuration file.
+- `--data-root`: Root directory for datasets.
+- `--output-dir`: Output directory for results.
+- `--experiment-name`: Name for this experiment.
+- `--batch-size`: Batch size override.
+- `--lr`: Learning rate override.
+- `--epochs`: Number of epochs (centralized).
+- `--rounds`: Number of FL rounds.
+- `--clients`: Number of clients for FL.
+- `--local-epochs`: Local epochs per FL round.
+- `--noniid-type`: Non-IID type for FL (`natural`, `dirichlet`, `label_skew`, `quantity_skew`).
+- `--dirichlet-alpha`: Alpha parameter for Dirichlet split.
+
+`run_fl.py` quick start flags:
+
+- `--quick`: Quick test run (few rounds / small settings).
+- `--full`: Full experiment preset.
+- `--data-root`: Data directory (default: `./data`).
+
+`run_download.py` flags (dataset management):
+
+- `--data-root`: Root directory for datasets.
+- `--verify`: Verify existing datasets.
+- `--instructions`: Print manual download instructions.
+- `--setup`: Run interactive setup wizard.
+- `--download`: Download a specific dataset (choices: `HAM10000`, `ISIC2018`, `ISIC2019`, `ISIC2020`).
+- `--download-all`: Download all datasets.
+- `--workers`: Number of parallel download workers (default: 8).
+- `--force`: Force redownload even if files exist.
 
 ### 3. Federated Learning Simulation
 ```bash

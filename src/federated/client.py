@@ -8,19 +8,34 @@ Each client represents a hospital/institution with its own dermoscopy dataset:
 - Client 4: ISIC 2020
 """
 
+from typing import Dict, List, Tuple, Sized, cast, Optional
+
 import torch
 import torch.nn as nn
+from torch.cuda.amp import GradScaler
 from torch.utils.data import DataLoader
 from flwr.client import NumPyClient
 from flwr.client import Client as FLClient
-from flwr.common import (
-    NDArrays,
-    Scalar,
-)
-from typing import Dict, List, Tuple, Sized, cast, Optional
+from flwr.common import NDArrays, Scalar
 from tqdm import tqdm
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
+
+# ---------------------------------------------------------------------------
+# AMP Compatibility: Use `torch.amp.autocast` if available (PyTorch >=2.0),
+# otherwise fall back to the deprecated `torch.cuda.amp.autocast`.
+# ---------------------------------------------------------------------------
+try:
+    _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
+except Exception:
+    _HAS_TORCH_AMP_AUTOCAST = False
+
+
+def _autocast():
+    """Return appropriate autocast context manager based on PyTorch version."""
+    if _HAS_TORCH_AMP_AUTOCAST:
+        return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
+    return torch.cuda.amp.autocast()
 
 
 class SkinCancerClient(NumPyClient):
@@ -39,6 +54,7 @@ class SkinCancerClient(NumPyClient):
         local_epochs: Number of local training epochs per round
         learning_rate: Learning rate for optimizer
         class_weights: Optional class weights for imbalanced data
+        use_amp: Enable Automatic Mixed Precision (AMP) for faster training
     """
     
     def __init__(
@@ -50,7 +66,8 @@ class SkinCancerClient(NumPyClient):
         device: torch.device,
         local_epochs: int = 1,
         learning_rate: float = 1e-3,
-        class_weights: Optional[torch.Tensor] = None
+        class_weights: Optional[torch.Tensor] = None,
+        use_amp: bool = True
     ):
         self.client_id = client_id
         self.model = model
@@ -62,6 +79,10 @@ class SkinCancerClient(NumPyClient):
         
         # Move model to device
         self.model.to(self.device)
+        
+        # AMP (Automatic Mixed Precision) for faster training
+        self.use_amp = use_amp and device.type == "cuda"
+        self.scaler = GradScaler() if self.use_amp else None
         
         # Loss function with optional class weights
         if class_weights is not None:
@@ -203,18 +224,27 @@ class SkinCancerClient(NumPyClient):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 
-                # Forward pass
+                # Forward pass with AMP support
                 self.optimizer.zero_grad()
-                outputs = self.model(images)
-                loss = self.criterion(outputs, labels)
                 
-                # Backward pass
-                loss.backward()
-                
-                # Gradient clipping for stability
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                
-                self.optimizer.step()
+                if self.use_amp and self.scaler is not None:
+                    with _autocast():
+                        outputs = self.model(images)
+                        loss = self.criterion(outputs, labels)
+                    # Backward pass with AMP
+                    self.scaler.scale(loss).backward()
+                    self.scaler.unscale_(self.optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    self.scaler.step(self.optimizer)
+                    self.scaler.update()
+                else:
+                    outputs = self.model(images)
+                    loss = self.criterion(outputs, labels)
+                    # Backward pass
+                    loss.backward()
+                    # Gradient clipping for stability
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    self.optimizer.step()
                 
                 # Statistics
                 epoch_loss += loss.item()

@@ -84,6 +84,19 @@ ISIC2020_DIAGNOSIS_TO_UNIFIED = {
     'unknown': -1,                        # Unknown - needs special handling
 }
 
+# PAD-UFES-20: 6 classes (Brazilian clinical images)
+# Classes: BCC, SCC, ACK (Actinic Keratosis), SEK (Seborrheic Keratosis),
+#          MEL (Melanoma), NEV (Nevus)
+# Note: Uses 3-letter abbreviations different from ISIC
+PADUFES20_CLASSES = {
+    'BCC': 1,    # Basal cell carcinoma
+    'SCC': 7,    # Squamous cell carcinoma (maps to class 7 in 8-class, 1 in 7-class)
+    'ACK': 0,    # Actinic keratosis
+    'SEK': 2,    # Seborrheic keratosis -> maps to BKL (benign keratosis)
+    'MEL': 4,    # Melanoma
+    'NEV': 5,    # Nevus
+}
+
 # ============================================================================
 # UNIFIED CLASS MAPPINGS
 # ============================================================================
@@ -99,6 +112,10 @@ UNIFIED_CLASSES_7 = {
     'AK': 0,
     # ISIC2019 SCC -> mapped to BCC (both are carcinomas)
     'SCC': 1,
+    # PAD-UFES-20 labels
+    'ACK': 0,  # Actinic keratosis -> same as AK/AKIEC
+    'SEK': 2,  # Seborrheic keratosis -> maps to BKL
+    'NEV': 5,  # Nevus -> same as NV
     # Unknown handling
     'UNK': -1,
     'unknown': -1,
@@ -121,6 +138,10 @@ UNIFIED_CLASSES_BINARY = {
     'solar lentigo': 0,
     'cafe-au-lait macule': 0,
     'atypical melanocytic proliferation': 1,  # Potentially malignant
+    # PAD-UFES-20 labels
+    'ACK': 0,  # Actinic keratosis (pre-cancerous)
+    'SEK': 0,  # Seborrheic keratosis (benign)
+    'NEV': 0,  # Nevus (benign)
     # Unknown
     'UNK': -1, 'unknown': -1,
 }
@@ -476,6 +497,70 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
         return image_paths, labels
 
 
+class PADUFES20Dataset(BaseDermoscopyDataset):
+    """
+    PAD-UFES-20 Dataset (Brazilian clinical skin lesion images).
+    
+    Collected from the Dermatological and Surgical Assistance Program (PAD)
+    at the Federal University of Espírito Santo (UFES), Brazil.
+    
+    6 diagnostic categories:
+    - BCC: Basal Cell Carcinoma
+    - SCC: Squamous Cell Carcinoma (includes Bowen's disease)
+    - ACK: Actinic Keratosis
+    - SEK: Seborrheic Keratosis
+    - MEL: Melanoma
+    - NEV: Nevus
+    
+    Dataset characteristics:
+    - 2,298 clinical images (smartphone-acquired, varying sizes)
+    - 1,373 patients, 1,641 skin lesions
+    - Images split across: imgs_part_1, imgs_part_2, imgs_part_3
+    - ~58% biopsy-proven samples
+    - Includes rich metadata (age, gender, Fitzpatrick type, etc.)
+    
+    Reference: Pacheco et al., 2020
+    """
+    
+    def _load_metadata(self) -> pd.DataFrame:
+        df = pd.read_csv(self.csv_path)
+        return df
+    
+    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+        image_paths = []
+        labels = []
+        
+        for _, row in self.metadata.iterrows():
+            img_id = row['img_id']  # e.g., PAT_1516_1765_530.png
+            label_str = row['diagnostic']  # BCC, SCC, ACK, SEK, MEL, NEV
+            
+            # Images are split across 3 folders
+            img_path = None
+            for part_dir in ['imgs_part_1', 'imgs_part_2', 'imgs_part_3']:
+                candidate = self.root_dir / part_dir / img_id
+                if candidate.exists():
+                    img_path = candidate
+                    break
+            
+            # Also check root directory directly
+            if img_path is None:
+                candidate = self.root_dir / img_id
+                if candidate.exists():
+                    img_path = candidate
+            
+            if img_path is not None and img_path.exists():
+                mapped_label = self._map_label(label_str)
+                
+                # Filter unknown labels if requested
+                if self.filter_unknown and mapped_label == -1:
+                    continue
+                    
+                image_paths.append(str(img_path))
+                labels.append(mapped_label)
+        
+        return image_paths, labels
+
+
 def get_client_dataloader(
     client_id: int,
     data_root: Union[str, Path],
@@ -542,11 +627,16 @@ def get_client_dataloader(
             # use the ISIC2020 folder as base; select specific image subdir later
             'root': data_root / 'ISIC2020',
             'csv': data_root / 'ISIC2020' / 'train.csv'
+        },
+        5: {
+            'class': PADUFES20Dataset,
+            'root': data_root / 'PAD-UFES-20',
+            'csv': data_root / 'PAD-UFES-20' / 'metadata.csv'
         }
     }
     
     if client_id not in dataset_configs:
-        raise ValueError(f"Invalid client_id: {client_id}. Must be 1-4.")
+        raise ValueError(f"Invalid client_id: {client_id}. Must be 1-5.")
     
     config = dataset_configs[client_id]
 
@@ -718,6 +808,11 @@ def get_combined_dataset(
             'class': ISIC2020Dataset,
             'root': data_root / 'ISIC2020' / 'ISIC_2020_Training_JPEG',
             'csv': data_root / 'ISIC2020' / 'ISIC_2020_Training_GroundTruth.csv'
+        },
+        'PAD-UFES-20': {
+            'class': PADUFES20Dataset,
+            'root': data_root / 'PAD-UFES-20',
+            'csv': data_root / 'PAD-UFES-20' / 'metadata.csv'
         }
     }
     
@@ -781,6 +876,7 @@ def print_dataset_statistics(
                      'ISIC2019/ISIC_2019_Training_GroundTruth.csv'),
         'ISIC2020': (ISIC2020Dataset, 'ISIC2020/ISIC_2020_Training_JPEG',
                      'ISIC2020/ISIC_2020_Training_GroundTruth.csv'),
+        'PAD-UFES-20': (PADUFES20Dataset, 'PAD-UFES-20', 'PAD-UFES-20/metadata.csv'),
     }
     
     class_names = (CLASS_NAMES_BINARY if classification_mode == 'binary' 

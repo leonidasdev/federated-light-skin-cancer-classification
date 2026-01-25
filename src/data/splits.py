@@ -39,6 +39,88 @@ def train_val_split(
     return train_indices, val_indices
 
 
+def train_val_test_split(
+    total_size: int,
+    val_split: float = 0.15,
+    test_split: float = 0.15,
+    seed: int = 42
+) -> Tuple[List[int], List[int], List[int]]:
+    """
+    Split indices into training, validation, and test sets.
+    
+    Args:
+        total_size: Total number of samples
+        val_split: Fraction for validation (default 15%)
+        test_split: Fraction for test (default 15%)
+        seed: Random seed for reproducibility
+        
+    Returns:
+        Tuple of (train_indices, val_indices, test_indices)
+    """
+    np.random.seed(seed)
+    indices = np.random.permutation(total_size)
+    
+    test_size = int(total_size * test_split)
+    val_size = int(total_size * val_split)
+    
+    test_indices = indices[:test_size].tolist()
+    val_indices = indices[test_size:test_size + val_size].tolist()
+    train_indices = indices[test_size + val_size:].tolist()
+    
+    return train_indices, val_indices, test_indices
+
+
+def stratified_train_val_test_split(
+    labels: List[int],
+    val_split: float = 0.15,
+    test_split: float = 0.15,
+    seed: int = 42
+) -> Tuple[List[int], List[int], List[int]]:
+    """
+    Stratified split maintaining class proportions in train/val/test.
+    
+    Args:
+        labels: List of labels for stratification
+        val_split: Fraction for validation
+        test_split: Fraction for test
+        seed: Random seed
+        
+    Returns:
+        Tuple of (train_indices, val_indices, test_indices)
+    """
+    np.random.seed(seed)
+    
+    # Group indices by class
+    class_indices = defaultdict(list)
+    for idx, label in enumerate(labels):
+        if label >= 0:  # Skip invalid labels
+            class_indices[label].append(idx)
+    
+    train_indices = []
+    val_indices = []
+    test_indices = []
+    
+    # Split each class proportionally
+    for class_label, indices in class_indices.items():
+        indices = np.array(indices)
+        np.random.shuffle(indices)
+        
+        n = len(indices)
+        test_n = int(n * test_split)
+        val_n = int(n * val_split)
+        
+        test_indices.extend(indices[:test_n].tolist())
+        val_indices.extend(indices[test_n:test_n + val_n].tolist())
+        train_indices.extend(indices[test_n + val_n:].tolist())
+    
+    # Shuffle the final lists
+    np.random.shuffle(train_indices)
+    np.random.shuffle(val_indices)
+    np.random.shuffle(test_indices)
+    
+    return train_indices, val_indices, test_indices
+
+
 def create_iid_split(
     labels: List[int],
     num_clients: int = 4,

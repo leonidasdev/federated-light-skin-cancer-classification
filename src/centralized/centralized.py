@@ -8,13 +8,15 @@ This serves as the upper-bound baseline for model performance.
 import time
 import json
 import logging
+from collections import Counter
 from pathlib import Path
-from typing import Dict, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Tuple, Any, Union
+from dataclasses import dataclass, asdict, field
 
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, ConcatDataset, random_split
+from torch.cuda.amp import GradScaler
+from torch.utils.data import DataLoader, ConcatDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from tqdm import tqdm
 
@@ -24,9 +26,27 @@ from ..data.datasets import (
     ISIC2018Dataset,
     ISIC2019Dataset,
     ISIC2020Dataset,
+    PADUFES20Dataset,
+    DatasetSubset,
 )
-from ..data.datasets import DatasetSubset
 from ..data.preprocessing import get_train_transforms, get_val_transforms
+
+# ---------------------------------------------------------------------------
+# AMP Compatibility: Use `torch.amp.autocast` if available (PyTorch >=2.0),
+# otherwise fall back to the deprecated `torch.cuda.amp.autocast`.
+# ---------------------------------------------------------------------------
+try:
+    _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
+except Exception:
+    _HAS_TORCH_AMP_AUTOCAST = False
+
+
+def _autocast():
+    """Return appropriate autocast context manager based on PyTorch version."""
+    if _HAS_TORCH_AMP_AUTOCAST:
+        return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
+    return torch.cuda.amp.autocast()
+
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +84,13 @@ class CentralizedConfig:
     filter_unknown: bool = True
     use_class_weights: bool = True  # Use class weights in loss for imbalance
     
+    # Dataset selection: list of datasets to use, or None/empty for all
+    # Valid options: "HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"
+    datasets: Optional[List[str]] = None
+    
+    # Resume training from checkpoint
+    resume_from: Optional[str] = None
+    
     # Experiment configuration
     experiment_name: str = "centralized_baseline"
     output_dir: str = "./outputs"
@@ -73,6 +100,9 @@ class CentralizedConfig:
     # Device configuration
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     num_workers: int = 4
+    
+    # Mixed precision (AMP) for faster training on compatible GPUs
+    use_amp: bool = True
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -134,8 +164,13 @@ class CentralizedTrainer:
         self.val_loader: Optional[DataLoader] = None
         self.test_loader: Optional[DataLoader] = None
         
+        # AMP (Automatic Mixed Precision) for faster training
+        self.use_amp = config.use_amp and self.device.type == "cuda"
+        self.scaler = GradScaler() if self.use_amp else None
+        
         logger.info(f"Initialized CentralizedTrainer: {config.experiment_name}")
         logger.info(f"Device: {self.device}")
+        logger.info(f"AMP enabled: {self.use_amp}")
         logger.info(f"Model parameters: {sum(p.numel() for p in self.model.parameters()):,}")
     
     def setup_data(self) -> None:
@@ -157,12 +192,32 @@ class CentralizedTrainer:
         datasets_train = []
         datasets_val = []
 
-        dataset_classes = [
+        all_dataset_classes = [
             (HAM10000Dataset, "HAM10000"),
             (ISIC2018Dataset, "ISIC2018"),
             (ISIC2019Dataset, "ISIC2019"),
             (ISIC2020Dataset, "ISIC2020"),
+            (PADUFES20Dataset, "PAD-UFES-20"),
         ]
+        
+        # Filter datasets if specific ones are requested
+        if self.config.datasets:
+            # Normalize names for comparison (handle PAD-UFES-20 vs PADUFES20)
+            def normalize_name(name: str) -> str:
+                return name.upper().replace("-", "").replace("_", "")
+            
+            requested = [normalize_name(d) for d in self.config.datasets]
+            dataset_classes = [
+                (cls, name) for cls, name in all_dataset_classes 
+                if normalize_name(name) in requested
+            ]
+            if not dataset_classes:
+                raise ValueError(f"No valid datasets found. Requested: {self.config.datasets}. "
+                               f"Valid options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20")
+            logger.info(f"Using selected datasets: {[name for _, name in dataset_classes]}")
+        else:
+            dataset_classes = all_dataset_classes
+            logger.info("Using all available datasets")
 
         for dataset_cls, name in dataset_classes:
             root_path = Path(self.config.data_root) / name
@@ -197,6 +252,9 @@ class CentralizedTrainer:
                 # Fallback to the dataset root itself if no subdir matched
                 if dataset_root is None:
                     dataset_root = root_path
+            elif name == "PAD-UFES-20":
+                csv_path = root_path / "metadata.csv"
+                dataset_root = root_path
             else:
                 logger.warning(f"Unknown dataset name: {name}")
                 continue
@@ -276,10 +334,8 @@ class CentralizedTrainer:
     
     def _compute_class_weights(self, dataset: ConcatDataset) -> None:
         """Compute class weights for handling class imbalance."""
-        from collections import Counter
-        
         # Count labels across all sub-datasets
-        all_labels = []
+        all_labels: List[int] = []
         for sub_ds in dataset.datasets:
             if isinstance(sub_ds, DatasetSubset):
                 for idx in sub_ds.indices:
@@ -336,14 +392,25 @@ class CentralizedTrainer:
             images, labels = images.to(self.device), labels.to(self.device)
 
             optimizer.zero_grad()
-            outputs = self.model(images)
-            loss = criterion(outputs, labels)
-            loss.backward()
-
-            # Gradient clipping
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-
-            optimizer.step()
+            
+            # Use AMP for faster training on compatible GPUs
+            if self.use_amp and self.scaler is not None:
+                with _autocast():
+                    outputs = self.model(images)
+                    loss = criterion(outputs, labels)
+                self.scaler.scale(loss).backward()
+                # Gradient clipping with AMP
+                self.scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                self.scaler.step(optimizer)
+                self.scaler.update()
+            else:
+                outputs = self.model(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                # Gradient clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                optimizer.step()
 
             total_loss += loss.item()
             _, predicted = outputs.max(1)
@@ -427,20 +494,86 @@ class CentralizedTrainer:
 
         return avg_loss, accuracy, per_class
     
-    def save_checkpoint(self, epoch: int, optimizer, scheduler, metrics: Dict) -> None:
-        """Save training checkpoint."""
+    def save_checkpoint(self, epoch: int, optimizer, scheduler, metrics: Dict, is_best: bool = False) -> str:
+        """Save training checkpoint with all state needed for resumption.
+        
+        Args:
+            epoch: Current epoch number
+            optimizer: Optimizer state
+            scheduler: Scheduler state (can be None)
+            metrics: Current metrics dict
+            is_best: If True, save as best_checkpoint.pt
+            
+        Returns:
+            Path to saved checkpoint
+        """
         checkpoint = {
             "epoch": epoch,
             "model_state_dict": self.model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "scheduler_state_dict": scheduler.state_dict() if scheduler else None,
+            "scaler_state_dict": self.scaler.state_dict() if self.scaler else None,
             "metrics": metrics,
             "config": self.config.to_dict(),
+            "history": self.history,
+            "best_val_accuracy": self.best_val_accuracy,
+            "best_epoch": self.best_epoch,
+            "epochs_without_improvement": self.epochs_without_improvement,
         }
         
-        path = self.checkpoint_dir / f"checkpoint_epoch_{epoch}.pt"
+        if is_best:
+            path = self.checkpoint_dir / "best_checkpoint.pt"
+        else:
+            path = self.checkpoint_dir / f"checkpoint_epoch_{epoch}.pt"
+        
         torch.save(checkpoint, path)
+        
+        # Also save model-only file for easy loading
+        if is_best:
+            model_only_path = self.checkpoint_dir / "best_model.pt"
+            torch.save(self.model.state_dict(), model_only_path)
+        
         logger.debug(f"Saved checkpoint: {path}")
+        return str(path)
+    
+    def load_checkpoint(self, checkpoint_path: str, optimizer=None, scheduler=None) -> int:
+        """Load checkpoint and restore training state.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file
+            optimizer: Optimizer to restore state to (optional)
+            scheduler: Scheduler to restore state to (optional)
+            
+        Returns:
+            Epoch number to resume from
+        """
+        logger.info(f"Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=self.device)
+        
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        
+        if optimizer and "optimizer_state_dict" in checkpoint:
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        
+        if scheduler and "scheduler_state_dict" in checkpoint and checkpoint["scheduler_state_dict"]:
+            scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        
+        if self.scaler and "scaler_state_dict" in checkpoint and checkpoint["scaler_state_dict"]:
+            self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
+        
+        # Restore training state
+        if "history" in checkpoint:
+            self.history = checkpoint["history"]
+        if "best_val_accuracy" in checkpoint:
+            self.best_val_accuracy = checkpoint["best_val_accuracy"]
+        if "best_epoch" in checkpoint:
+            self.best_epoch = checkpoint["best_epoch"]
+        if "epochs_without_improvement" in checkpoint:
+            self.epochs_without_improvement = checkpoint["epochs_without_improvement"]
+        
+        epoch = checkpoint.get("epoch", 0)
+        logger.info(f"Resumed from epoch {epoch}, best accuracy: {self.best_val_accuracy:.4f}")
+        return epoch
     
     
     def run(self) -> Dict[str, Any]:
@@ -480,6 +613,16 @@ class CentralizedTrainer:
 
         criterion = nn.CrossEntropyLoss(weight=self.class_weights)
 
+        # Resume from checkpoint if specified
+        start_epoch = 1
+        if self.config.resume_from:
+            resume_path = Path(self.config.resume_from)
+            if resume_path.exists():
+                start_epoch = self.load_checkpoint(str(resume_path), optimizer, scheduler) + 1
+                logger.info(f"Resuming training from epoch {start_epoch}")
+            else:
+                logger.warning(f"Checkpoint not found at {resume_path}, starting from scratch")
+
         # Save config
         config_path = self.output_dir / "config.json"
         with open(config_path, "w") as f:
@@ -490,7 +633,7 @@ class CentralizedTrainer:
         
         # Epoch progress bar
         epoch_pbar = tqdm(
-            range(1, self.config.num_epochs + 1),
+            range(start_epoch, self.config.num_epochs + 1),
             desc="Epochs",
             ncols=100,
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
@@ -556,9 +699,8 @@ class CentralizedTrainer:
                 self.best_val_accuracy = float(val_acc)
                 self.best_epoch = epoch
                 self.epochs_without_improvement = 0
-                # Save best model
-                best_path = self.checkpoint_dir / "best_model.pt"
-                torch.save(self.model.state_dict(), best_path)
+                # Save best checkpoint (full state for resumption)
+                self.save_checkpoint(epoch, optimizer, scheduler, metrics, is_best=True)
                 logger.info(f"Saved best model (epoch {epoch}, acc={self.best_val_accuracy:.4f})")
             else:
                 self.epochs_without_improvement += 1

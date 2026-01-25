@@ -70,6 +70,10 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
         config.data_root = args.data_root
     if args.output_dir:
         config.output_dir = args.output_dir
+    if args.datasets:
+        config.datasets = args.datasets
+    if args.resume:
+        config.resume_from = args.resume
     if args.experiment_name:
         config.experiment_name = args.experiment_name
     else:
@@ -122,6 +126,11 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
         config.noniid_type = args.noniid_type
     if args.dirichlet_alpha:
         config.dirichlet_alpha = args.dirichlet_alpha
+    if args.datasets:
+        config.datasets = args.datasets
+        # Auto-adjust num_clients to match selected datasets for natural non-IID
+        if config.noniid_type == "natural":
+            config.num_clients = len(args.datasets)
     if args.experiment_name:
         config.experiment_name = args.experiment_name
     else:
@@ -241,8 +250,20 @@ Examples:
     # Run centralized baseline
     python run_experiment.py --mode centralized --epochs 100
 
+    # Run centralized with specific dataset only
+    python run_experiment.py --mode centralized --epochs 50 --datasets HAM10000
+    
+    # Run centralized with multiple specific datasets
+    python run_experiment.py --mode centralized --epochs 50 --datasets HAM10000 ISIC2019
+    
+    # Resume training from checkpoint
+    python run_experiment.py --mode centralized --epochs 100 --resume outputs/exp/checkpoints/best_checkpoint.pt
+
     # Run federated learning with natural non-IID
     python run_experiment.py --mode federated --rounds 50 --noniid-type natural
+    
+    # Run federated learning with specific datasets only
+    python run_experiment.py --mode federated --rounds 30 --datasets HAM10000 ISIC2019
 
     # Run comparison experiment
     python run_experiment.py --mode comparison --config configs/experiment_config.yaml
@@ -271,9 +292,21 @@ Examples:
     parser.add_argument("--experiment-name", type=str, help="Name for this experiment")
     parser.add_argument("--batch-size", type=int, help="Batch size")
     parser.add_argument("--lr", type=float, help="Learning rate")
+    parser.add_argument(
+        "--datasets", 
+        type=str, 
+        nargs="+",
+        choices=["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"],
+        help="Specific dataset(s) to use (default: all). For FL natural non-IID, each dataset = one client"
+    )
     
     # Centralized arguments
     parser.add_argument("--epochs", type=int, help="Number of epochs (centralized)")
+    parser.add_argument(
+        "--resume",
+        type=str,
+        help="Path to checkpoint to resume training from"
+    )
     
     # Federated arguments
     parser.add_argument("--rounds", type=int, help="Number of FL rounds")
