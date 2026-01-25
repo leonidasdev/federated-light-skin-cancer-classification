@@ -1,0 +1,72 @@
+# =============================================================================
+# DSCATNet Federated Learning Configuration - PAD-UFES-20
+# =============================================================================
+#
+# Usage:
+#   python run_experiment.py --mode federated --config configs/dscatnet_federated_padufes20.yaml
+#
+# Description:
+#   Federated learning experiment on PAD-UFES-20 dataset (Brazilian clinical
+#   skin lesion images). Uses natural non-IID with IID data partitioning.
+#
+# =============================================================================
+
+federated:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
+  experiment:
+    name: dscatnet_federated_padufes20
+    description: "FL experiment on PAD-UFES-20 with FedAvg"
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
+  data_root: ./data
+  output_dir: ./outputs
+  datasets:
+    - PAD-UFES-20
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
+  model:
+    name: DSCATNet
+    variant: small
+    image_size: 224
+    num_classes: 7
+    pretrained: true
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
+  training:
+    batch_size: 4       # Reduced for GPU memory efficiency (originally was 32)
+    lr: 0.000125        # Learning rate for Adam optimizer (adjusted for batch size)
+    weight_decay: 0.01
+    local_epochs: 1
+    num_rounds: 50
+
+  # ---------------------------------------------------------------------------
+  # Federation Configuration
+  # ---------------------------------------------------------------------------
+  federation:
+    num_clients: 4
+    aggregation: FedAvg
+    participation: 1.0
+    noniid_type: dirichlet
+    dirichlet_alpha: 0.5
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
+  augmentation:
+    level: medium
+    use_dermoscopy_norm: false
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
+  evaluation:
+    checkpoint_interval: 5
+    early_stopping_patience: 10

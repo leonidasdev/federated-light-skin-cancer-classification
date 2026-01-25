@@ -1,0 +1,89 @@
+# =============================================================================
+# DSCATNet Federated Learning Benchmark Configuration
+# =============================================================================
+# 
+# Usage:
+#   python run_experiment.py --mode federated --config configs/dscatnet_federated_benchmark.yaml
+#
+# Description:
+#   Federated learning experiment using HAM10000 dataset with Dirichlet-based
+#   non-IID data distribution. Matches original DSCATNet paper settings
+#   (no augmentation, same dataset).
+#
+# Training Time Estimates (RTX 3060, 10 rounds):
+#   - HAM10000 (10k images): ~15-20 min
+#   - ISIC2019 (25k images): ~45-60 min
+#
+# =============================================================================
+
+federated:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
+  experiment:
+    name: dscatnet_federated_ham10000
+    description: "FL benchmark on HAM10000 - matches original DSCATNet paper"
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
+  data_root: ./data
+  output_dir: ./outputs
+  
+  # Datasets to use (for Dirichlet non-IID, single dataset is split across clients)
+  # Options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20
+  # NOTE: HAM10000 matches the original DSCATNet paper evaluation dataset
+  datasets:
+    - HAM10000
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
+  model:
+    name: DSCATNet
+    variant: small      # tiny (~5M), small (~15M), base (~20M)
+    image_size: 224
+    num_classes: 7
+    pretrained: true
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
+  training:
+    batch_size: 8       # Reduced for GPU memory efficiency (originally was 32)
+    lr: 0.0001          # Learning rate for Adam optimizer
+    weight_decay: 0.01
+    local_epochs: 1     # Local epochs per FL round
+    num_rounds: 25      # Total federated learning rounds
+
+  # ---------------------------------------------------------------------------
+  # Federation Configuration
+  # ---------------------------------------------------------------------------
+  federation:
+    num_clients: 4
+    aggregation: FedAvg
+    participation: 1.0  # Fraction of clients participating each round
+    
+    # Non-IID Distribution Settings
+    # Options: natural, dirichlet, label_skew, quantity_skew
+    #   - natural: Each dataset becomes one client (requires multiple datasets)
+    #   - dirichlet: Split single dataset using Dirichlet distribution
+    noniid_type: dirichlet
+    dirichlet_alpha: 0.5  # Lower = more heterogeneous; 0.1=extreme, 1.0=moderate
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
+  augmentation:
+    # Options: none, light, medium, heavy
+    # 'none' matches original DSCATNet paper (no augmentation during training)
+    level: none
+    use_dermoscopy_norm: false  # Use ImageNet normalization by default
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
+  evaluation:
+    # Save checkpoint every round (can stop anytime and resume)
+    checkpoint_interval: 1
+    early_stopping_patience: 10

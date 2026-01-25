@@ -1,0 +1,74 @@
+# =============================================================================
+# DSCATNet Centralized Training Configuration
+# =============================================================================
+#
+# Usage:
+#   python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
+#
+# Description:
+#   Centralized (non-federated) training baseline for comparison with FL.
+#   This represents the upper-bound performance achievable with pooled data.
+#
+# =============================================================================
+
+centralized:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
+  experiment:
+    name: dscatnet_centralized_baseline
+    description: "Centralized baseline training on PAD-UFES-20"
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
+  data_root: ./data
+  output_dir: ./outputs
+  
+  # Datasets to use (will be combined for centralized training)
+  # Options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20
+  datasets:
+    - PAD-UFES-20
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
+  model:
+    name: DSCATNet
+    variant: small      # tiny (~5M), small (~15M), base (~20M)
+    image_size: 224
+    num_classes: 7
+    pretrained: true
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
+  training:
+    batch_size: 4       # Reduced for GPU memory efficiency (originally was 32)
+    lr: 0.000125        # Learning rate for Adam optimizer (adjusted for batch size)
+    weight_decay: 0.01
+    epochs: 100
+    warmup_epochs: 5
+    scheduler: cosine   # Options: cosine, plateau
+    min_lr: 0.000001
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
+  augmentation:
+    level: medium       # Options: light, medium, heavy
+    use_dermoscopy_norm: false
+
+  # ---------------------------------------------------------------------------
+  # Data Splits
+  # ---------------------------------------------------------------------------
+  splits:
+    val_split: 0.15     # 15% for validation
+    test_split: 0.15    # 15% for testing
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
+  evaluation:
+    early_stopping_patience: 15
+    use_class_weights: true  # Handle class imbalance

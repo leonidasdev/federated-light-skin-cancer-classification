@@ -1,52 +1,79 @@
+# =============================================================================
 # DSCATNet Model Configuration
-# Dual-Scale Cross-Attention Vision Transformer
+# =============================================================================
+#
+# Description:
+#   Architecture configuration for the Dual-Scale Cross-Attention Vision
+#   Transformer (DSCATNet) designed for dermoscopic image classification.
+#
+# Reference:
+#   Based on DSCATNet architecture from PLOS ONE 2024, adapted for FL.
+#
+# =============================================================================
 
 model:
-  name: "DSCATNet"
+  name: DSCATNet
   
-  # Input configuration
+  # ---------------------------------------------------------------------------
+  # Input Configuration
+  # ---------------------------------------------------------------------------
   img_size: 224
   in_channels: 3
-  num_classes: 7
+  num_classes: 7            # 7 for HAM10000/ISIC2018, 8 for ISIC2019
   
-  # Architecture parameters
-  embed_dim: 384
-  depth: 6
-  num_heads: 6
-  mlp_ratio: 4.0
+  # ---------------------------------------------------------------------------
+  # Architecture Parameters
+  # ---------------------------------------------------------------------------
+  embed_dim: 384            # Embedding dimension
+  depth: 6                  # Number of transformer blocks
+  num_heads: 6              # Attention heads
+  mlp_ratio: 4.0            # MLP hidden dimension ratio
   
-  # Dual-scale patch sizes
-  fine_patch_size: 8      # More patches, fine details
-  coarse_patch_size: 16   # Fewer patches, global context
+  # ---------------------------------------------------------------------------
+  # Dual-Scale Patch Sizes
+  # ---------------------------------------------------------------------------
+  fine_patch_size: 8        # Fine scale: 28×28 = 784 patches (local details)
+  coarse_patch_size: 16     # Coarse scale: 14×14 = 196 patches (global context)
   
+  # ---------------------------------------------------------------------------
   # Regularization
-  drop_rate: 0.1
-  attn_drop_rate: 0.0
+  # ---------------------------------------------------------------------------
+  drop_rate: 0.1            # Dropout rate
+  attn_drop_rate: 0.0       # Attention dropout rate
   
-  # Feature fusion method
-  fusion_method: "concat"  # Options: concat, add, attention
+  # ---------------------------------------------------------------------------
+  # Feature Fusion
+  # ---------------------------------------------------------------------------
+  fusion_method: concat     # Options: concat, add, attention
 
-# Model variants for ablation studies
+# =============================================================================
+# Model Variants for Ablation Studies
+# =============================================================================
 variants:
   tiny:
     embed_dim: 192
     depth: 4
     num_heads: 3
     mlp_ratio: 3.0
+    approx_params: "~5M"
     
   small:
     embed_dim: 384
     depth: 6
     num_heads: 6
     mlp_ratio: 4.0
+    approx_params: "~15M"
     
   base:
     embed_dim: 384
     depth: 8
     num_heads: 6
     mlp_ratio: 4.0
+    approx_params: "~20M"
 
-# Approximate parameter counts
-# Tiny:  ~5M parameters
-# Small: ~15M parameters  
-# Base:  ~20M parameters
+# =============================================================================
+# Notes
+# =============================================================================
+# - Use 'small' variant for balanced performance/efficiency
+# - Use 'tiny' for resource-constrained FL clients
+# - Use 'base' for maximum accuracy when resources allow

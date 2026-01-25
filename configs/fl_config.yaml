@@ -1,86 +1,121 @@
-# Federated Learning Configuration
-# Using Flower Framework with FedAvg
+# =============================================================================
+# Federated Learning Framework Configuration
+# =============================================================================
+#
+# Description:
+#   Default FL configuration for multi-dataset federated learning experiments.
+#   Uses natural non-IID where each client owns a different dermoscopy dataset.
+#
+# Note:
+#   This config is for reference/documentation. Use the specific experiment
+#   configs (dscatnet_federated_*.yaml) for actual experiments.
+#
+# =============================================================================
 
 federated:
-  # Framework settings
-  framework: "flower"
-  strategy: "FedAvg"
+  # ---------------------------------------------------------------------------
+  # Framework Settings
+  # ---------------------------------------------------------------------------
+  framework: flower
+  strategy: FedAvg
   
-  # Client configuration
+  # ---------------------------------------------------------------------------
+  # Client Configuration (Natural Non-IID: Each dataset = 1 client)
+  # ---------------------------------------------------------------------------
   num_clients: 4
   clients:
     - id: 1
-      dataset: "HAM10000"
-      description: "Human Against Machine - 10k images"
+      dataset: HAM10000
+      description: "Human Against Machine - 10,015 dermoscopy images, 7 classes"
     - id: 2
-      dataset: "ISIC2018"
-      description: "ISIC 2018 Task 3 - ~10k images"
+      dataset: ISIC2018
+      description: "ISIC 2018 Task 3 - ~10k images, 7 classes"
     - id: 3
-      dataset: "ISIC2019"
-      description: "ISIC 2019 - ~25k images"
+      dataset: ISIC2019
+      description: "ISIC 2019 Challenge - ~25k images, 8 classes + UNK"
     - id: 4
-      dataset: "ISIC2020"
-      description: "ISIC 2020 - ~33k images (binary)"
+      dataset: ISIC2020
+      description: "ISIC 2020 Challenge - ~33k images, binary classification"
   
-  # Training rounds
+  # ---------------------------------------------------------------------------
+  # Training Rounds
+  # ---------------------------------------------------------------------------
   num_rounds: 100
-  rounds_early_stop: 50   # Minimum rounds before early stopping
   early_stopping_patience: 20
   
-  # Client participation
-  fraction_fit: 1.0       # Fraction of clients for training (all 4)
-  fraction_evaluate: 1.0  # Fraction of clients for evaluation
+  # ---------------------------------------------------------------------------
+  # Client Participation
+  # ---------------------------------------------------------------------------
+  fraction_fit: 1.0         # Train on all clients each round
+  fraction_evaluate: 1.0    # Evaluate on all clients each round
   min_fit_clients: 4
   min_evaluate_clients: 4
   min_available_clients: 4
   
-  # Local training
+  # ---------------------------------------------------------------------------
+  # Local Training
+  # ---------------------------------------------------------------------------
   local_epochs: 3
-  local_batch_size: 32
+  local_batch_size: 8
   
-  # Optimizer
-  optimizer: "Adam"
+  # ---------------------------------------------------------------------------
+  # Optimizer Configuration
+  # ---------------------------------------------------------------------------
+  optimizer: Adam
   learning_rate: 0.001
   weight_decay: 0.0001
   
-  # Learning rate schedule
-  lr_scheduler: "cosine"
+  # ---------------------------------------------------------------------------
+  # Learning Rate Schedule
+  # ---------------------------------------------------------------------------
+  lr_scheduler: cosine
   warmup_epochs: 5
   min_lr: 0.000001
   
-  # Communication
+  # ---------------------------------------------------------------------------
+  # Communication & Checkpointing
+  # ---------------------------------------------------------------------------
   save_every_rounds: 10
   evaluate_every_rounds: 1
   
-  # Server settings
+  # ---------------------------------------------------------------------------
+  # Server Settings (for distributed deployment)
+  # ---------------------------------------------------------------------------
   server_address: "[::]:8080"
 
-# Data distribution scenarios
+# =============================================================================
+# Data Distribution Scenarios
+# =============================================================================
 scenarios:
   natural_noniid:
     description: "Each client uses its own dataset (natural non-IID)"
-    alpha: null  # Not applicable
+    noniid_type: natural
     
   iid_pooled:
     description: "All datasets pooled and uniformly distributed"
-    alpha: 1000  # Very high = IID
+    noniid_type: dirichlet
+    dirichlet_alpha: 1000  # Very high = nearly IID
     
   moderate_noniid:
     description: "Dirichlet distribution with alpha=0.5"
-    alpha: 0.5
+    noniid_type: dirichlet
+    dirichlet_alpha: 0.5
     
   extreme_noniid:
     description: "Dirichlet distribution with alpha=0.1"
-    alpha: 0.1
+    noniid_type: dirichlet
+    dirichlet_alpha: 0.1
 
-# Aggregation strategies to compare
+# =============================================================================
+# Aggregation Strategies (for comparison experiments)
+# =============================================================================
 strategies:
-  - name: "FedAvg"
-    description: "Federated Averaging"
+  - name: FedAvg
+    description: "Federated Averaging - weighted by sample count"
     
-  - name: "FedProx"
-    description: "FedAvg with proximal term"
+  - name: FedProx
+    description: "FedAvg with proximal term for heterogeneous data"
     mu: 0.01
     
-  - name: "FedNova"
-    description: "Normalized averaging"
+  - name: FedNova
+    description: "Normalized averaging accounting for local steps"
