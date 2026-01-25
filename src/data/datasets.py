@@ -2,74 +2,152 @@
 Dataset Classes for Dermoscopy Image Classification.
 
 Implements dataset loaders for:
-- Client 1: HAM10000
-- Client 2: ISIC 2018
-- Client 3: ISIC 2019
-- Client 4: ISIC 2020
+- Client 1: HAM10000 (7 classes)
+- Client 2: ISIC 2018 (7 classes)
+- Client 3: ISIC 2019 (8 classes + UNK)
+- Client 4: ISIC 2020 (binary: benign/malignant, with diagnosis info)
 
 Each dataset is assigned to a different FL client to create
 a realistic non-IID federated learning scenario.
+
+Classification Modes:
+1. MULTICLASS (7 classes) - Unified across HAM10000/ISIC2018/2019
+2. BINARY - Benign vs Malignant (used for ISIC2020 compatibility)
 """
 
 import pandas as pd
 import numpy as np
 from PIL import Image
 from pathlib import Path
-from typing import Optional, Callable, Dict, List, Tuple, Union
+from typing import Optional, Callable, Dict, List, Tuple, Union, Literal
 from torch.utils.data import Dataset, DataLoader
 import torch
 
 
-# Class mappings for different datasets
+# ============================================================================
+# CLASS MAPPINGS FOR DIFFERENT DATASETS
+# ============================================================================
+
+# HAM10000: 7 diagnostic categories
 HAM10000_CLASSES = {
-    'akiec': 0,  # Actinic keratoses
+    'akiec': 0,  # Actinic keratoses and intraepithelial carcinoma
     'bcc': 1,    # Basal cell carcinoma
-    'bkl': 2,    # Benign keratosis
+    'bkl': 2,    # Benign keratosis-like lesions
     'df': 3,     # Dermatofibroma
     'mel': 4,    # Melanoma
     'nv': 5,     # Melanocytic nevi
     'vasc': 6    # Vascular lesions
 }
 
-ISIC2018_CLASSES = HAM10000_CLASSES  # Same 7 classes
-
-ISIC2019_CLASSES = {
-    'AK': 0,     # Actinic keratosis
-    'BCC': 1,    # Basal cell carcinoma
-    'BKL': 2,    # Benign keratosis
-    'DF': 3,     # Dermatofibroma
+# ISIC2018: Same 7 classes as HAM10000 (uses AKIEC not AK)
+ISIC2018_CLASSES = {
     'MEL': 4,    # Melanoma
     'NV': 5,     # Melanocytic nevus
-    'SCC': 6,    # Squamous cell carcinoma (NEW)
-    'VASC': 7,   # Vascular lesion
+    'BCC': 1,    # Basal cell carcinoma
+    'AKIEC': 0,  # Actinic keratosis (note: AKIEC not AK)
+    'BKL': 2,    # Benign keratosis
+    'DF': 3,     # Dermatofibroma
+    'VASC': 6    # Vascular lesion
 }
 
-ISIC2020_CLASSES = {
+# ISIC2019: 8 classes + UNK (adds SCC, uses AK not AKIEC)
+ISIC2019_CLASSES = {
+    'MEL': 4,    # Melanoma
+    'NV': 5,     # Melanocytic nevus
+    'BCC': 1,    # Basal cell carcinoma
+    'AK': 0,     # Actinic keratosis
+    'BKL': 2,    # Benign keratosis
+    'DF': 3,     # Dermatofibroma
+    'VASC': 6,   # Vascular lesion
+    'SCC': 7,    # Squamous cell carcinoma (NEW in 2019)
+    'UNK': -1,   # Unknown (to be filtered or handled specially)
+}
+
+# ISIC2020: Binary classification with rich diagnosis metadata
+# Primary: benign (0) vs malignant (1)
+# Diagnosis field has: nevus, melanoma, seborrheic keratosis, etc.
+ISIC2020_BINARY_CLASSES = {
     'benign': 0,
     'malignant': 1
 }
 
-# Unified class mapping (7 classes for compatibility)
-UNIFIED_CLASSES = {
-    'akiec': 0, 'AK': 0,
-    'bcc': 1, 'BCC': 1,
-    'bkl': 2, 'BKL': 2,
-    'df': 3, 'DF': 3,
-    'mel': 4, 'MEL': 4, 'malignant': 4,
-    'nv': 5, 'NV': 5, 'benign': 5,
-    'vasc': 6, 'VASC': 6,
-    'SCC': 1,  # Map SCC to BCC (both carcinomas)
+# Mapping ISIC2020 diagnosis to unified 7-class (when not using binary mode)
+ISIC2020_DIAGNOSIS_TO_UNIFIED = {
+    'nevus': 5,                           # NV - Melanocytic nevi
+    'melanoma': 4,                        # MEL - Melanoma
+    'seborrheic keratosis': 2,            # BKL - Benign keratosis
+    'lentigo NOS': 2,                     # BKL - Benign keratosis (lentigo)
+    'lichenoid keratosis': 2,             # BKL - Benign keratosis
+    'solar lentigo': 2,                   # BKL - Benign keratosis
+    'cafe-au-lait macule': 5,             # NV - Benign pigmented lesion
+    'atypical melanocytic proliferation': 4,  # MEL - Potential melanoma
+    'unknown': -1,                        # Unknown - needs special handling
 }
 
-CLASS_NAMES = [
-    'Actinic Keratosis',
-    'Basal Cell Carcinoma',
-    'Benign Keratosis',
-    'Dermatofibroma',
-    'Melanoma',
-    'Melanocytic Nevus',
-    'Vascular Lesion'
+# ============================================================================
+# UNIFIED CLASS MAPPINGS
+# ============================================================================
+
+# Unified 7-class mapping for multiclass classification
+# Maps all dataset-specific labels to common indices
+UNIFIED_CLASSES_7 = {
+    # HAM10000 labels (lowercase)
+    'akiec': 0, 'bcc': 1, 'bkl': 2, 'df': 3, 'mel': 4, 'nv': 5, 'vasc': 6,
+    # ISIC2018 labels (uppercase, uses AKIEC)
+    'AKIEC': 0, 'BCC': 1, 'BKL': 2, 'DF': 3, 'MEL': 4, 'NV': 5, 'VASC': 6,
+    # ISIC2019 labels (uppercase, uses AK)
+    'AK': 0,
+    # ISIC2019 SCC -> mapped to BCC (both are carcinomas)
+    'SCC': 1,
+    # Unknown handling
+    'UNK': -1,
+    'unknown': -1,
+}
+
+# Unified binary mapping (benign=0, malignant=1)
+UNIFIED_CLASSES_BINARY = {
+    # Malignant classes
+    'mel': 1, 'MEL': 1, 'melanoma': 1, 'malignant': 1,
+    'bcc': 1, 'BCC': 1,           # Basal cell carcinoma
+    'akiec': 0, 'AKIEC': 0, 'AK': 0,  # Actinic keratosis (pre-cancerous, often benign)
+    'SCC': 1,                      # Squamous cell carcinoma
+    # Benign classes
+    'nv': 0, 'NV': 0, 'nevus': 0, 'benign': 0,
+    'bkl': 0, 'BKL': 0, 'seborrheic keratosis': 0,
+    'df': 0, 'DF': 0,
+    'vasc': 0, 'VASC': 0,
+    'lentigo NOS': 0,
+    'lichenoid keratosis': 0,
+    'solar lentigo': 0,
+    'cafe-au-lait macule': 0,
+    'atypical melanocytic proliferation': 1,  # Potentially malignant
+    # Unknown
+    'UNK': -1, 'unknown': -1,
+}
+
+# Class names for 7-class
+CLASS_NAMES_7 = [
+    'Actinic Keratosis',      # 0
+    'Basal Cell Carcinoma',   # 1
+    'Benign Keratosis',       # 2
+    'Dermatofibroma',         # 3
+    'Melanoma',               # 4
+    'Melanocytic Nevus',      # 5
+    'Vascular Lesion'         # 6
 ]
+
+# Class names for 8-class (includes SCC)
+CLASS_NAMES_8 = CLASS_NAMES_7 + ['Squamous Cell Carcinoma']  # 7
+
+# Class names for binary
+CLASS_NAMES_BINARY = ['Benign', 'Malignant']
+
+# Legacy aliases for backward compatibility
+UNIFIED_CLASSES = UNIFIED_CLASSES_7
+CLASS_NAMES = CLASS_NAMES_7
+
+# Type for classification mode
+ClassificationMode = Literal['multiclass', 'multiclass_8', 'binary']
 
 
 class BaseDermoscopyDataset(Dataset):
@@ -84,7 +162,9 @@ class BaseDermoscopyDataset(Dataset):
         csv_path: Path to metadata CSV file
         transform: Optional transform to apply to images
         target_transform: Optional transform to apply to labels
-        use_unified_classes: Map to unified 7-class scheme
+        classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
+        filter_unknown: Whether to filter out unknown/UNK labels
+        use_unified_classes: Legacy parameter (ignored, use classification_mode)
     """
     
     def __init__(
@@ -93,13 +173,27 @@ class BaseDermoscopyDataset(Dataset):
         csv_path: str,
         transform: Optional[Callable] = None,
         target_transform: Optional[Callable] = None,
-        use_unified_classes: bool = True
+        classification_mode: ClassificationMode = 'multiclass',
+        filter_unknown: bool = True,
+        use_unified_classes: bool = True  # Legacy, ignored
     ):
         self.root_dir = Path(root_dir)
         self.csv_path = Path(csv_path)
         self.transform = transform
         self.target_transform = target_transform
-        self.use_unified_classes = use_unified_classes
+        self.classification_mode = classification_mode
+        self.filter_unknown = filter_unknown
+        
+        # Determine number of classes based on mode
+        if classification_mode == 'binary':
+            self.num_classes = 2
+            self.class_names = CLASS_NAMES_BINARY
+        elif classification_mode == 'multiclass_8':
+            self.num_classes = 8
+            self.class_names = CLASS_NAMES_8
+        else:  # multiclass (default 7)
+            self.num_classes = 7
+            self.class_names = CLASS_NAMES_7
         
         # Load metadata
         self.metadata = self._load_metadata()
@@ -116,10 +210,14 @@ class BaseDermoscopyDataset(Dataset):
         raise NotImplementedError
     
     def _map_label(self, label: str) -> int:
-        """Map string label to integer class."""
-        if self.use_unified_classes:
-            return UNIFIED_CLASSES.get(label, -1)
-        raise NotImplementedError
+        """Map string label to integer class based on classification mode."""
+        if self.classification_mode == 'binary':
+            return UNIFIED_CLASSES_BINARY.get(label, -1)
+        elif self.classification_mode == 'multiclass_8':
+            # For 8-class, use ISIC2019 mapping with fallback
+            return ISIC2019_CLASSES.get(label, UNIFIED_CLASSES_7.get(label, -1))
+        else:  # multiclass (7)
+            return UNIFIED_CLASSES_7.get(label, -1)
         
     def __len__(self) -> int:
         return len(self.image_paths)
@@ -161,14 +259,22 @@ class BaseDermoscopyDataset(Dataset):
         """Compute class weights for imbalanced dataset handling."""
         dist = self.get_class_distribution()
         total = sum(dist.values())
-        num_classes = len(set(self.labels))
         
-        weights = torch.zeros(num_classes)
+        weights = torch.zeros(self.num_classes)
         for cls, count in dist.items():
-            if cls >= 0 and cls < num_classes:
-                weights[cls] = total / (num_classes * count)
+            if 0 <= cls < self.num_classes:
+                weights[cls] = total / (self.num_classes * count)
         
         return weights
+    
+    def get_sample_weights(self) -> torch.Tensor:
+        """Get per-sample weights for weighted sampling (handles class imbalance)."""
+        class_weights = self.get_class_weights()
+        sample_weights = torch.tensor([
+            class_weights[label].item() if 0 <= label < self.num_classes else 0.0
+            for label in self.labels
+        ])
+        return sample_weights
 
 
 class HAM10000Dataset(BaseDermoscopyDataset):
@@ -209,22 +315,24 @@ class HAM10000Dataset(BaseDermoscopyDataset):
                 img_path = self.root_dir / f"{img_id}.jpg"
             
             if img_path.exists():
+                mapped_label = self._map_label(label_str)
+                # Filter unknown labels if requested
+                if self.filter_unknown and mapped_label == -1:
+                    continue
                 image_paths.append(str(img_path))
-                labels.append(self._map_label(label_str))
+                labels.append(mapped_label)
         
         return image_paths, labels
-    
-    def _map_label(self, label: str) -> int:
-        if self.use_unified_classes:
-            return UNIFIED_CLASSES.get(label, -1)
-        return HAM10000_CLASSES.get(label, -1)
 
 
 class ISIC2018Dataset(BaseDermoscopyDataset):
     """
     ISIC 2018 Challenge Dataset (Task 3: Lesion Diagnosis).
     
-    Same 7 diagnostic categories as HAM10000.
+    7 diagnostic categories (same as HAM10000):
+    - MEL, NV, BCC, AKIEC, BKL, DF, VASC
+    
+    Note: Uses AKIEC (not AK like ISIC2019).
     """
     
     def _load_metadata(self) -> pd.DataFrame:
@@ -238,10 +346,6 @@ class ISIC2018Dataset(BaseDermoscopyDataset):
         # ISIC 2018 Task 3 ground truth format
         # Columns: image, MEL, NV, BCC, AKIEC, BKL, DF, VASC (one-hot)
         label_cols = ['MEL', 'NV', 'BCC', 'AKIEC', 'BKL', 'DF', 'VASC']
-        label_map = {
-            'MEL': 'mel', 'NV': 'nv', 'BCC': 'bcc', 
-            'AKIEC': 'akiec', 'BKL': 'bkl', 'DF': 'df', 'VASC': 'vasc'
-        }
         
         for _, row in self.metadata.iterrows():
             img_id = row['image']
@@ -251,13 +355,16 @@ class ISIC2018Dataset(BaseDermoscopyDataset):
                 # Find which column is 1 (one-hot encoded)
                 label_str = None
                 for col in label_cols:
-                    if col in row and row[col] == 1:
-                        label_str = label_map[col]
+                    if col in row and row[col] == 1.0:
+                        label_str = col
                         break
                 
                 if label_str:
+                    mapped_label = self._map_label(label_str)
+                    if self.filter_unknown and mapped_label == -1:
+                        continue
                     image_paths.append(str(img_path))
-                    labels.append(self._map_label(label_str))
+                    labels.append(mapped_label)
         
         return image_paths, labels
 
@@ -266,8 +373,16 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
     """
     ISIC 2019 Challenge Dataset.
     
-    8 diagnostic categories (adds SCC compared to ISIC 2018):
-    - AK, BCC, BKL, DF, MEL, NV, SCC, VASC
+    9 categories (8 diagnostic + UNK):
+    - MEL: Melanoma
+    - NV: Melanocytic nevus  
+    - BCC: Basal cell carcinoma
+    - AK: Actinic keratosis (Note: AK not AKIEC like 2018)
+    - BKL: Benign keratosis
+    - DF: Dermatofibroma
+    - VASC: Vascular lesion
+    - SCC: Squamous cell carcinoma (NEW in 2019)
+    - UNK: Unknown (none in training set, but supported)
     """
     
     def _load_metadata(self) -> pd.DataFrame:
@@ -278,8 +393,8 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
         image_paths = []
         labels = []
         
-        # ISIC 2019 ground truth format
-        label_cols = ['MEL', 'NV', 'BCC', 'AK', 'BKL', 'DF', 'VASC', 'SCC']
+        # ISIC 2019 ground truth format (includes UNK)
+        label_cols = ['MEL', 'NV', 'BCC', 'AK', 'BKL', 'DF', 'VASC', 'SCC', 'UNK']
         
         for _, row in self.metadata.iterrows():
             img_id = row['image']
@@ -294,8 +409,12 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
                         break
                 
                 if label_str:
+                    mapped_label = self._map_label(label_str)
+                    # Filter unknown labels if requested
+                    if self.filter_unknown and mapped_label == -1:
+                        continue
                     image_paths.append(str(img_path))
-                    labels.append(self._map_label(label_str))
+                    labels.append(mapped_label)
         
         return image_paths, labels
 
@@ -304,8 +423,15 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
     """
     ISIC 2020 Challenge Dataset.
     
-    Binary classification: benign vs malignant
-    For unified 7-class: benign -> nv, malignant -> mel
+    Binary classification: benign (0) vs malignant (1)
+    
+    The 'diagnosis' column contains specific diagnoses:
+    - nevus, melanoma, seborrheic keratosis, lentigo NOS,
+      lichenoid keratosis, solar lentigo, cafe-au-lait macule,
+      atypical melanocytic proliferation, unknown
+    
+    In multiclass mode, we use the diagnosis field for richer labels.
+    In binary mode, we use the target field directly.
     """
     
     def _load_metadata(self) -> pd.DataFrame:
@@ -318,14 +444,34 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
         
         for _, row in self.metadata.iterrows():
             img_id = row['image_name']
-            target = row['target']  # 0 = benign, 1 = malignant
             
             img_path = self.root_dir / f"{img_id}.jpg"
             
             if img_path.exists():
-                label_str = 'malignant' if target == 1 else 'benign'
-                image_paths.append(str(img_path))
-                labels.append(self._map_label(label_str))
+                # Choose label based on classification mode
+                if self.classification_mode == 'binary':
+                    # Direct binary: use target column
+                    label = int(row['target'])
+                    image_paths.append(str(img_path))
+                    labels.append(label)
+                else:
+                    # Multiclass: use diagnosis field for richer mapping
+                    diagnosis = row.get('diagnosis', 'unknown')
+                    if pd.isna(diagnosis):
+                        diagnosis = 'unknown'
+                    
+                    # Use diagnosis-to-unified mapping for better granularity
+                    mapped_label = ISIC2020_DIAGNOSIS_TO_UNIFIED.get(
+                        diagnosis, 
+                        self._map_label(row['benign_malignant'])
+                    )
+                    
+                    # Filter unknown labels if requested
+                    if self.filter_unknown and mapped_label == -1:
+                        continue
+                    
+                    image_paths.append(str(img_path))
+                    labels.append(mapped_label)
         
         return image_paths, labels
 
@@ -338,7 +484,10 @@ def get_client_dataloader(
     val_transform: Optional[Callable] = None,
     val_split: float = 0.2,
     num_workers: int = 4,
-    seed: int = 42
+    seed: int = 42,
+    classification_mode: ClassificationMode = 'multiclass',
+    filter_unknown: bool = True,
+    use_weighted_sampling: bool = False
 ) -> Tuple[DataLoader, DataLoader]:
     """
     Get train and validation DataLoaders for a specific FL client.
@@ -352,10 +501,14 @@ def get_client_dataloader(
         val_split: Fraction for validation split
         num_workers: Number of data loading workers
         seed: Random seed for reproducibility
+        classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary'
+        filter_unknown: Whether to filter out unknown/UNK labels
+        use_weighted_sampling: Use weighted sampler for class imbalance
         
     Returns:
         Tuple of (train_loader, val_loader)
     """
+    from torch.utils.data import WeightedRandomSampler
     from .preprocessing import get_train_transforms, get_val_transforms
     from .splits import train_val_split
     
@@ -418,7 +571,9 @@ def get_client_dataloader(
     full_dataset = config['class'](
         root_dir=str(config['root']),
         csv_path=str(config['csv']),
-        transform=train_transform
+        transform=train_transform,
+        classification_mode=classification_mode,
+        filter_unknown=filter_unknown
     )
     
     # Split into train/val
@@ -432,11 +587,26 @@ def get_client_dataloader(
     train_dataset = DatasetSubset(full_dataset, train_indices, train_transform)
     val_dataset = DatasetSubset(full_dataset, val_indices, val_transform)
     
+    # Setup weighted sampling for class imbalance (especially for ISIC2020)
+    train_sampler = None
+    shuffle_train = True
+    if use_weighted_sampling:
+        # Get sample weights for the training subset
+        all_sample_weights = full_dataset.get_sample_weights()
+        train_sample_weights = all_sample_weights[train_indices]
+        train_sampler = WeightedRandomSampler(
+            weights=train_sample_weights,
+            num_samples=len(train_sample_weights),
+            replacement=True
+        )
+        shuffle_train = False  # Can't use shuffle with sampler
+    
     # Create DataLoaders
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=shuffle_train,
+        sampler=train_sampler,
         num_workers=num_workers,
         pin_memory=torch.cuda.is_available(),
         drop_last=True
@@ -464,6 +634,9 @@ class DatasetSubset(Dataset):
         self.dataset: BaseDermoscopyDataset = dataset
         self.indices = indices
         self.transform = transform
+        # Expose num_classes and class_names from parent
+        self.num_classes = dataset.num_classes
+        self.class_names = dataset.class_names
         
     def __len__(self) -> int:
         return len(self.indices)
@@ -493,3 +666,173 @@ class DatasetSubset(Dataset):
                 image = image.permute(2, 0, 1).contiguous()
 
         return image, label
+    
+    def get_class_distribution(self) -> Dict[int, int]:
+        """Get distribution of classes in this subset."""
+        from collections import Counter
+        subset_labels = [self.dataset.labels[i] for i in self.indices]
+        return dict(Counter(subset_labels))
+
+
+def get_combined_dataset(
+    data_root: Union[str, Path],
+    datasets: List[str] = ['HAM10000', 'ISIC2018', 'ISIC2019', 'ISIC2020'],
+    transform: Optional[Callable] = None,
+    classification_mode: ClassificationMode = 'multiclass',
+    filter_unknown: bool = True
+) -> Tuple[Dataset, Dict[str, int]]:
+    """
+    Create a combined dataset from multiple sources.
+    
+    Args:
+        data_root: Root directory for all datasets
+        datasets: List of dataset names to combine
+        transform: Transform to apply
+        classification_mode: Classification mode for all datasets
+        filter_unknown: Whether to filter unknown labels
+        
+    Returns:
+        Tuple of (combined_dataset, dataset_sizes)
+    """
+    from torch.utils.data import ConcatDataset
+    
+    data_root = Path(data_root)
+    
+    dataset_configs = {
+        'HAM10000': {
+            'class': HAM10000Dataset,
+            'root': data_root / 'HAM10000',
+            'csv': data_root / 'HAM10000' / 'HAM10000_metadata.csv'
+        },
+        'ISIC2018': {
+            'class': ISIC2018Dataset,
+            'root': data_root / 'ISIC2018' / 'ISIC2018_Task3_Training_Input',
+            'csv': data_root / 'ISIC2018' / 'ISIC2018_Task3_Training_GroundTruth.csv'
+        },
+        'ISIC2019': {
+            'class': ISIC2019Dataset,
+            'root': data_root / 'ISIC2019' / 'ISIC_2019_Training_Input',
+            'csv': data_root / 'ISIC2019' / 'ISIC_2019_Training_GroundTruth.csv'
+        },
+        'ISIC2020': {
+            'class': ISIC2020Dataset,
+            'root': data_root / 'ISIC2020' / 'ISIC_2020_Training_JPEG',
+            'csv': data_root / 'ISIC2020' / 'ISIC_2020_Training_GroundTruth.csv'
+        }
+    }
+    
+    loaded_datasets = []
+    dataset_sizes = {}
+    
+    for name in datasets:
+        if name not in dataset_configs:
+            print(f"Warning: Unknown dataset {name}, skipping.")
+            continue
+            
+        config = dataset_configs[name]
+        
+        # Check for alternative paths
+        if name == 'ISIC2020':
+            if not config['csv'].exists():
+                alt_csv = data_root / 'ISIC2020' / 'train.csv'
+                if alt_csv.exists():
+                    config['csv'] = alt_csv
+            if not config['root'].exists():
+                alt_root = data_root / 'ISIC2020' / 'train'
+                if alt_root.exists():
+                    config['root'] = alt_root
+        
+        if not config['csv'].exists():
+            print(f"Warning: CSV not found for {name} at {config['csv']}, skipping.")
+            continue
+            
+        ds = config['class'](
+            root_dir=str(config['root']),
+            csv_path=str(config['csv']),
+            transform=transform,
+            classification_mode=classification_mode,
+            filter_unknown=filter_unknown
+        )
+        
+        dataset_sizes[name] = len(ds)
+        loaded_datasets.append(ds)
+        print(f"Loaded {name}: {len(ds)} images")
+    
+    combined = ConcatDataset(loaded_datasets)
+    return combined, dataset_sizes
+
+
+def print_dataset_statistics(
+    data_root: Union[str, Path],
+    classification_mode: ClassificationMode = 'multiclass'
+):
+    """Print statistics for all datasets."""
+    data_root = Path(data_root)
+    
+    print(f"\n{'='*60}")
+    print(f"Dataset Statistics (mode: {classification_mode})")
+    print(f"{'='*60}\n")
+    
+    dataset_configs = {
+        'HAM10000': (HAM10000Dataset, 'HAM10000', 'HAM10000_metadata.csv'),
+        'ISIC2018': (ISIC2018Dataset, 'ISIC2018/ISIC2018_Task3_Training_Input', 
+                     'ISIC2018/ISIC2018_Task3_Training_GroundTruth.csv'),
+        'ISIC2019': (ISIC2019Dataset, 'ISIC2019/ISIC_2019_Training_Input',
+                     'ISIC2019/ISIC_2019_Training_GroundTruth.csv'),
+        'ISIC2020': (ISIC2020Dataset, 'ISIC2020/ISIC_2020_Training_JPEG',
+                     'ISIC2020/ISIC_2020_Training_GroundTruth.csv'),
+    }
+    
+    class_names = (CLASS_NAMES_BINARY if classification_mode == 'binary' 
+                   else CLASS_NAMES_8 if classification_mode == 'multiclass_8'
+                   else CLASS_NAMES_7)
+    
+    total_samples = 0
+    total_dist = {}
+    
+    for name, (cls, root_suffix, csv_suffix) in dataset_configs.items():
+        root = data_root / root_suffix
+        csv = data_root / csv_suffix
+        
+        # Handle ISIC2020 alternatives
+        if name == 'ISIC2020':
+            if not csv.exists():
+                csv = data_root / 'ISIC2020' / 'train.csv'
+            if not root.exists():
+                root = data_root / 'ISIC2020' / 'train'
+        
+        if not csv.exists():
+            print(f"{name}: CSV not found at {csv}")
+            continue
+            
+        try:
+            ds = cls(
+                root_dir=str(root),
+                csv_path=str(csv),
+                classification_mode=classification_mode,
+                filter_unknown=True
+            )
+            
+            dist = ds.get_class_distribution()
+            total_samples += len(ds)
+            
+            print(f"\n{name}:")
+            print(f"  Total samples: {len(ds)}")
+            print(f"  Class distribution:")
+            
+            for idx, count in sorted(dist.items()):
+                if 0 <= idx < len(class_names):
+                    pct = 100 * count / len(ds)
+                    print(f"    {idx}: {class_names[idx]}: {count} ({pct:.1f}%)")
+                    total_dist[idx] = total_dist.get(idx, 0) + count
+                    
+        except Exception as e:
+            print(f"{name}: Error loading - {e}")
+    
+    print(f"\n{'='*60}")
+    print(f"Combined Statistics (Total: {total_samples} samples)")
+    print(f"{'='*60}")
+    for idx, count in sorted(total_dist.items()):
+        if 0 <= idx < len(class_names):
+            pct = 100 * count / total_samples if total_samples > 0 else 0
+            print(f"  {idx}: {class_names[idx]}: {count} ({pct:.1f}%)")

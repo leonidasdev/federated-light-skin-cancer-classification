@@ -37,6 +37,7 @@ class SkinCancerClient(NumPyClient):
         device: Device to run training on
         local_epochs: Number of local training epochs per round
         learning_rate: Learning rate for optimizer
+        class_weights: Optional class weights for imbalanced data
     """
     
     def __init__(
@@ -47,7 +48,8 @@ class SkinCancerClient(NumPyClient):
         val_loader: DataLoader,
         device: torch.device,
         local_epochs: int = 1,
-        learning_rate: float = 1e-3
+        learning_rate: float = 1e-3,
+        class_weights: torch.Tensor = None
     ):
         self.client_id = client_id
         self.model = model
@@ -60,8 +62,11 @@ class SkinCancerClient(NumPyClient):
         # Move model to device
         self.model.to(self.device)
         
-        # Loss function
-        self.criterion = nn.CrossEntropyLoss()
+        # Loss function with optional class weights
+        if class_weights is not None:
+            self.criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
+        else:
+            self.criterion = nn.CrossEntropyLoss()
         
         # Optimizer
         self.optimizer = torch.optim.Adam(

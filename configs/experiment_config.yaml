@@ -24,9 +24,23 @@ data:
   normalization: "imagenet"  # Options: imagenet, dermoscopy
   augmentation_level: "medium"  # Options: light, medium, heavy
   
-  # Class handling
-  use_unified_classes: true
+  # Classification mode
+  # Options:
+  #   - multiclass: 7 classes (HAM10000/ISIC2018 compatible)
+  #   - multiclass_8: 8 classes (includes SCC from ISIC2019)
+  #   - binary: 2 classes (benign vs malignant)
+  classification_mode: "multiclass"
+  
+  # Number of classes (auto-set based on classification_mode)
+  # multiclass: 7, multiclass_8: 8, binary: 2
   num_classes: 7
+  
+  # Unknown label handling
+  filter_unknown: true  # Filter out UNK and unknown labels
+  
+  # Class imbalance handling
+  use_weighted_sampling: false  # Use WeightedRandomSampler
+  use_class_weights: true  # Use class weights in loss function
 
 # Centralized Training Baseline
 centralized:

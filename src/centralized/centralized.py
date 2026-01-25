@@ -58,6 +58,11 @@ class CentralizedConfig:
     val_split: float = 0.15
     test_split: float = 0.15
     
+    # Classification mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
+    classification_mode: str = "multiclass"
+    filter_unknown: bool = True
+    use_class_weights: bool = True  # Use class weights in loss for imbalance
+    
     # Experiment configuration
     experiment_name: str = "centralized_baseline"
     output_dir: str = "./outputs"
@@ -201,7 +206,13 @@ class CentralizedTrainer:
 
             try:
                 # instantiate full dataset (with train transforms for now)
-                full_dataset = dataset_cls(root_dir=str(dataset_root), csv_path=str(csv_path), transform=train_transform)
+                full_dataset = dataset_cls(
+                    root_dir=str(dataset_root), 
+                    csv_path=str(csv_path), 
+                    transform=train_transform,
+                    classification_mode=self.config.classification_mode,
+                    filter_unknown=self.config.filter_unknown
+                )
             except Exception as e:
                 logger.warning(f"Failed loading dataset {name}: {e}")
                 continue
@@ -254,7 +265,40 @@ class CentralizedTrainer:
             pin_memory=(self.device.type == "cuda"),
         )
         
+        # Compute class weights if needed
+        if self.config.use_class_weights:
+            self._compute_class_weights(combined_train)
+        else:
+            self.class_weights = None
+        
         logger.info(f"Combined dataset: {len(combined_train)} train, {len(combined_val)} val")
+    
+    def _compute_class_weights(self, dataset: ConcatDataset) -> None:
+        """Compute class weights for handling class imbalance."""
+        from collections import Counter
+        
+        # Count labels across all sub-datasets
+        all_labels = []
+        for sub_ds in dataset.datasets:
+            if isinstance(sub_ds, DatasetSubset):
+                for idx in sub_ds.indices:
+                    all_labels.append(sub_ds.dataset.labels[idx])
+            elif hasattr(sub_ds, 'labels'):
+                labels = getattr(sub_ds, 'labels')
+                all_labels.extend(labels)
+        
+        label_counts = Counter(all_labels)
+        total = sum(label_counts.values())
+        num_classes = self.config.num_classes
+        
+        # Compute inverse frequency weights
+        weights = torch.zeros(num_classes)
+        for cls, count in label_counts.items():
+            if 0 <= cls < num_classes:
+                weights[cls] = total / (num_classes * count)
+        
+        self.class_weights = weights.to(self.device)
+        logger.info(f"Class weights: {dict(enumerate(weights.tolist()))}")
     
     def train_epoch(
         self,
@@ -410,7 +454,7 @@ class CentralizedTrainer:
                 min_lr=self.config.min_lr,
             )
 
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.CrossEntropyLoss(weight=self.class_weights)
 
         # Save config
         config_path = self.output_dir / "config.json"
