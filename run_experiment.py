@@ -1,16 +1,32 @@
 #!/usr/bin/env python
 """
-Main Experiment Runner.
+Main Experiment Runner for DSCATNet Federated Learning.
 
-This script provides the entry point for running experiments:
-- Centralized training (baseline)
-- Federated learning simulation
-- Comparison experiments
+This script provides the unified entry point for running all experiments:
+- Centralized training (baseline upper-bound)
+- Federated learning simulation with various non-IID distributions
+- Comparison experiments between centralized and federated approaches
 
-Usage:
-    python run_experiment.py --mode [centralized|federated|comparison] [options]
+Usage Examples:
+    # Run federated learning with config file
+    python run_experiment.py --mode federated --config configs/dscatnet_federated_benchmark.yaml
+    
+    # Run centralized baseline
+    python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
+    
+    # Override config settings via CLI
+    python run_experiment.py --mode federated --config configs/dscatnet_federated_benchmark.yaml --rounds 10
+    
+    # Run comparison experiment
+    python run_experiment.py --mode comparison --config configs/experiment_config.yaml
+
+Author: Leonardo Chen
+Date: 2024
 """
 
+# =============================================================================
+# Standard Library Imports
+# =============================================================================
 import argparse
 import json
 import logging
@@ -18,10 +34,16 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any
+
+# =============================================================================
+# Third-Party Imports
+# =============================================================================
 import yaml
 import torch
 
-# Setup logging
+# =============================================================================
+# Logging Configuration
+# =============================================================================
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -32,8 +54,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+
 def setup_file_logging(output_dir: Path) -> None:
-    """Add file handler to root logger."""
+    """
+    Add file handler to root logger for experiment logging.
+    
+    Args:
+        output_dir: Directory where experiment.log will be created.
+    """
     log_file = output_dir / "experiment.log"
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(
@@ -43,7 +75,19 @@ def setup_file_logging(output_dir: Path) -> None:
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
-    """Load configuration from YAML file."""
+    """
+    Load configuration from YAML file.
+    
+    Args:
+        config_path: Path to YAML configuration file.
+        
+    Returns:
+        Dictionary containing parsed configuration.
+        
+    Raises:
+        FileNotFoundError: If config file does not exist.
+        yaml.YAMLError: If config file is malformed.
+    """
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
@@ -55,7 +99,75 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
     # Load config if provided
     if args.config:
         config_dict = load_config(args.config)
-        config = CentralizedConfig.from_dict(config_dict.get("centralized", {}))
+        cent_config = config_dict.get("centralized", {})
+        
+        # Flatten nested config structure for CentralizedConfig
+        flat_config = {}
+        
+        # Direct mappings
+        for key in ["data_root", "output_dir", "datasets"]:
+            if key in cent_config:
+                flat_config[key] = cent_config[key]
+        
+        # Experiment section
+        if "experiment" in cent_config:
+            exp = cent_config["experiment"]
+            if "name" in exp:
+                flat_config["experiment_name"] = exp["name"]
+        
+        # Model section
+        if "model" in cent_config:
+            model = cent_config["model"]
+            if "image_size" in model:
+                flat_config["image_size"] = model["image_size"]
+            if "variant" in model:
+                flat_config["model_variant"] = model["variant"]
+            if "num_classes" in model:
+                flat_config["num_classes"] = model["num_classes"]
+        
+        # Training section
+        if "training" in cent_config:
+            train = cent_config["training"]
+            if "batch_size" in train:
+                flat_config["batch_size"] = train["batch_size"]
+            if "lr" in train:
+                flat_config["learning_rate"] = train["lr"]
+            if "epochs" in train:
+                flat_config["num_epochs"] = train["epochs"]
+            if "weight_decay" in train:
+                flat_config["weight_decay"] = train["weight_decay"]
+            if "warmup_epochs" in train:
+                flat_config["warmup_epochs"] = train["warmup_epochs"]
+            if "scheduler" in train:
+                flat_config["scheduler_type"] = train["scheduler"]
+            if "min_lr" in train:
+                flat_config["min_lr"] = train["min_lr"]
+        
+        # Splits section
+        if "splits" in cent_config:
+            splits = cent_config["splits"]
+            if "val_split" in splits:
+                flat_config["val_split"] = splits["val_split"]
+            if "test_split" in splits:
+                flat_config["test_split"] = splits["test_split"]
+        
+        # Augmentation section
+        if "augmentation" in cent_config:
+            aug = cent_config["augmentation"]
+            if "level" in aug:
+                flat_config["augmentation_level"] = aug["level"]
+            if "use_dermoscopy_norm" in aug:
+                flat_config["use_dermoscopy_norm"] = aug["use_dermoscopy_norm"]
+        
+        # Evaluation section
+        if "evaluation" in cent_config:
+            evl = cent_config["evaluation"]
+            if "early_stopping_patience" in evl:
+                flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
+            if "use_class_weights" in evl:
+                flat_config["use_class_weights"] = evl["use_class_weights"]
+        
+        config = CentralizedConfig.from_dict(flat_config)
     else:
         config = CentralizedConfig()
     
@@ -103,7 +215,76 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     # Load config if provided
     if args.config:
         config_dict = load_config(args.config)
-        config = SimulationConfig.from_dict(config_dict.get("federated", {}))
+        fed_config = config_dict.get("federated", {})
+        
+        # Flatten nested config structure for SimulationConfig
+        flat_config = {}
+        
+        # Direct mappings
+        for key in ["data_root", "output_dir", "datasets"]:
+            if key in fed_config:
+                flat_config[key] = fed_config[key]
+        
+        # Experiment section
+        if "experiment" in fed_config:
+            exp = fed_config["experiment"]
+            if "name" in exp:
+                flat_config["experiment_name"] = exp["name"]
+        
+        # Model section
+        if "model" in fed_config:
+            model = fed_config["model"]
+            if "image_size" in model:
+                flat_config["image_size"] = model["image_size"]
+            if "variant" in model:
+                flat_config["model_variant"] = model["variant"]
+        
+        # Training section
+        if "training" in fed_config:
+            train = fed_config["training"]
+            if "batch_size" in train:
+                flat_config["batch_size"] = train["batch_size"]
+            if "lr" in train:
+                flat_config["learning_rate"] = train["lr"]
+            if "local_epochs" in train:
+                flat_config["local_epochs"] = train["local_epochs"]
+            if "num_rounds" in train:
+                flat_config["num_rounds"] = train["num_rounds"]
+            if "rounds" in train:
+                flat_config["num_rounds"] = train["rounds"]
+        
+        # Federation section
+        if "federation" in fed_config:
+            fed = fed_config["federation"]
+            if "num_clients" in fed:
+                flat_config["num_clients"] = fed["num_clients"]
+            if "num_rounds" in fed:
+                flat_config["num_rounds"] = fed["num_rounds"]
+            if "noniid_type" in fed:
+                flat_config["noniid_type"] = fed["noniid_type"]
+            if "dirichlet_alpha" in fed:
+                flat_config["dirichlet_alpha"] = fed["dirichlet_alpha"]
+            if "participation" in fed:
+                flat_config["fraction_fit"] = fed["participation"]
+                flat_config["fraction_evaluate"] = fed["participation"]
+        
+        # Augmentation section
+        if "augmentation" in fed_config:
+            aug = fed_config["augmentation"]
+            if "level" in aug:
+                flat_config["augmentation_level"] = aug["level"]
+            if "use_dermoscopy_norm" in aug:
+                flat_config["use_dermoscopy_norm"] = aug["use_dermoscopy_norm"]
+        
+        # Evaluation section
+        if "evaluation" in fed_config:
+            evl = fed_config["evaluation"]
+            if "checkpoint_interval" in evl:
+                flat_config["checkpoint_interval"] = evl["checkpoint_interval"]
+            if "early_stopping_patience" in evl:
+                flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
+        
+        config = SimulationConfig.from_dict(flat_config)
     else:
         config = SimulationConfig()
     

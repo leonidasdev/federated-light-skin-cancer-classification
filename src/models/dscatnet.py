@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Any
-import warnings
+import logging
 
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock
@@ -265,7 +265,8 @@ def create_dscatnet(
     if 'pretrained' in config:
         pretrained_flag = bool(config.pop('pretrained'))
         if pretrained_flag:
-            warnings.warn("create_dscatnet: 'pretrained' requested but no pretrained weights are available; ignoring.")
+            logger = logging.getLogger(__name__)
+            logger.info("create_dscatnet: 'pretrained' requested but no pretrained weights are available; ignoring.")
 
     # Filter config to only keys accepted by DSCATNet.__init__
     accepted_keys = {
@@ -276,8 +277,9 @@ def create_dscatnet(
 
     extra_keys = set(config.keys()) - accepted_keys
     if extra_keys:
-        # Warn the user that some provided kwargs will be ignored
-        warnings.warn(f"create_dscatnet: ignoring unknown keys: {sorted(list(extra_keys))}")
+        # Log that some provided kwargs will be ignored (less noisy than UserWarning)
+        logger = logging.getLogger(__name__)
+        logger.debug(f"create_dscatnet: ignoring unknown keys: {sorted(list(extra_keys))}")
 
     filtered_config = {k: v for k, v in config.items() if k in accepted_keys}
 

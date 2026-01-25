@@ -20,7 +20,7 @@ class TestSimulationConfig:
         assert config.num_clients == 4
         assert config.num_rounds == 50
         assert config.local_epochs == 1
-        assert config.batch_size == 16
+        assert config.batch_size == 8  # Updated to match reduced batch size for memory efficiency
         assert config.noniid_type == "natural"
     
     def test_config_to_dict(self):

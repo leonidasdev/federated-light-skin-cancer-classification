@@ -15,7 +15,7 @@ from dataclasses import dataclass, asdict, field
 
 import torch
 import torch.nn as nn
-from torch.cuda.amp import GradScaler
+# Use torch.amp GradScaler when available; we'll import legacy scaler only as fallback where needed
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from tqdm import tqdm
@@ -62,7 +62,7 @@ class CentralizedConfig:
     
     # Training configuration
     num_epochs: int = 100
-    batch_size: int = 32
+    batch_size: int = 8
     learning_rate: float = 1e-4
     weight_decay: float = 0.01
     warmup_epochs: int = 5
@@ -166,7 +166,25 @@ class CentralizedTrainer:
         
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = config.use_amp and self.device.type == "cuda"
-        self.scaler = GradScaler() if self.use_amp else None
+        if self.use_amp:
+            # Avoid direct attribute access to torch.amp.GradScaler (not exported in some stubs)
+            amp_mod = getattr(torch, "amp", None)
+            scaler_cls = None
+            if amp_mod is not None:
+                scaler_cls = getattr(amp_mod, "GradScaler", None)
+
+            if scaler_cls is not None:
+                try:
+                    self.scaler = scaler_cls(device_type="cuda")
+                except TypeError:
+                    # Some versions may expect different signature; fall back to default construction
+                    self.scaler = scaler_cls()
+            else:
+                # Fallback to legacy scaler for older PyTorch
+                from torch.cuda.amp import GradScaler as _GradScaler
+                self.scaler = _GradScaler()
+        else:
+            self.scaler = None
         
         logger.info(f"Initialized CentralizedTrainer: {config.experiment_name}")
         logger.info(f"Device: {self.device}")

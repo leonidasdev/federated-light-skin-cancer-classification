@@ -51,7 +51,9 @@ def get_train_transforms(
     ]
     
     # Augmentation based on level
-    if augmentation_level == 'light':
+    if augmentation_level == 'none':
+        aug_transforms = []
+    elif augmentation_level == 'light':
         aug_transforms = [
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
@@ -67,11 +69,11 @@ def get_train_transforms(
                 contrast_limit=0.2,
                 p=0.5
             ),
-            A.ShiftScaleRotate(
-                shift_limit=0.1,
-                scale_limit=0.1,
-                rotate_limit=15,
-                p=0.5
+            A.Affine(
+                translate_percent=0.1,
+                scale=(0.9, 1.1),
+                rotate=(-15, 15),
+                p=0.5,
             ),
             A.OneOf([
                 A.GaussianBlur(blur_limit=3, p=1.0),
@@ -88,11 +90,11 @@ def get_train_transforms(
                 contrast_limit=0.3,
                 p=0.6
             ),
-            A.ShiftScaleRotate(
-                shift_limit=0.15,
-                scale_limit=0.15,
-                rotate_limit=30,
-                p=0.6
+            A.Affine(
+                translate_percent=0.15,
+                scale=(0.85, 1.15),
+                rotate=(-30, 30),
+                p=0.6,
             ),
             A.OneOf([
                 A.GaussianBlur(blur_limit=5, p=1.0),

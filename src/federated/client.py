@@ -12,7 +12,7 @@ from typing import Dict, List, Tuple, Sized, cast, Optional
 
 import torch
 import torch.nn as nn
-from torch.cuda.amp import GradScaler
+# Use torch.amp GradScaler when available; fallback to legacy scaler if necessary
 from torch.utils.data import DataLoader
 from flwr.client import NumPyClient
 from flwr.client import Client as FLClient
@@ -82,7 +82,23 @@ class SkinCancerClient(NumPyClient):
         
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = use_amp and device.type == "cuda"
-        self.scaler = GradScaler() if self.use_amp else None
+        if self.use_amp:
+            # Guarded access to torch.amp.GradScaler to avoid static analyzer warnings
+            amp_mod = getattr(torch, "amp", None)
+            scaler_cls = None
+            if amp_mod is not None:
+                scaler_cls = getattr(amp_mod, "GradScaler", None)
+
+            if scaler_cls is not None:
+                try:
+                    self.scaler = scaler_cls(device_type="cuda")
+                except TypeError:
+                    self.scaler = scaler_cls()
+            else:
+                from torch.cuda.amp import GradScaler as _GradScaler
+                self.scaler = _GradScaler()
+        else:
+            self.scaler = None
         
         # Loss function with optional class weights
         if class_weights is not None:

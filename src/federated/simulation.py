@@ -16,6 +16,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Subset
+from tqdm import tqdm
 
 from flwr.common import Scalar
 
@@ -32,6 +33,67 @@ from ..data.preprocessing import get_train_transforms, get_val_transforms
 from ..data.splits import create_noniid_split
 
 logger = logging.getLogger(__name__)
+
+
+class DirichletSubset(torch.utils.data.Dataset):
+    """
+    Dataset wrapper for Dirichlet split subsets.
+    
+    This class wraps combined dataset references and provides proper
+    indexing for samples assigned to a specific client.
+    """
+    
+    def __init__(
+        self,
+        combined_images: List[Tuple[Any, int]],
+        indices: List[int],
+        transform: Optional[Any] = None
+    ):
+        """
+        Initialize DirichletSubset.
+        
+        Args:
+            combined_images: List of (dataset, original_idx) tuples
+            indices: Indices into combined_images for this subset
+            transform: Optional transform to apply to images
+        """
+        self.combined_images = combined_images
+        self.indices = indices
+        self.transform = transform
+        self._labels = None
+    
+    def __len__(self) -> int:
+        return len(self.indices)
+    
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        """Get sample at index."""
+        combined_idx = self.indices[idx]
+        dataset, original_idx = self.combined_images[combined_idx]
+        
+        # Get the original sample
+        image, label = dataset[original_idx]
+        
+        # Apply transform if different from dataset's transform
+        if self.transform is not None and hasattr(dataset, 'transform'):
+            # Re-load the raw image and apply our transform
+            # This handles the case where we need val transforms
+            if hasattr(dataset, 'img_paths'):
+                from PIL import Image
+                img_path = dataset.img_paths[original_idx]
+                image = Image.open(img_path).convert('RGB')
+                image = self.transform(image)
+        
+        return image, label
+    
+    @property
+    def labels(self) -> List[int]:
+        """Get all labels for this subset."""
+        if self._labels is None:
+            self._labels = []
+            for idx in self.indices:
+                dataset, original_idx = self.combined_images[idx]
+                self._labels.append(dataset.labels[original_idx])
+        return self._labels
 
 
 @dataclass
@@ -54,7 +116,7 @@ class SimulationConfig:
     
     # Training configuration
     local_epochs: int = 1
-    batch_size: int = 16
+    batch_size: int = 8
     learning_rate: float = 1e-4
     weight_decay: float = 0.01
     
@@ -81,7 +143,7 @@ class SimulationConfig:
     
     # Device configuration
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    num_workers: int = 4
+    num_workers: int = 2
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
@@ -394,10 +456,176 @@ class FLSimulator:
         """Setup client data based on configuration."""
         if self.config.noniid_type == "natural":
             self.setup_natural_noniid()
+        elif self.config.noniid_type in ["dirichlet", "label_skew", "quantity_skew"]:
+            # For synthetic non-IID, load and combine requested datasets, then split
+            self.setup_dirichlet_noniid()
         else:
-            # For synthetic non-IID, would need to combine datasets first
-            logger.warning("Synthetic non-IID requires combined dataset - using natural non-IID")
+            logger.warning(f"Unknown noniid_type: {self.config.noniid_type}, using natural non-IID")
             self.setup_natural_noniid()
+    
+    def setup_dirichlet_noniid(self) -> None:
+        """
+        Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.
+        
+        This creates heterogeneous label distributions across clients.
+        Lower alpha = more heterogeneous (more non-IID)
+        Higher alpha = more homogeneous (closer to IID)
+        """
+        logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
+        
+        train_transform = get_train_transforms(
+            img_size=self.config.image_size,
+            augmentation_level=self.config.augmentation_level,
+            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
+        )
+        val_transform = get_val_transforms(
+            img_size=self.config.image_size,
+            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
+        )
+        
+        # Load all requested datasets
+        all_dataset_classes = [
+            (HAM10000Dataset, "HAM10000"),
+            (ISIC2018Dataset, "ISIC2018"),
+            (ISIC2019Dataset, "ISIC2019"),
+            (ISIC2020Dataset, "ISIC2020"),
+            (PADUFES20Dataset, "PAD-UFES-20"),
+        ]
+        
+        # Filter datasets if specific ones are requested
+        if self.config.datasets:
+            def normalize_name(name: str) -> str:
+                return name.upper().replace("-", "").replace("_", "")
+            
+            requested = [normalize_name(d) for d in self.config.datasets]
+            dataset_classes = [
+                (cls, name) for cls, name in all_dataset_classes
+                if normalize_name(name) in requested
+            ]
+        else:
+            dataset_classes = all_dataset_classes
+        
+        # Load and combine datasets
+        combined_images = []
+        combined_labels = []
+        dataset_source = []
+        
+        for dataset_cls, dataset_name in dataset_classes:
+            data_path = Path(self.config.data_root) / dataset_name
+            
+            # Determine csv path and dataset root
+            if dataset_name == "HAM10000":
+                csv_path = data_path / "HAM10000_metadata.csv"
+                dataset_root = data_path
+            elif dataset_name == "ISIC2018":
+                csv_path = data_path / "ISIC2018_Task3_Training_GroundTruth.csv"
+                dataset_root = data_path / "ISIC2018_Task3_Training_Input"
+            elif dataset_name == "ISIC2019":
+                csv_path = data_path / "ISIC_2019_Training_GroundTruth.csv"
+                dataset_root = data_path / "ISIC_2019_Training_Input"
+            elif dataset_name == "ISIC2020":
+                candidate1 = data_path / "train.csv"
+                candidate2 = data_path / "ISIC_2020_Training_GroundTruth.csv"
+                csv_path = candidate1 if candidate1.exists() else candidate2
+                dataset_root = data_path / "train"
+                if not dataset_root.exists():
+                    dataset_root = data_path
+            elif dataset_name == "PAD-UFES-20":
+                csv_path = data_path / "metadata.csv"
+                dataset_root = data_path
+            else:
+                continue
+            
+            if not dataset_root.exists() or not csv_path.exists():
+                logger.warning(f"Dataset {dataset_name} not found at {data_path}")
+                continue
+            
+            try:
+                full_dataset = dataset_cls(
+                    root_dir=str(dataset_root),
+                    csv_path=str(csv_path),
+                    transform=train_transform
+                )
+                
+                n = len(full_dataset)
+                if n == 0:
+                    continue
+                
+                # Collect indices and labels
+                for i in range(n):
+                    combined_images.append((full_dataset, i))  # Store reference
+                    combined_labels.append(full_dataset.labels[i])
+                    dataset_source.append(dataset_name)
+                
+                logger.info(f"Loaded {dataset_name}: {n} samples")
+                
+            except Exception as e:
+                logger.warning(f"Failed loading dataset {dataset_name}: {e}")
+                continue
+        
+        if not combined_labels:
+            raise RuntimeError("No data loaded. Please check dataset paths.")
+        
+        total_samples = len(combined_labels)
+        labels_array = np.array(combined_labels)
+        logger.info(f"Total samples for Dirichlet split: {total_samples}")
+        
+        # Create Dirichlet split
+        client_indices = create_noniid_split(
+            labels=combined_labels,
+            num_clients=self.config.num_clients,
+            alpha=self.config.dirichlet_alpha,
+        )
+        
+        # Create client data loaders
+        for client_id, indices in client_indices.items():
+            if len(indices) == 0:
+                logger.warning(f"Client {client_id} has no samples, skipping")
+                continue
+            
+            # Split into train/val (80/20)
+            np.random.shuffle(indices)
+            split_idx = int(len(indices) * 0.8)
+            train_indices = indices[:split_idx]
+            val_indices = indices[split_idx:]
+            
+            # Create wrapper datasets
+            train_dataset = DirichletSubset(combined_images, train_indices, train_transform)
+            val_dataset = DirichletSubset(combined_images, val_indices, val_transform)
+            
+            train_loader = DataLoader(
+                train_dataset,
+                batch_size=self.config.batch_size,
+                shuffle=True,
+                num_workers=self.config.num_workers,
+                pin_memory=(self.device.type == "cuda"),
+            )
+            val_loader = DataLoader(
+                val_dataset,
+                batch_size=self.config.batch_size,
+                shuffle=False,
+                num_workers=self.config.num_workers,
+                pin_memory=(self.device.type == "cuda"),
+            )
+            
+            # Class distribution for this client
+            class_dist = {}
+            for idx in train_indices:
+                label = combined_labels[idx]
+                class_dist[int(label)] = class_dist.get(int(label), 0) + 1
+            
+            self.client_data[client_id] = ClientData(
+                client_id=client_id,
+                train_loader=train_loader,
+                val_loader=val_loader,
+                num_train_samples=len(train_indices),
+                num_val_samples=len(val_indices),
+                class_distribution=class_dist,
+                dataset_name=f"dirichlet_client_{client_id}",
+            )
+            
+            logger.info(f"Client {client_id}: {len(train_indices)} train, {len(val_indices)} val samples")
+            logger.info(f"  Class distribution: {class_dist}")
     
     def train_client(
         self,
@@ -539,8 +767,9 @@ class FLSimulator:
         """
         total_samples = sum(num_samples for _, num_samples in results)
         
-        # Initialize with zeros
-        aggregated = [np.zeros_like(param) for param, _ in results[0][0]]
+        # Initialize with zeros - results[0][0] is the list of params from first client
+        first_client_params = results[0][0]
+        aggregated = [np.zeros_like(param) for param in first_client_params]
         
         for params, num_samples in results:
             weight = num_samples / total_samples
@@ -549,33 +778,39 @@ class FLSimulator:
         
         return aggregated
     
-    def run_round(self, round_num: int) -> Dict[str, float]:
+    def run_round(self, round_num: int, pbar: Optional[tqdm] = None) -> Dict[str, float]:
         """
         Run a single FL round.
         
         Args:
             round_num: Current round number.
+            pbar: Optional progress bar to update.
             
         Returns:
             Dictionary of aggregated metrics.
         """
-        logger.info(f"Starting round {round_num}")
         start_time = time.time()
         
         # Get current global parameters
         global_params = get_model_parameters(self.global_model)
         
-        # Client training
+        # Client training with progress
         fit_results = []
         client_train_metrics = []
         
-        for client_id in self.client_data.keys():
+        client_ids = list(self.client_data.keys())
+        for i, client_id in enumerate(client_ids):
+            client = self.client_data[client_id]
+            if pbar:
+                pbar.set_postfix_str(f"Training {client.dataset_name}...")
             params, num_samples, metrics = self.train_client(client_id, global_params)
             fit_results.append((params, num_samples))
             client_train_metrics.append(metrics)
             logger.debug(f"Client {client_id}: loss={metrics['train_loss']:.4f}, acc={metrics['train_accuracy']:.4f}")
         
         # Aggregate parameters
+        if pbar:
+            pbar.set_postfix_str("Aggregating...")
         aggregated_params = self.aggregate_parameters(fit_results)
         set_model_parameters(self.global_model, aggregated_params)
         
@@ -651,7 +886,7 @@ class FLSimulator:
             Dictionary containing training history and final results.
         """
         logger.info("Starting FL simulation")
-        logger.info(f"Configuration: {self.config.num_rounds} rounds, {self.config.num_clients} clients")
+        logger.info(f"Configuration: {self.config.num_rounds} rounds, {len(self.client_data) if self.client_data else self.config.num_clients} clients")
         
         # Setup clients
         self.setup_clients()
@@ -659,16 +894,40 @@ class FLSimulator:
         if not self.client_data:
             raise RuntimeError("No clients available. Please check dataset paths.")
         
+        # Print client info
+        print(f"\n{'='*60}")
+        print(f"FL Simulation: {self.config.num_rounds} rounds, {len(self.client_data)} clients")
+        print(f"{'='*60}")
+        for cid, cdata in self.client_data.items():
+            print(f"  Client {cid}: {cdata.dataset_name} ({cdata.num_train_samples} train, {cdata.num_val_samples} val)")
+        print(f"{'='*60}\n")
+        
         # Save initial config
         config_path = self.output_dir / "config.json"
         with open(config_path, "w") as f:
             json.dump(self.config.to_dict(), f, indent=2)
         
-        # Training loop
+        # Training loop with progress bar
         start_time = time.time()
         
-        for round_num in range(1, self.config.num_rounds + 1):
-            metrics = self.run_round(round_num)
+        pbar = tqdm(
+            range(1, self.config.num_rounds + 1),
+            desc="FL Rounds",
+            unit="round",
+            ncols=100,
+            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+        )
+        
+        for round_num in pbar:
+            pbar.set_description(f"Round {round_num}/{self.config.num_rounds}")
+            metrics = self.run_round(round_num, pbar)
+            
+            # Update progress bar with metrics
+            pbar.set_postfix({
+                'loss': f'{metrics["val_loss"]:.3f}',
+                'acc': f'{metrics["val_accuracy"]:.1%}',
+                'best': f'{self.best_val_accuracy:.1%}'
+            })
             
             # Update history
             self.history["rounds"].append(round_num)
@@ -693,9 +952,11 @@ class FLSimulator:
             
             # Early stopping
             if self.rounds_without_improvement >= self.config.early_stopping_patience:
+                pbar.set_description(f"Early stop at round {round_num}")
                 logger.info(f"Early stopping at round {round_num}")
                 break
         
+        pbar.close()
         total_time = time.time() - start_time
         
         # Final results

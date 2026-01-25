@@ -564,11 +564,11 @@ class PADUFES20Dataset(BaseDermoscopyDataset):
 def get_client_dataloader(
     client_id: int,
     data_root: Union[str, Path],
-    batch_size: int = 32,
+    batch_size: int = 8,
     train_transform: Optional[Callable] = None,
     val_transform: Optional[Callable] = None,
     val_split: float = 0.2,
-    num_workers: int = 4,
+    num_workers: int = 2,
     seed: int = 42,
     classification_mode: ClassificationMode = 'multiclass',
     filter_unknown: bool = True,

@@ -17,7 +17,7 @@ class TestCentralizedConfig:
         config = CentralizedConfig()
         
         assert config.num_epochs == 100
-        assert config.batch_size == 32
+        assert config.batch_size == 8  # Updated to match reduced batch size for memory efficiency
         assert config.learning_rate == 1e-4
         assert config.scheduler_type == "cosine"
     

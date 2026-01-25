@@ -1,5 +1,11 @@
 """
 Data handling utilities for dermoscopy datasets.
+
+This module provides:
+- Dataset classes for HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20
+- Preprocessing and augmentation pipelines
+- Data splitting utilities for IID and non-IID scenarios
+- Dataset verification and download helpers
 """
 
 from .datasets import (
@@ -7,9 +13,10 @@ from .datasets import (
     ISIC2018Dataset,
     ISIC2019Dataset,
     ISIC2020Dataset,
+    PADUFES20Dataset,
     get_client_dataloader,
     CLASS_NAMES,
-    UNIFIED_CLASSES
+    UNIFIED_CLASSES,
 )
 from .preprocessing import (
     get_train_transforms,
@@ -18,7 +25,7 @@ from .preprocessing import (
     IMAGENET_MEAN,
     IMAGENET_STD,
     DERMOSCOPY_MEAN,
-    DERMOSCOPY_STD
+    DERMOSCOPY_STD,
 )
 from .splits import (
     train_val_split,
@@ -27,7 +34,7 @@ from .splits import (
     create_label_skew_split,
     create_quantity_skew_split,
     get_dataset_statistics,
-    print_split_summary
+    print_split_summary,
 )
 from .download import (
     create_directory_structure,
@@ -35,16 +42,17 @@ from .download import (
     verify_all_datasets,
     print_download_instructions,
     DatasetSetupWizard,
-    DATASET_INFO
+    DATASET_INFO,
 )
 from .verify import DatasetVerifier
 
 __all__ = [
     # Datasets
     "HAM10000Dataset",
-    "ISIC2018Dataset", 
+    "ISIC2018Dataset",
     "ISIC2019Dataset",
     "ISIC2020Dataset",
+    "PADUFES20Dataset",
     "get_client_dataloader",
     "CLASS_NAMES",
     "UNIFIED_CLASSES",
@@ -71,5 +79,5 @@ __all__ = [
     "print_download_instructions",
     "DatasetSetupWizard",
     "DatasetVerifier",
-    "DATASET_INFO"
+    "DATASET_INFO",
 ]
