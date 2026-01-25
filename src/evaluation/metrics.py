@@ -24,13 +24,13 @@ from sklearn.metrics import (
     balanced_accuracy_score,
 )
 
-from ..data.datasets import UNIFIED_CLASSES
+from ..data.datasets import UNIFIED_CLASSES, CLASS_NAMES as DATASET_CLASS_NAMES
 
 logger = logging.getLogger(__name__)
 
 
-# Class names for reporting
-CLASS_NAMES = list(UNIFIED_CLASSES.values())
+# Default class names for reporting (strings)
+DEFAULT_CLASS_NAMES = list(DATASET_CLASS_NAMES)
 
 
 @dataclass
@@ -91,7 +91,7 @@ class ModelEvaluator:
         self.model = model
         self.device = device
         self.num_classes = num_classes
-        self.class_names = class_names or CLASS_NAMES[:num_classes]
+        self.class_names = class_names or DEFAULT_CLASS_NAMES[:num_classes]
     
     @torch.no_grad()
     def evaluate(
@@ -156,18 +156,27 @@ class ModelEvaluator:
         # Confusion matrix
         cm = confusion_matrix(labels, predictions, labels=range(self.num_classes))
         
-        # Per-class metrics
+        # Per-class metrics (one-vs-rest approach)
         per_class = {}
         for i, class_name in enumerate(self.class_names):
-            class_mask = labels == i
-            if class_mask.sum() > 0:
-                class_pred = predictions[class_mask]
-                class_true = labels[class_mask]
+            # Create binary labels: 1 if class i, 0 otherwise
+            binary_labels = (labels == i).astype(int)
+            binary_preds = (predictions == i).astype(int)
+            
+            class_support = binary_labels.sum()
+            if class_support > 0:
+                # Compute metrics for this class vs all others
+                precision_val = precision_score(binary_labels, binary_preds, zero_division=0)
+                recall_val = recall_score(binary_labels, binary_preds, zero_division=0)
+                # Accuracy for samples that are actually this class
+                class_mask = labels == i
+                class_accuracy = float((predictions[class_mask] == i).mean())
+                
                 per_class[class_name] = {
-                    "accuracy": float((class_pred == class_true).mean()),
-                    "precision": float(precision_score([i] * len(class_pred), class_pred, labels=[i], zero_division=0)),
-                    "recall": float(recall_score(class_true, class_pred, labels=[i], average="micro", zero_division=0)),
-                    "support": int(class_mask.sum()),
+                    "accuracy": class_accuracy,
+                    "precision": float(precision_val),
+                    "recall": float(recall_val),
+                    "support": int(class_support),
                 }
             else:
                 per_class[class_name] = {
