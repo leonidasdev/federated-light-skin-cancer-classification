@@ -151,7 +151,7 @@ class CheckpointManager:
                     raise FileNotFoundError("No checkpoints found")
                 checkpoint_path = max(checkpoints, key=lambda p: p.stat().st_mtime)
         
-        checkpoint = torch.load(checkpoint_path, map_location="cpu")
+        checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
         
         model.load_state_dict(checkpoint["model_state_dict"])
         logger.info(f"Loaded model from {checkpoint_path}")
@@ -216,7 +216,7 @@ def load_model_for_inference(
     if device is None:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    checkpoint = torch.load(load_path, map_location=device)
+    checkpoint = torch.load(load_path, map_location=device, weights_only=False)
     
     # Handle both full checkpoint and inference-only saves
     if "model_state_dict" in checkpoint:

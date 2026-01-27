@@ -135,6 +135,9 @@ class SimulationConfig:
     # For natural non-IID, each selected dataset becomes one client
     datasets: Optional[List[str]] = None
     
+    # Resume training from checkpoint
+    resume_from: Optional[str] = None
+    
     # Experiment configuration
     experiment_name: str = "fl_experiment"
     output_dir: str = "./outputs"
@@ -855,12 +858,16 @@ class FLSimulator:
         return metrics
     
     def save_checkpoint(self, round_num: int, metrics: Dict[str, float]) -> None:
-        """Save model checkpoint."""
+        """Save model checkpoint with full state for resumption."""
         checkpoint = {
             "round": round_num,
             "model_state_dict": self.global_model.state_dict(),
             "metrics": metrics,
             "config": self.config.to_dict(),
+            "history": self.history,
+            "best_val_accuracy": self.best_val_accuracy,
+            "best_round": self.best_round,
+            "rounds_without_improvement": self.rounds_without_improvement,
         }
         
         path = self.checkpoint_dir / f"checkpoint_round_{round_num}.pt"
@@ -875,8 +882,44 @@ class FLSimulator:
             "model_state_dict": self.global_model.state_dict(),
             "val_accuracy": self.best_val_accuracy,
             "config": self.config.to_dict(),
+            "history": self.history,
+            "best_val_accuracy": self.best_val_accuracy,
+            "best_round": self.best_round,
         }, path)
         logger.info(f"Saved best model (round {round_num}, acc={self.best_val_accuracy:.4f})")
+    
+    def load_checkpoint(self, checkpoint_path: str) -> int:
+        """Load checkpoint and restore training state.
+        
+        Args:
+            checkpoint_path: Path to checkpoint file.
+            
+        Returns:
+            Round number to resume from.
+        """
+        logger.info(f"Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+        
+        # Load model weights
+        self.global_model.load_state_dict(checkpoint["model_state_dict"])
+        
+        # Restore training state (handle both old and new checkpoint formats)
+        if "history" in checkpoint:
+            self.history = checkpoint["history"]
+        if "best_val_accuracy" in checkpoint:
+            self.best_val_accuracy = checkpoint["best_val_accuracy"]
+        elif "metrics" in checkpoint and "val_accuracy" in checkpoint["metrics"]:
+            # Old format: extract from metrics
+            self.best_val_accuracy = checkpoint["metrics"]["val_accuracy"]
+        if "best_round" in checkpoint:
+            self.best_round = checkpoint["best_round"]
+        if "rounds_without_improvement" in checkpoint:
+            self.rounds_without_improvement = checkpoint["rounds_without_improvement"]
+        
+        round_num = checkpoint.get("round", 0)
+        logger.info(f"Resumed from round {round_num}, best accuracy: {self.best_val_accuracy:.4f}")
+        return round_num
+
     
     def run(self) -> Dict[str, Any]:
         """
@@ -894,9 +937,21 @@ class FLSimulator:
         if not self.client_data:
             raise RuntimeError("No clients available. Please check dataset paths.")
         
+        # Resume from checkpoint if specified
+        start_round = 1
+        if self.config.resume_from:
+            resume_path = Path(self.config.resume_from)
+            if resume_path.exists():
+                start_round = self.load_checkpoint(str(resume_path)) + 1
+                logger.info(f"Resuming FL training from round {start_round}")
+            else:
+                logger.warning(f"Checkpoint not found at {resume_path}, starting from scratch")
+        
         # Print client info
         print(f"\n{'='*60}")
         print(f"FL Simulation: {self.config.num_rounds} rounds, {len(self.client_data)} clients")
+        if start_round > 1:
+            print(f"Resuming from round {start_round}")
         print(f"{'='*60}")
         for cid, cdata in self.client_data.items():
             print(f"  Client {cid}: {cdata.dataset_name} ({cdata.num_train_samples} train, {cdata.num_val_samples} val)")
@@ -911,7 +966,7 @@ class FLSimulator:
         start_time = time.time()
         
         pbar = tqdm(
-            range(1, self.config.num_rounds + 1),
+            range(start_round, self.config.num_rounds + 1),
             desc="FL Rounds",
             unit="round",
             ncols=100,

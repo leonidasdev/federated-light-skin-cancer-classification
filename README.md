@@ -442,7 +442,8 @@ python run_experiment.py --mode federated --config configs/dscatnet_federated_ha
 python run_experiment.py --mode federated \
     --config configs/dscatnet_federated_ham10000.yaml \
     --rounds 50 \
-    --batch-size 16
+    --batch-size 16 \
+    --model-variant small
 ```
 
 #### Centralized Training (Baseline)
@@ -454,13 +455,28 @@ python run_experiment.py --mode centralized --config configs/dscatnet_centralize
 # With overrides
 python run_experiment.py --mode centralized \
     --config configs/dscatnet_centralized_original.yaml \
-    --epochs 50
+    --epochs 50 \
+    --augmentation medium
 ```
 
 #### Comparison Experiment
 
 ```bash
 python run_experiment.py --mode comparison --config configs/experiment_config.yaml
+```
+
+#### Standalone Model Evaluation
+
+```bash
+# Evaluate a trained checkpoint on specific datasets
+python run_experiment.py --mode evaluate \
+    --checkpoint outputs/federated_20260126_005720/checkpoints/best_model.pt \
+    --datasets HAM10000 ISIC2019
+
+# Save evaluation results to file
+python run_experiment.py --mode evaluate \
+    --checkpoint outputs/experiment/checkpoints/best_model.pt \
+    --output-dir ./evaluation_results
 ```
 
 ---
@@ -473,42 +489,83 @@ Checkpoints are saved in `outputs/<experiment_name>/checkpoints/`:
 
 ```
 checkpoints/
-├── best_model.pt           # Best model (highest val accuracy)
-├── checkpoint_round_5.pt   # Periodic checkpoint
-├── checkpoint_round_10.pt
-└── checkpoint_round_15.pt
+├── best_model.pt             # Best model (highest val accuracy)
+├── best_checkpoint.pt        # Full checkpoint with optimizer state (centralized)
+├── checkpoint_epoch_10.pt    # Periodic checkpoint (centralized)
+├── checkpoint_round_5.pt     # Periodic checkpoint (federated)
+└── checkpoint_round_10.pt
 ```
 
 ### Checkpoint Contents
 
-Each `.pt` file contains:
+**Centralized checkpoints** contain full training state for perfect resumption:
 
 ```python
 {
-    "epoch": 10,                      # Round/epoch number
-    "model_state_dict": {...},        # Model weights
-    "optimizer_state_dict": {...},    # Optimizer state
-    "scheduler_state_dict": {...},    # LR scheduler state
+    "epoch": 10,                          # Current epoch number
+    "model_state_dict": {...},            # Model weights
+    "optimizer_state_dict": {...},        # Optimizer state (momentum, etc.)
+    "scheduler_state_dict": {...},        # LR scheduler position
+    "scaler_state_dict": {...},           # AMP scaler state (if enabled)
     "metrics": {
         "val_accuracy": 0.85,
         "val_loss": 0.42,
         ...
-    }
+    },
+    "config": {...},                      # Training configuration
+    "history": {...},                     # Full training history
+    "best_val_accuracy": 0.85,
+    "best_epoch": 10,
+    "epochs_without_improvement": 0,
+}
+```
+
+**Federated checkpoints** contain:
+
+```python
+{
+    "round": 10,                          # Current round number
+    "model_state_dict": {...},            # Global model weights
+    "metrics": {...},                     # Round metrics
+    "config": {...},                      # Simulation configuration
+    "history": {...},                     # Full training history
+    "best_val_accuracy": 0.78,
+    "best_round": 8,
+    "rounds_without_improvement": 2,
 }
 ```
 
 ### Resume Training from Checkpoint
 
+**Resume Centralized Training:**
+
 ```bash
-# Resume centralized training from checkpoint
+# Resume from best checkpoint (continues training)
+python run_experiment.py --mode centralized \
+    --resume outputs/centralized_20260125_120000/checkpoints/best_checkpoint.pt \
+    --epochs 150
+
+# Resume with config file + checkpoint
 python run_experiment.py --mode centralized \
     --config configs/dscatnet_centralized_original.yaml \
-    --resume outputs/centralized_20260125_120000/checkpoints/best_model.pt
-
-# Resume with specific epoch count (continues from checkpoint)
-python run_experiment.py --mode centralized \
     --resume outputs/experiment/checkpoints/checkpoint_epoch_50.pt \
     --epochs 100
+```
+
+**Resume Federated Training:**
+
+```bash
+# Resume FL from round 25 checkpoint, continue to round 50
+python run_experiment.py --mode federated \
+    --resume outputs/federated_20260126_005720/checkpoints/checkpoint_round_25.pt \
+    --rounds 50
+
+# Resume with config + new experiment name
+python run_experiment.py --mode federated \
+    --config configs/dscatnet_federated_ham10000.yaml \
+    --resume outputs/federated_20260126_005720/checkpoints/checkpoint_round_10.pt \
+    --rounds 30 \
+    --experiment-name federated_continued
 ```
 
 ### Loading Checkpoints in Code
@@ -525,8 +582,8 @@ checkpoint = torch.load("outputs/experiment/checkpoints/best_model.pt")
 model.load_state_dict(checkpoint["model_state_dict"])
 
 # Check training progress
-print(f"Loaded from epoch: {checkpoint['epoch']}")
-print(f"Best accuracy: {checkpoint['metrics']['val_accuracy']:.4f}")
+print(f"Loaded from epoch/round: {checkpoint.get('epoch') or checkpoint.get('round')}")
+print(f"Best accuracy: {checkpoint.get('best_val_accuracy', checkpoint.get('val_accuracy')):.4f}")
 ```
 
 ---
@@ -631,33 +688,69 @@ outputs/<experiment_name>/
 python run_experiment.py --mode <MODE> [OPTIONS]
 ```
 
+#### Mode Selection
+
 | Argument | Type | Description |
 |----------|------|-------------|
-| `--mode` | required | `centralized`, `federated`, or `comparison` |
-| `--config` | path | YAML configuration file |
+| `--mode` | required | `centralized`, `federated`, `comparison`, or `evaluate` |
+| `--config` | path | YAML configuration file (CLI args override config values) |
+
+#### Common Arguments
+
+| Argument | Type | Description |
+|----------|------|-------------|
 | `--data-root` | path | Root directory for datasets (default: `./data`) |
 | `--output-dir` | path | Output directory (default: `./outputs`) |
 | `--experiment-name` | string | Custom experiment name |
-| `--batch-size` | int | Override batch size |
-| `--lr` | float | Override learning rate |
-| `--datasets` | list | Specific datasets: `HAM10000 ISIC2019 ...` |
+| `--batch-size` | int | Batch size for training/evaluation |
+| `--lr` | float | Learning rate |
+| `--datasets` | list | Specific datasets: `HAM10000 ISIC2018 ISIC2019 ISIC2020 PAD-UFES-20` |
 
-**Centralized-specific:**
+#### Model Configuration
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `--model-variant` | string | DSCATNet variant: `tiny` (~5M), `small` (~15M), `base` (~20M) |
+| `--num-classes` | int | Number of output classes (default: 7) |
+| `--image-size` | int | Input image size (default: 224) |
+
+#### Training Hyperparameters
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `--weight-decay` | float | Weight decay for optimizer (default: 0.01) |
+| `--augmentation` | string | Data augmentation level: `none`, `light`, `medium`, `heavy` |
+| `--early-stopping` | int | Early stopping patience (epochs/rounds without improvement) |
+| `--checkpoint-interval` | int | Save checkpoint every N epochs/rounds |
+| `--num-workers` | int | Number of data loader workers |
+
+#### Centralized-Specific Arguments
 
 | Argument | Type | Description |
 |----------|------|-------------|
 | `--epochs` | int | Number of training epochs |
-| `--resume` | path | Checkpoint path to resume from |
+| `--warmup-epochs` | int | Number of warmup epochs for LR scheduler |
+| `--scheduler` | string | LR scheduler type: `cosine`, `plateau` |
+| `--val-split` | float | Validation split ratio (default: 0.15) |
+| `--no-amp` | flag | Disable automatic mixed precision (AMP) |
 
-**Federated-specific:**
+#### Federated-Specific Arguments
 
 | Argument | Type | Description |
 |----------|------|-------------|
-| `--rounds` | int | Number of FL rounds |
-| `--clients` | int | Number of clients |
+| `--rounds` | int | Number of FL communication rounds |
+| `--clients` | int | Number of FL clients |
 | `--local-epochs` | int | Local epochs per round |
 | `--noniid-type` | string | `natural`, `dirichlet`, `label_skew`, `quantity_skew` |
 | `--dirichlet-alpha` | float | Dirichlet alpha (lower = more non-IID) |
+| `--participation` | float | Client participation rate per round (0.0-1.0) |
+
+#### Checkpoint & Resume Arguments
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `--resume` | path | Checkpoint path to resume training from (centralized or federated) |
+| `--checkpoint` | path | Checkpoint path for evaluation mode (`--mode evaluate`) |
 
 ### `run_download.py` (Dataset Management)
 

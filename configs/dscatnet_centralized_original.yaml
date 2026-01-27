@@ -45,7 +45,7 @@ centralized:
   # ---------------------------------------------------------------------------
   training:
     batch_size: 4       # Reduced for GPU memory efficiency (originally was 32)
-    lr: 0.000125        # Learning rate for Adam optimizer (adjusted for batch size)
+    lr: 0.001        # Learning rate for Adam optimizer original
     weight_decay: 0.01
     epochs: 100
     warmup_epochs: 5

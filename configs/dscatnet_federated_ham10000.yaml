@@ -51,9 +51,9 @@ federated:
   # ---------------------------------------------------------------------------
   training:
     batch_size: 4       # Reduced for GPU memory efficiency (originally was 32)
-    lr: 0.000125        # Learning rate for Adam optimizer (adjusted for batch size)
+    lr: 0.001        # Learning rate for Adam optimizer original
     weight_decay: 0.01
-    local_epochs: 1     # Local epochs per FL round
+    local_epochs: 4     # Local epochs per FL round
     num_rounds: 25      # Total federated learning rounds
 
   # ---------------------------------------------------------------------------

@@ -92,6 +92,185 @@ def load_config(config_path: str) -> Dict[str, Any]:
         return yaml.safe_load(f)
 
 
+def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
+    """Evaluate a trained model checkpoint."""
+    from src.models.dscatnet import create_dscatnet
+    from src.evaluation.metrics import ModelEvaluator
+    from src.data.datasets import (
+        HAM10000Dataset, ISIC2018Dataset, ISIC2019Dataset, 
+        ISIC2020Dataset, PADUFES20Dataset, DatasetSubset
+    )
+    from src.data.preprocessing import get_val_transforms
+    from torch.utils.data import DataLoader, ConcatDataset
+    
+    if not args.checkpoint:
+        raise ValueError("--checkpoint is required for evaluation mode")
+    
+    checkpoint_path = Path(args.checkpoint)
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
+    
+    # Load checkpoint
+    logger.info(f"Loading checkpoint from {checkpoint_path}")
+    checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
+    
+    # Get config from checkpoint or use defaults
+    saved_config = checkpoint.get("config", {})
+    model_variant = args.model_variant or saved_config.get("model_variant", "small")
+    num_classes = args.num_classes or saved_config.get("num_classes", 7)
+    image_size = args.image_size or saved_config.get("image_size", 224)
+    
+    # Create model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = create_dscatnet(
+        variant=model_variant,
+        num_classes=num_classes,
+        pretrained=False,
+    ).to(device)
+    
+    # Load weights
+    if "model_state_dict" in checkpoint:
+        model.load_state_dict(checkpoint["model_state_dict"])
+    else:
+        # Assume checkpoint is just state dict
+        model.load_state_dict(checkpoint)
+    
+    logger.info(f"Model loaded: {model_variant}, {num_classes} classes")
+    
+    # Setup data
+    data_root = Path(args.data_root or saved_config.get("data_root", "./data"))
+    datasets_to_use = args.datasets or saved_config.get("datasets")
+    
+    val_transform = get_val_transforms(img_size=image_size)
+    
+    all_dataset_classes = [
+        (HAM10000Dataset, "HAM10000"),
+        (ISIC2018Dataset, "ISIC2018"),
+        (ISIC2019Dataset, "ISIC2019"),
+        (ISIC2020Dataset, "ISIC2020"),
+        (PADUFES20Dataset, "PAD-UFES-20"),
+    ]
+    
+    # Filter datasets
+    if datasets_to_use:
+        def normalize_name(name: str) -> str:
+            return name.upper().replace("-", "").replace("_", "")
+        requested = [normalize_name(d) for d in datasets_to_use]
+        dataset_classes = [
+            (cls, name) for cls, name in all_dataset_classes
+            if normalize_name(name) in requested
+        ]
+    else:
+        dataset_classes = all_dataset_classes
+    
+    # Load datasets
+    test_datasets = []
+    for dataset_cls, name in dataset_classes:
+        root_path = data_root / name
+        
+        if name == "HAM10000":
+            csv_path = root_path / "HAM10000_metadata.csv"
+            dataset_root = root_path
+        elif name == "ISIC2018":
+            csv_path = root_path / "ISIC2018_Task3_Training_GroundTruth.csv"
+            dataset_root = root_path / "ISIC2018_Task3_Training_Input"
+        elif name == "ISIC2019":
+            csv_path = root_path / "ISIC_2019_Training_GroundTruth.csv"
+            dataset_root = root_path / "ISIC_2019_Training_Input"
+        elif name == "ISIC2020":
+            csv_path = root_path / "ISIC_2020_Training_GroundTruth.csv"
+            if not csv_path.exists():
+                csv_path = root_path / "train.csv"
+            dataset_root = root_path / "ISIC_2020_Training_JPEG" / "train"
+            if not dataset_root.exists():
+                dataset_root = root_path / "train"
+        elif name == "PAD-UFES-20":
+            csv_path = root_path / "metadata.csv"
+            dataset_root = root_path
+        else:
+            continue
+        
+        if not dataset_root.exists() or not csv_path.exists():
+            logger.warning(f"Dataset {name} not found, skipping")
+            continue
+        
+        try:
+            dataset = dataset_cls(
+                root_dir=str(dataset_root),
+                csv_path=str(csv_path),
+                transform=val_transform,
+            )
+            # Use last 20% as test set (same split logic as training)
+            n = len(dataset)
+            gen = torch.Generator()
+            gen.manual_seed(42)
+            indices = torch.randperm(n, generator=gen).tolist()
+            test_indices = indices[int(n * 0.8):]
+            test_ds = DatasetSubset(dataset, test_indices, val_transform)
+            test_datasets.append(test_ds)
+            logger.info(f"Loaded {name}: {len(test_ds)} test samples")
+        except Exception as e:
+            logger.warning(f"Failed loading {name}: {e}")
+    
+    if not test_datasets:
+        raise RuntimeError("No datasets found for evaluation")
+    
+    combined_test = ConcatDataset(test_datasets)
+    test_loader = DataLoader(
+        combined_test,
+        batch_size=args.batch_size or 32,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=(device.type == "cuda"),
+    )
+    
+    logger.info(f"Total test samples: {len(combined_test)}")
+    
+    # Evaluate
+    evaluator = ModelEvaluator(model, device, num_classes=num_classes)
+    results = evaluator.evaluate(test_loader)
+    
+    # Print report
+    print("\n" + "=" * 60)
+    print("EVALUATION RESULTS")
+    print("=" * 60)
+    print(f"Accuracy:          {results.accuracy:.4f}")
+    print(f"Balanced Accuracy: {results.balanced_accuracy:.4f}")
+    print(f"Precision (macro): {results.precision_macro:.4f}")
+    print(f"Recall (macro):    {results.recall_macro:.4f}")
+    print(f"F1 (macro):        {results.f1_macro:.4f}")
+    print(f"F1 (weighted):     {results.f1_weighted:.4f}")
+    if results.auc_macro:
+        print(f"AUC-ROC (macro):   {results.auc_macro:.4f}")
+    print("=" * 60)
+    
+    print("\nPer-Class Metrics:")
+    for class_name, metrics in results.per_class_metrics.items():
+        print(f"  {class_name}: acc={metrics['accuracy']:.3f}, "
+              f"prec={metrics['precision']:.3f}, rec={metrics['recall']:.3f}, "
+              f"support={metrics['support']}")
+    
+    # Save results if output dir specified
+    if args.output_dir:
+        output_dir = Path(args.output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        import json
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        results_dict = results.to_dict()
+        results_dict["checkpoint"] = str(checkpoint_path)
+        results_dict["datasets"] = [name for _, name in dataset_classes]
+        
+        results_file = output_dir / f"evaluation_results_{timestamp}.json"
+        with open(results_file, "w") as f:
+            json.dump(results_dict, f, indent=2)
+        print(f"\nResults saved to: {results_file}")
+    
+    return results.to_dict()
+
+
 def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
     """Run centralized training experiment."""
     from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
@@ -166,12 +345,14 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
                 flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
             if "use_class_weights" in evl:
                 flat_config["use_class_weights"] = evl["use_class_weights"]
+            if "checkpoint_interval" in evl:
+                flat_config["checkpoint_interval"] = evl["checkpoint_interval"]
         
         config = CentralizedConfig.from_dict(flat_config)
     else:
         config = CentralizedConfig()
     
-    # Override with command line args
+    # Override with command line args (all hyperparameters)
     if args.epochs:
         config.num_epochs = args.epochs
     if args.batch_size:
@@ -190,6 +371,32 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
         config.experiment_name = args.experiment_name
     else:
         config.experiment_name = f"centralized_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Additional hyperparameter overrides
+    if args.model_variant:
+        config.model_variant = args.model_variant
+    if args.weight_decay is not None:
+        config.weight_decay = args.weight_decay
+    if args.warmup_epochs is not None:
+        config.warmup_epochs = args.warmup_epochs
+    if args.scheduler:
+        config.scheduler_type = args.scheduler
+    if args.early_stopping is not None:
+        config.early_stopping_patience = args.early_stopping
+    if args.checkpoint_interval is not None:
+        config.checkpoint_interval = args.checkpoint_interval
+    if args.image_size is not None:
+        config.image_size = args.image_size
+    if args.num_classes is not None:
+        config.num_classes = args.num_classes
+    if args.augmentation:
+        config.augmentation_level = args.augmentation
+    if args.val_split is not None:
+        config.val_split = args.val_split
+    if args.no_amp:
+        config.use_amp = False
+    if args.num_workers is not None:
+        config.num_workers = args.num_workers
     
     # Setup output directory and logging
     output_dir = Path(config.output_dir) / config.experiment_name
@@ -212,7 +419,19 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     """Run federated learning experiment."""
     from src.federated.simulation import SimulationConfig, FLSimulator
     
-    # Load config if provided
+    # If resuming, try to load config from checkpoint first
+    checkpoint_config = {}
+    if args.resume:
+        resume_path = Path(args.resume)
+        if resume_path.exists():
+            logger.info(f"Loading config from checkpoint: {resume_path}")
+            checkpoint = torch.load(resume_path, map_location="cpu", weights_only=False)
+            checkpoint_config = checkpoint.get("config", {})
+            if checkpoint_config:
+                logger.info(f"Restored config from checkpoint: noniid_type={checkpoint_config.get('noniid_type')}, "
+                          f"datasets={checkpoint_config.get('datasets')}")
+    
+    # Load config: priority is CLI args > YAML config > checkpoint config > defaults
     if args.config:
         config_dict = load_config(args.config)
         fed_config = config_dict.get("federated", {})
@@ -285,10 +504,14 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
                 flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
         
         config = SimulationConfig.from_dict(flat_config)
+    elif checkpoint_config:
+        # No YAML config provided but resuming from checkpoint - use checkpoint's config
+        logger.info("Using config from checkpoint as base (no YAML config provided)")
+        config = SimulationConfig.from_dict(checkpoint_config)
     else:
         config = SimulationConfig()
     
-    # Override with command line args
+    # Override with command line args (all hyperparameters)
     if args.rounds:
         config.num_rounds = args.rounds
     if args.clients:
@@ -316,6 +539,31 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
         config.experiment_name = args.experiment_name
     else:
         config.experiment_name = f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    
+    # Additional hyperparameter overrides
+    if args.model_variant:
+        config.model_variant = args.model_variant
+    if args.weight_decay is not None:
+        config.weight_decay = args.weight_decay
+    if args.early_stopping is not None:
+        config.early_stopping_patience = args.early_stopping
+    if args.checkpoint_interval is not None:
+        config.checkpoint_interval = args.checkpoint_interval
+    if args.image_size is not None:
+        config.image_size = args.image_size
+    if args.num_classes is not None:
+        config.num_classes = args.num_classes
+    if args.augmentation:
+        config.augmentation_level = args.augmentation
+    if args.num_workers is not None:
+        config.num_workers = args.num_workers
+    if args.participation is not None:
+        config.fraction_fit = args.participation
+        config.fraction_evaluate = args.participation
+    
+    # Resume from checkpoint
+    if args.resume:
+        config.resume_from = args.resume
     
     # Setup output directory and logging
     output_dir = Path(config.output_dir) / config.experiment_name
@@ -431,75 +679,139 @@ Examples:
     # Run centralized baseline
     python run_experiment.py --mode centralized --epochs 100
 
-    # Run centralized with specific dataset only
-    python run_experiment.py --mode centralized --epochs 50 --datasets HAM10000
+    # Run centralized with specific dataset and model variant
+    python run_experiment.py --mode centralized --epochs 50 --datasets HAM10000 --model-variant small
     
-    # Run centralized with multiple specific datasets
-    python run_experiment.py --mode centralized --epochs 50 --datasets HAM10000 ISIC2019
-    
-    # Resume training from checkpoint
-    python run_experiment.py --mode centralized --epochs 100 --resume outputs/exp/checkpoints/best_checkpoint.pt
+    # Resume centralized training from checkpoint
+    python run_experiment.py --mode centralized --resume outputs/exp/checkpoints/best_checkpoint.pt
 
     # Run federated learning with natural non-IID
     python run_experiment.py --mode federated --rounds 50 --noniid-type natural
     
-    # Run federated learning with specific datasets only
-    python run_experiment.py --mode federated --rounds 30 --datasets HAM10000 ISIC2019
+    # Run federated with Dirichlet split and custom alpha
+    python run_experiment.py --mode federated --rounds 30 --noniid-type dirichlet --dirichlet-alpha 0.3
+    
+    # Resume federated training from checkpoint
+    python run_experiment.py --mode federated --resume outputs/federated_xxx/checkpoints/checkpoint_round_10.pt
+
+    # Evaluate a trained model checkpoint
+    python run_experiment.py --mode evaluate --checkpoint outputs/exp/checkpoints/best_model.pt --datasets HAM10000
 
     # Run comparison experiment
     python run_experiment.py --mode comparison --config configs/experiment_config.yaml
         """,
     )
     
-    # Mode selection
+    # ==========================================================================
+    # Mode Selection
+    # ==========================================================================
     parser.add_argument(
         "--mode",
         type=str,
-        choices=["centralized", "federated", "comparison"],
+        choices=["centralized", "federated", "comparison", "evaluate"],
         required=True,
-        help="Experiment mode to run",
+        help="Experiment mode: centralized, federated, comparison, or evaluate",
     )
     
-    # Config file
+    # ==========================================================================
+    # Config File
+    # ==========================================================================
     parser.add_argument(
         "--config",
         type=str,
-        help="Path to YAML configuration file",
+        help="Path to YAML configuration file (overrides can still be applied via CLI)",
     )
     
-    # Common arguments
-    parser.add_argument("--data-root", type=str, help="Root directory for datasets")
-    parser.add_argument("--output-dir", type=str, help="Output directory for results")
-    parser.add_argument("--experiment-name", type=str, help="Name for this experiment")
-    parser.add_argument("--batch-size", type=int, help="Batch size")
-    parser.add_argument("--lr", type=float, help="Learning rate")
-    parser.add_argument(
+    # ==========================================================================
+    # Common Arguments (shared by all modes)
+    # ==========================================================================
+    common_group = parser.add_argument_group("Common Options")
+    common_group.add_argument("--data-root", type=str, help="Root directory for datasets (default: ./data)")
+    common_group.add_argument("--output-dir", type=str, help="Output directory for results (default: ./outputs)")
+    common_group.add_argument("--experiment-name", type=str, help="Name for this experiment")
+    common_group.add_argument("--batch-size", type=int, help="Batch size for training/evaluation")
+    common_group.add_argument("--lr", type=float, help="Learning rate")
+    common_group.add_argument(
         "--datasets", 
         type=str, 
         nargs="+",
         choices=["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"],
-        help="Specific dataset(s) to use (default: all). For FL natural non-IID, each dataset = one client"
+        help="Specific dataset(s) to use. For FL natural non-IID, each dataset = one client"
     )
     
-    # Centralized arguments
-    parser.add_argument("--epochs", type=int, help="Number of epochs (centralized)")
-    parser.add_argument(
-        "--resume",
+    # ==========================================================================
+    # Model Configuration
+    # ==========================================================================
+    model_group = parser.add_argument_group("Model Configuration")
+    model_group.add_argument(
+        "--model-variant",
         type=str,
-        help="Path to checkpoint to resume training from"
+        choices=["tiny", "small", "base"],
+        help="DSCATNet variant: tiny (~5M params), small (~15M), base (~20M)"
     )
+    model_group.add_argument("--num-classes", type=int, help="Number of output classes (default: 7)")
+    model_group.add_argument("--image-size", type=int, help="Input image size (default: 224)")
     
-    # Federated arguments
-    parser.add_argument("--rounds", type=int, help="Number of FL rounds")
-    parser.add_argument("--clients", type=int, help="Number of clients")
-    parser.add_argument("--local-epochs", type=int, help="Local epochs per round")
-    parser.add_argument(
+    # ==========================================================================
+    # Training Hyperparameters
+    # ==========================================================================
+    train_group = parser.add_argument_group("Training Hyperparameters")
+    train_group.add_argument("--weight-decay", type=float, help="Weight decay for optimizer (default: 0.01)")
+    train_group.add_argument(
+        "--augmentation",
+        type=str,
+        choices=["none", "light", "medium", "heavy"],
+        help="Data augmentation level"
+    )
+    train_group.add_argument("--early-stopping", type=int, help="Early stopping patience (epochs/rounds without improvement)")
+    train_group.add_argument("--checkpoint-interval", type=int, help="Save checkpoint every N epochs/rounds")
+    train_group.add_argument("--num-workers", type=int, help="Number of data loader workers")
+    
+    # ==========================================================================
+    # Centralized-Specific Arguments
+    # ==========================================================================
+    cent_group = parser.add_argument_group("Centralized Training Options")
+    cent_group.add_argument("--epochs", type=int, help="Number of training epochs")
+    cent_group.add_argument("--warmup-epochs", type=int, help="Number of warmup epochs for LR scheduler")
+    cent_group.add_argument(
+        "--scheduler",
+        type=str,
+        choices=["cosine", "plateau"],
+        help="Learning rate scheduler type"
+    )
+    cent_group.add_argument("--val-split", type=float, help="Validation split ratio (default: 0.15)")
+    cent_group.add_argument("--no-amp", action="store_true", help="Disable automatic mixed precision (AMP)")
+    
+    # ==========================================================================
+    # Federated-Specific Arguments
+    # ==========================================================================
+    fed_group = parser.add_argument_group("Federated Learning Options")
+    fed_group.add_argument("--rounds", type=int, help="Number of FL communication rounds")
+    fed_group.add_argument("--clients", type=int, help="Number of FL clients")
+    fed_group.add_argument("--local-epochs", type=int, help="Local training epochs per FL round")
+    fed_group.add_argument(
         "--noniid-type",
         type=str,
         choices=["natural", "dirichlet", "label_skew", "quantity_skew"],
-        help="Type of non-IID distribution",
+        help="Non-IID distribution type for FL"
     )
-    parser.add_argument("--dirichlet-alpha", type=float, help="Dirichlet alpha parameter")
+    fed_group.add_argument("--dirichlet-alpha", type=float, help="Dirichlet alpha (lower = more non-IID)")
+    fed_group.add_argument("--participation", type=float, help="Client participation rate per round (0.0-1.0)")
+    
+    # ==========================================================================
+    # Resume / Checkpoint Arguments
+    # ==========================================================================
+    resume_group = parser.add_argument_group("Checkpoint & Resume Options")
+    resume_group.add_argument(
+        "--resume",
+        type=str,
+        help="Path to checkpoint file to resume training from (centralized or federated)"
+    )
+    resume_group.add_argument(
+        "--checkpoint",
+        type=str,
+        help="Path to checkpoint/model file for evaluation (--mode evaluate)"
+    )
     
     # Parse args
     args = parser.parse_args()
@@ -509,15 +821,19 @@ Examples:
     print("DSCATNet Federated Learning Experiment")
     print(f"Mode: {args.mode.upper()}")
     print(f"Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
+    if torch.cuda.is_available():
+        print(f"GPU: {torch.cuda.get_device_name(0)}")
     print("=" * 60 + "\n")
     
-    # Run experiment
+    # Run experiment based on mode
     if args.mode == "centralized":
         results = run_centralized(args)
     elif args.mode == "federated":
         results = run_federated(args)
     elif args.mode == "comparison":
         results = run_comparison(args)
+    elif args.mode == "evaluate":
+        results = run_evaluate(args)
     
     print("\nExperiment completed successfully!")
     return 0
