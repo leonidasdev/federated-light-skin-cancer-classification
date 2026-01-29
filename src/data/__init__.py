@@ -1,3 +1,6 @@
+# =============================================================================
+# Data Handling Utilities for Dermoscopy Datasets
+# =============================================================================
 """
 Data handling utilities for dermoscopy datasets.
 
@@ -7,6 +10,10 @@ This module provides:
 - Data splitting utilities for IID and non-IID scenarios
 - Dataset verification and download helpers
 """
+
+# =============================================================================
+# Dataset Imports
+# =============================================================================
 
 from .datasets import (
     HAM10000Dataset,
@@ -25,6 +32,11 @@ from .datasets import (
     normalize_dataset_name,
     DatasetSubset,
 )
+
+# =============================================================================
+# Preprocessing Imports
+# =============================================================================
+
 from .preprocessing import (
     get_train_transforms,
     get_val_transforms,
@@ -34,6 +46,11 @@ from .preprocessing import (
     DERMOSCOPY_MEAN,
     DERMOSCOPY_STD,
 )
+
+# =============================================================================
+# Splits Imports
+# =============================================================================
+
 from .splits import (
     train_val_split,
     create_iid_split,
@@ -43,6 +60,11 @@ from .splits import (
     get_dataset_statistics,
     print_split_summary,
 )
+
+# =============================================================================
+# Download & Verification Imports
+# =============================================================================
+
 from .download import (
     create_directory_structure,
     verify_dataset,
@@ -52,6 +74,10 @@ from .download import (
     DATASET_INFO,
 )
 from .verify import DatasetVerifier
+
+# =============================================================================
+# Public API
+# =============================================================================
 
 __all__ = [
     # Datasets

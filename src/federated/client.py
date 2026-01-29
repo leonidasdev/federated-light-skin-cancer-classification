@@ -1,3 +1,6 @@
+# =============================================================================
+# Flower FL Client for Skin Cancer Classification
+# =============================================================================
 """
 Flower FL Client for Skin Cancer Classification.
 
@@ -7,6 +10,10 @@ Each client represents a hospital/institution with its own dermoscopy dataset:
 - Client 3: ISIC 2019
 - Client 4: ISIC 2020
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 from typing import Dict, List, Tuple, Sized, cast, Optional
 
@@ -21,10 +28,12 @@ from tqdm import tqdm
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
 
-# ---------------------------------------------------------------------------
-# AMP Compatibility: Use `torch.amp.autocast` if available (PyTorch >=2.0),
+# =============================================================================
+# AMP Compatibility
+# =============================================================================
+# Use `torch.amp.autocast` if available (PyTorch >=2.0),
 # otherwise fall back to the deprecated `torch.cuda.amp.autocast`.
-# ---------------------------------------------------------------------------
+
 try:
     _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
 except Exception:
@@ -36,6 +45,11 @@ def _autocast():
     if _HAS_TORCH_AMP_AUTOCAST:
         return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
     return torch.cuda.amp.autocast()
+
+
+# =============================================================================
+# FL Client Implementation
+# =============================================================================
 
 
 class SkinCancerClient(NumPyClient):
@@ -55,6 +69,7 @@ class SkinCancerClient(NumPyClient):
         learning_rate: Learning rate for optimizer
         class_weights: Optional class weights for imbalanced data
         use_amp: Enable Automatic Mixed Precision (AMP) for faster training
+        scheduler_t_max: T_max for CosineAnnealingLR scheduler (typically num_rounds)
     """
     
     def __init__(
@@ -67,7 +82,8 @@ class SkinCancerClient(NumPyClient):
         local_epochs: int = 1,
         learning_rate: float = 1e-3,
         class_weights: Optional[torch.Tensor] = None,
-        use_amp: bool = True
+        use_amp: bool = True,
+        scheduler_t_max: int = 100,
     ):
         self.client_id = client_id
         self.model = model
@@ -76,6 +92,7 @@ class SkinCancerClient(NumPyClient):
         self.device = device
         self.local_epochs = local_epochs
         self.learning_rate = learning_rate
+        self.scheduler_t_max = scheduler_t_max
         
         # Move model to device
         self.model.to(self.device)
@@ -116,7 +133,7 @@ class SkinCancerClient(NumPyClient):
         # Scheduler for learning rate decay
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
             self.optimizer,
-            T_max=100,  # Will be adjusted based on FL rounds
+            T_max=self.scheduler_t_max,
             eta_min=1e-6
         )
         

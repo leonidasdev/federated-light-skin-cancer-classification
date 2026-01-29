@@ -1,8 +1,15 @@
+# =============================================================================
+# Federated Learning Strategy for Skin Cancer Classification
+# =============================================================================
 """
 Federated Learning Strategy for Skin Cancer Classification.
 
 Implements FedAvg and custom aggregation strategies for DSCATNet.
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 from flwr.server.strategy import FedAvg
 from flwr.common import (
@@ -17,6 +24,10 @@ from flwr.server.client_proxy import ClientProxy
 from typing import Dict, List, Tuple, Optional, Callable, Union
 import numpy as np
 from pathlib import Path
+
+# =============================================================================
+# Custom FedAvg Strategy
+# =============================================================================
 
 
 class DSCATNetFedAvg(FedAvg):

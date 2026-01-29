@@ -1,3 +1,6 @@
+# =============================================================================
+# Dataset Classes for Dermoscopy Image Classification
+# =============================================================================
 """
 Dataset Classes for Dermoscopy Image Classification.
 
@@ -15,6 +18,10 @@ Classification Modes:
 2. BINARY - Benign vs Malignant (used for ISIC2020 compatibility)
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import pandas as pd
 import numpy as np
 from PIL import Image
@@ -24,10 +31,9 @@ from dataclasses import dataclass
 from torch.utils.data import Dataset, DataLoader
 import torch
 
-
-# ============================================================================
-# CLASS MAPPINGS FOR DIFFERENT DATASETS
-# ============================================================================
+# =============================================================================
+# Class Mappings for Different Datasets
+# =============================================================================
 
 # HAM10000: 7 diagnostic categories
 HAM10000_CLASSES = {

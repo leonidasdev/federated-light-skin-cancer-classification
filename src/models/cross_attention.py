@@ -1,3 +1,6 @@
+# =============================================================================
+# Cross-Scale Attention Module for DSCATNet
+# =============================================================================
 """
 Cross-Scale Attention Module for DSCATNet.
 
@@ -5,10 +8,18 @@ This module implements the cross-attention mechanism that enables information
 exchange between fine-scale and coarse-scale representations.
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Tuple
+
+# =============================================================================
+# Cross-Scale Attention
+# =============================================================================
 
 
 class CrossScaleAttention(nn.Module):

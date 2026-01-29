@@ -1,9 +1,16 @@
+# =============================================================================
+# Centralized Training Baseline
+# =============================================================================
 """
 Centralized Training Baseline.
 
 Provides centralized (non-federated) training for comparison with FL approaches.
 This serves as the upper-bound baseline for model performance.
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import time
 import json
@@ -31,10 +38,12 @@ from ..data.datasets import (
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
 
-# ---------------------------------------------------------------------------
-# AMP Compatibility: Use `torch.amp.autocast` if available (PyTorch >=2.0),
+# =============================================================================
+# AMP Compatibility
+# =============================================================================
+# Use `torch.amp.autocast` if available (PyTorch >=2.0),
 # otherwise fall back to the deprecated `torch.cuda.amp.autocast`.
-# ---------------------------------------------------------------------------
+
 try:
     _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
 except Exception:
@@ -49,6 +58,10 @@ def _autocast():
 
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Configuration
+# =============================================================================
 
 
 @dataclass
@@ -110,6 +123,11 @@ class CentralizedConfig:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "CentralizedConfig":
         return cls(**{k: v for k, v in config_dict.items() if k in cls.__dataclass_fields__})
+
+
+# =============================================================================
+# Centralized Trainer
+# =============================================================================
 
 
 class CentralizedTrainer:
@@ -355,6 +373,9 @@ class CentralizedTrainer:
         
         Returns:
             Tuple of (average loss, accuracy).
+            
+        Raises:
+            RuntimeError: If train_loader is not initialized (setup_data() not called).
         """
         self.model.train()
         total_loss = 0.0
@@ -425,6 +446,9 @@ class CentralizedTrainer:
         
         Returns:
             Tuple of (loss, accuracy, per-class metrics).
+            
+        Raises:
+            RuntimeError: If val_loader is not initialized (setup_data() not called).
         """
         self.model.eval()
 

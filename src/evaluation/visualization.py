@@ -1,9 +1,16 @@
+# =============================================================================
+# Visualization Utilities
+# =============================================================================
 """
 Visualization Utilities.
 
 Plotting and visualization for training curves, confusion matrices,
 and other analysis outputs.
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import logging
 from typing import Dict, List, Optional
@@ -12,6 +19,10 @@ from pathlib import Path
 import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Optional Dependencies
+# =============================================================================
 
 # Optional matplotlib import
 try:
@@ -22,6 +33,10 @@ except ImportError:
     HAS_PLOTTING = False
     logger.warning("matplotlib/seaborn not installed. Plotting functions disabled.")
 
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
 
 def check_plotting_available() -> bool:
     """Check if plotting libraries are available."""
@@ -29,6 +44,10 @@ def check_plotting_available() -> bool:
         logger.warning("Plotting not available. Install matplotlib and seaborn.")
         return False
     return True
+
+# =============================================================================
+# Plotting Functions
+# =============================================================================
 
 
 def plot_training_curves(

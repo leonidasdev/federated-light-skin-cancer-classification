@@ -1,3 +1,6 @@
+# =============================================================================
+# Dataset Download and Setup Scripts for Dermoscopy Datasets
+# =============================================================================
 """
 Dataset Download and Setup Scripts for Dermoscopy Datasets.
 
@@ -14,6 +17,10 @@ Download Methods:
 
 API Reference: https://isic-archive.com/api/v2
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import csv
 import json
@@ -45,6 +52,10 @@ ISIC_DATASET_NAMES = {
     "ISIC2019": "ISIC_2019_Training", 
     "ISIC2020": "ISIC_2020_Training_JPEG",
 }
+
+# =============================================================================
+# Dataset Information
+# =============================================================================
 
 # Dataset information and expected structure
 DATASET_INFO = {

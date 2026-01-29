@@ -533,6 +533,12 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     if args.participation is not None:
         config.fraction_fit = args.participation
         config.fraction_evaluate = args.participation
+    if args.client_selection is not None:
+        config.client_selection_fraction = args.client_selection
+    if args.parallel_clients is not None:
+        config.parallel_clients = args.parallel_clients
+    if args.train_val_split is not None:
+        config.train_val_split = args.train_val_split
     
     # Resume from checkpoint
     if args.resume:
@@ -770,6 +776,21 @@ Examples:
     )
     fed_group.add_argument("--dirichlet-alpha", type=float, help="Dirichlet alpha (lower = more non-IID)")
     fed_group.add_argument("--participation", type=float, help="Client participation rate per round (0.0-1.0)")
+    fed_group.add_argument(
+        "--client-selection",
+        type=float,
+        help="Fraction of clients to select each round (0.0-1.0, default: 1.0 = all)"
+    )
+    fed_group.add_argument(
+        "--parallel-clients",
+        type=int,
+        help="Number of clients to train in parallel (CPU only, 0=auto, 1=sequential)"
+    )
+    fed_group.add_argument(
+        "--train-val-split",
+        type=float,
+        help="Train/val split ratio (default: 0.8 = 80%% train, 20%% val)"
+    )
     
     # ==========================================================================
     # Resume / Checkpoint Arguments

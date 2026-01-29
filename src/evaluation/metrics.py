@@ -1,9 +1,16 @@
+# =============================================================================
+# Evaluation Utilities
+# =============================================================================
 """
 Evaluation Utilities.
 
 Comprehensive evaluation metrics for skin cancer classification including
 accuracy, F1-score, AUC-ROC, confusion matrix, and per-class metrics.
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import logging
 from typing import Dict, List, Optional, Any
@@ -28,9 +35,16 @@ from ..data.datasets import UNIFIED_CLASSES, CLASS_NAMES as DATASET_CLASS_NAMES
 
 logger = logging.getLogger(__name__)
 
+# =============================================================================
+# Constants
+# =============================================================================
 
 # Default class names for reporting (strings)
 DEFAULT_CLASS_NAMES = list(DATASET_CLASS_NAMES)
+
+# =============================================================================
+# Data Classes
+# =============================================================================
 
 
 @dataclass
@@ -63,6 +77,11 @@ class EvaluationResults:
             "confusion_matrix": self.confusion_matrix.tolist(),
             "per_class_metrics": self.per_class_metrics,
         }
+
+
+# =============================================================================
+# Model Evaluator
+# =============================================================================
 
 
 class ModelEvaluator:

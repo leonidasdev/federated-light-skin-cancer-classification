@@ -1,3 +1,6 @@
+# =============================================================================
+# Federated Learning Simulation Module
+# =============================================================================
 """
 Federated Learning Simulation Module.
 
@@ -5,11 +8,17 @@ This module provides the complete FL simulation infrastructure for running
 federated experiments with DSCATNet on dermoscopy datasets.
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
+import os
 import time
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Sized, cast
+from typing import Dict, List, Optional, Tuple, Any, Sized, cast, Callable
 from dataclasses import dataclass, asdict
 
 import numpy as np
@@ -33,6 +42,10 @@ from ..data.preprocessing import get_train_transforms, get_val_transforms
 from ..data.splits import create_noniid_split
 
 logger = logging.getLogger(__name__)
+
+# =============================================================================
+# Helper Classes
+# =============================================================================
 
 
 class DirichletSubset(torch.utils.data.Dataset):
@@ -96,6 +109,11 @@ class DirichletSubset(torch.utils.data.Dataset):
         return self._labels
 
 
+# =============================================================================
+# Configuration
+# =============================================================================
+
+
 @dataclass
 class SimulationConfig:
     """Configuration for FL simulation."""
@@ -114,6 +132,10 @@ class SimulationConfig:
     min_evaluate_clients: int = 2
     min_available_clients: int = 2
     
+    # Client selection: fraction of clients to sample each round (0.0-1.0)
+    # 1.0 = all clients participate, 0.5 = 50% of clients randomly selected
+    client_selection_fraction: float = 1.0
+    
     # Training configuration
     local_epochs: int = 1
     batch_size: int = 8
@@ -125,6 +147,7 @@ class SimulationConfig:
     image_size: int = 224
     augmentation_level: str = "medium"
     use_dermoscopy_norm: bool = False
+    train_val_split: float = 0.8  # Fraction of data for training (rest for validation)
     
     # Non-IID configuration
     noniid_type: str = "natural"  # natural, dirichlet, label_skew, quantity_skew
@@ -148,6 +171,11 @@ class SimulationConfig:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     num_workers: int = 2
     
+    # Parallelism configuration
+    # Number of clients to train in parallel (CPU only, for GPU use 1)
+    # Set to 0 for auto-detection based on CPU count
+    parallel_clients: int = 1
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary."""
         return asdict(self)
@@ -169,6 +197,11 @@ class ClientData:
     num_val_samples: int
     class_distribution: Dict[int, int]
     dataset_name: str
+
+
+# =============================================================================
+# FL Simulator
+# =============================================================================
 
 
 class FLSimulator:
@@ -393,9 +426,9 @@ class FLSimulator:
         # `create_noniid_split` returns a dict; enumerate over its values
         # so `indices` is a list of indices (not the dict key int).
         for client_id, indices in enumerate(client_indices.values()):
-            # Split into train/val
+            # Split into train/val using configurable ratio
             np.random.shuffle(indices)
-            split_idx = int(len(indices) * 0.8)
+            split_idx = int(len(indices) * self.config.train_val_split)
             train_indices = indices[:split_idx]
             val_indices = indices[split_idx:]
             
@@ -531,9 +564,9 @@ class FLSimulator:
                 logger.warning(f"Client {client_id} has no samples, skipping")
                 continue
             
-            # Split into train/val (80/20)
+            # Split into train/val using configurable ratio
             np.random.shuffle(indices)
-            split_idx = int(len(indices) * 0.8)
+            split_idx = int(len(indices) * self.config.train_val_split)
             train_indices = indices[:split_idx]
             val_indices = indices[split_idx:]
             
@@ -589,6 +622,9 @@ class FLSimulator:
             
         Returns:
             Tuple of (updated parameters, num samples, metrics dict).
+            
+        Raises:
+            ValueError: If client_id is not found in client_data.
         """
         if client_id not in self.client_data:
             raise ValueError(f"Client {client_id} not found")
@@ -658,6 +694,9 @@ class FLSimulator:
             
         Returns:
             Tuple of (loss, num samples, metrics dict).
+            
+        Raises:
+            ValueError: If client_id is not found in client_data.
         """
         if client_id not in self.client_data:
             raise ValueError(f"Client {client_id} not found")
@@ -726,9 +765,55 @@ class FLSimulator:
         
         return aggregated
     
+    def _select_clients(self, round_num: int) -> List[int]:
+        """
+        Select clients for this round based on client_selection_fraction.
+        
+        Args:
+            round_num: Current round number (used as seed for reproducibility).
+            
+        Returns:
+            List of selected client IDs.
+        """
+        all_client_ids = list(self.client_data.keys())
+        n_clients = len(all_client_ids)
+        
+        # Full participation
+        if self.config.client_selection_fraction >= 1.0:
+            return all_client_ids
+        
+        # Calculate number of clients to select
+        n_selected = max(
+            self.config.min_fit_clients,
+            int(n_clients * self.config.client_selection_fraction)
+        )
+        n_selected = min(n_selected, n_clients)
+        
+        # Use round number as seed for reproducibility
+        rng = np.random.RandomState(round_num + 42)
+        selected = rng.choice(all_client_ids, size=n_selected, replace=False).tolist()
+        
+        logger.info(f"Round {round_num}: Selected {len(selected)}/{n_clients} clients: {selected}")
+        return selected
+    
+    def _get_parallel_workers(self) -> int:
+        """
+        Determine the number of parallel workers for client training.
+        
+        Returns:
+            Number of workers to use (1 for sequential, >1 for parallel).
+        """
+        if self.config.parallel_clients == 0:
+            # Auto-detect: use CPU count, but cap at 4 to avoid memory issues
+            return min(os.cpu_count() or 1, 4)
+        return self.config.parallel_clients
+    
     def run_round(self, round_num: int, pbar: Optional[tqdm] = None) -> Dict[str, float]:
         """
-        Run a single FL round.
+        Run a single FL round with optional parallel client training.
+        
+        Supports partial client participation via client_selection_fraction and
+        parallel training via parallel_clients configuration.
         
         Args:
             round_num: Current round number.
@@ -742,19 +827,55 @@ class FLSimulator:
         # Get current global parameters
         global_params = get_model_parameters(self.global_model)
         
-        # Client training with progress
+        # Select clients for this round
+        selected_clients = self._select_clients(round_num)
+        n_workers = self._get_parallel_workers()
+        
+        # Client training
         fit_results = []
         client_train_metrics = []
         
-        client_ids = list(self.client_data.keys())
-        for i, client_id in enumerate(client_ids):
-            client = self.client_data[client_id]
+        if n_workers > 1 and len(selected_clients) > 1 and self.device.type == "cpu":
+            # Parallel training (CPU only - GPU parallelism needs special handling)
             if pbar:
-                pbar.set_postfix_str(f"Training {client.dataset_name}...")
-            params, num_samples, metrics = self.train_client(client_id, global_params)
-            fit_results.append((params, num_samples))
-            client_train_metrics.append(metrics)
-            logger.debug(f"Client {client_id}: loss={metrics['train_loss']:.4f}, acc={metrics['train_accuracy']:.4f}")
+                pbar.set_postfix_str(f"Training {len(selected_clients)} clients (parallel)...")
+            
+            # Note: We use ThreadPoolExecutor because model training is CPU-bound but
+            # PyTorch operations release the GIL. For true multiprocessing, we'd need
+            # to serialize models which adds overhead.
+            with ThreadPoolExecutor(max_workers=n_workers) as executor:
+                futures = {
+                    executor.submit(self.train_client, cid, global_params): cid
+                    for cid in selected_clients
+                }
+                for future in as_completed(futures):
+                    client_id = futures[future]
+                    try:
+                        params, num_samples, metrics = future.result()
+                        fit_results.append((params, num_samples))
+                        client_train_metrics.append(metrics)
+                        logger.debug(
+                            f"Client {client_id}: loss={metrics['train_loss']:.4f}, "
+                            f"acc={metrics['train_accuracy']:.4f}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Client {client_id} training failed: {e}")
+        else:
+            # Sequential training (default for GPU or single worker)
+            for client_id in selected_clients:
+                client = self.client_data[client_id]
+                if pbar:
+                    pbar.set_postfix_str(f"Training {client.dataset_name}...")
+                params, num_samples, metrics = self.train_client(client_id, global_params)
+                fit_results.append((params, num_samples))
+                client_train_metrics.append(metrics)
+                logger.debug(
+                    f"Client {client_id}: loss={metrics['train_loss']:.4f}, "
+                    f"acc={metrics['train_accuracy']:.4f}"
+                )
+        
+        if not fit_results:
+            raise RuntimeError("No clients completed training")
         
         # Aggregate parameters
         if pbar:
@@ -762,7 +883,7 @@ class FLSimulator:
         aggregated_params = self.aggregate_parameters(fit_results)
         set_model_parameters(self.global_model, aggregated_params)
         
-        # Client evaluation
+        # Client evaluation (always on all clients for consistent metrics)
         eval_results = []
         client_val_metrics = []
         
@@ -782,9 +903,9 @@ class FLSimulator:
         
         round_time = time.time() - start_time
         
-        # Calculate communication cost (model size * 2 * num_clients for upload/download)
+        # Calculate communication cost (model size * 2 * num_selected_clients)
         model_size_bytes = sum(p.nbytes for p in global_params)
-        comm_cost = model_size_bytes * 2 * len(self.client_data)
+        comm_cost = model_size_bytes * 2 * len(selected_clients)
         
         metrics = {
             "train_loss": avg_train_loss,
@@ -793,11 +914,13 @@ class FLSimulator:
             "val_accuracy": avg_val_acc,
             "round_time": round_time,
             "communication_cost_mb": comm_cost / (1024 * 1024),
+            "clients_participated": len(selected_clients),
         }
         
         logger.info(
             f"Round {round_num}: train_loss={avg_train_loss:.4f}, train_acc={avg_train_acc:.4f}, "
-            f"val_loss={avg_val_loss:.4f}, val_acc={avg_val_acc:.4f}, time={round_time:.2f}s"
+            f"val_loss={avg_val_loss:.4f}, val_acc={avg_val_acc:.4f}, "
+            f"clients={len(selected_clients)}, time={round_time:.2f}s"
         )
         
         return metrics

@@ -1,8 +1,15 @@
+# =============================================================================
+# Logging and Metrics Utilities
+# =============================================================================
 """
 Logging and Metrics Utilities.
 
 Centralized logging configuration and metrics tracking for experiments.
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import logging
 import sys
@@ -12,6 +19,10 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from collections import defaultdict
+
+# =============================================================================
+# Logging Setup
+# =============================================================================
 
 
 def setup_logging(
@@ -58,6 +69,10 @@ def setup_logging(
         logger.addHandler(file_handler)
     
     return logger
+
+# =============================================================================
+# Metrics Tracking
+# =============================================================================
 
 
 class MetricsTracker:

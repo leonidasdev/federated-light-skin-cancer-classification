@@ -1,9 +1,16 @@
+# =============================================================================
+# Flower FL Server for Skin Cancer Classification
+# =============================================================================
 """
 Flower FL Server for Skin Cancer Classification.
 
 The server coordinates the federated learning process across all clients,
 aggregating model updates and managing the training rounds.
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 from flwr.server import ServerConfig
 from flwr.server import start_server as fl_start_server
@@ -16,6 +23,10 @@ from pathlib import Path
 
 from ..models.dscatnet import DSCATNet, get_model_parameters
 from .strategy import create_fedavg_strategy
+
+# =============================================================================
+# Server Setup Functions
+# =============================================================================
 
 
 def create_server(
@@ -106,6 +117,11 @@ def start_server(
     )
     
     return history
+
+
+# =============================================================================
+# High-Level Server Wrapper
+# =============================================================================
 
 
 class FederatedServer:

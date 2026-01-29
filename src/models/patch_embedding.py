@@ -1,3 +1,6 @@
+# =============================================================================
+# Dual-Scale Patch Embedding Module for DSCATNet
+# =============================================================================
 """
 Dual-Scale Patch Embedding Module for DSCATNet.
 
@@ -5,10 +8,18 @@ This module creates patch embeddings at two different scales (8×8 and 16×16)
 to capture both fine-grained and coarse-grained features from dermoscopic images.
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import torch
 import torch.nn as nn
 from einops import rearrange
 from typing import Tuple
+
+# =============================================================================
+# Single-Scale Patch Embedding
+# =============================================================================
 
 
 class PatchEmbedding(nn.Module):
@@ -66,6 +77,10 @@ class PatchEmbedding(nn.Module):
         x = self.norm(x)
         
         return x
+
+# =============================================================================
+# Dual-Scale Patch Embedding
+# =============================================================================
 
 
 class DualScalePatchEmbedding(nn.Module):

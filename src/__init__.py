@@ -1,3 +1,6 @@
+# =============================================================================
+# Federated Learning for Skin Cancer Classification with DSCATNet
+# =============================================================================
 """
 Federated Learning for Skin Cancer Classification with DSCATNet.
 
@@ -26,6 +29,10 @@ Version: 0.1.0
 
 __version__ = "0.1.0"
 __author__ = "Leonardo Chen"
+
+# =============================================================================
+# Package Imports
+# =============================================================================
 
 # Make key modules accessible at package level
 from . import models

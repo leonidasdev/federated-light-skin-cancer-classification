@@ -1,3 +1,6 @@
+# =============================================================================
+# Data Verification and Quality Checking Utilities
+# =============================================================================
 """
 Data Verification and Quality Checking Utilities.
 
@@ -8,12 +11,20 @@ Provides comprehensive verification of dermoscopy datasets including:
 - Cross-dataset compatibility checks
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 from pathlib import Path
 from typing import Dict, Any
 import numpy as np
 import pandas as pd
 from PIL import Image
 from tqdm import tqdm
+
+# =============================================================================
+# Dataset Verifier
+# =============================================================================
 
 
 class DatasetVerifier:

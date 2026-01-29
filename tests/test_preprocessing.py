@@ -1,5 +1,8 @@
+# =============================================================================
+# Tests for Preprocessing Pipeline
+# =============================================================================
 """
-Test script for the preprocessing pipeline.
+Tests for the preprocessing pipeline.
 
 Validates that:
 1. Transforms work correctly on all datasets
@@ -7,6 +10,10 @@ Validates that:
 3. Normalization is applied correctly
 4. DataLoaders work properly
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import sys
 from pathlib import Path
@@ -30,6 +37,10 @@ from src.data.preprocessing import (
     DERMOSCOPY_MEAN,
     DERMOSCOPY_STD
 )
+
+# =============================================================================
+# Test Functions
+# =============================================================================
 
 
 def test_transform_output_shape():

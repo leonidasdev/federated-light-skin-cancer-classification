@@ -1,3 +1,6 @@
+# =============================================================================
+# Data Splitting Utilities for IID and Non-IID Scenarios
+# =============================================================================
 """
 Data Splitting Utilities for IID and Non-IID Scenarios.
 
@@ -8,9 +11,17 @@ for federated learning experiments:
 - Synthetic Non-IID: Label distribution skew within each dataset
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import numpy as np
 from typing import List, Tuple, Dict, Optional, Any
 from collections import defaultdict
+
+# =============================================================================
+# Basic Split Functions
+# =============================================================================
 
 
 def train_val_split(

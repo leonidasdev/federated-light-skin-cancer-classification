@@ -1,3 +1,6 @@
+# =============================================================================
+# Standardized Preprocessing Pipeline for Dermoscopy Datasets
+# =============================================================================
 """
 Standardized Preprocessing Pipeline for Dermoscopy Datasets.
 
@@ -10,11 +13,18 @@ Key preprocessing steps:
 3. Data augmentation for training (optional)
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 import numpy as np
 from typing import Tuple, Any, Sequence, cast
 
+# =============================================================================
+# Constants
+# =============================================================================
 
 # ImageNet normalization statistics
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
@@ -24,6 +34,10 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 # Can be used as alternative to ImageNet stats
 DERMOSCOPY_MEAN = (0.7635, 0.5461, 0.5705)
 DERMOSCOPY_STD = (0.1409, 0.1520, 0.1693)
+
+# =============================================================================
+# Transform Functions
+# =============================================================================
 
 
 def get_train_transforms(
@@ -41,6 +55,9 @@ def get_train_transforms(
         
     Returns:
         Albumentations Compose transform
+        
+    Raises:
+        ValueError: If augmentation_level is not 'light', 'medium', or 'heavy'.
     """
     mean = DERMOSCOPY_MEAN if use_dermoscopy_norm else IMAGENET_MEAN
     std = DERMOSCOPY_STD if use_dermoscopy_norm else IMAGENET_STD

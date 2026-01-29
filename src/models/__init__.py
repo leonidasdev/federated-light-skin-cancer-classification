@@ -1,3 +1,6 @@
+# =============================================================================
+# Model Architectures for Skin Cancer Classification
+# =============================================================================
 """
 Model architectures for skin cancer classification.
 
@@ -7,9 +10,17 @@ This module provides:
     - CrossScaleAttention: Cross-attention between feature scales
 """
 
+# =============================================================================
+# Model Imports
+# =============================================================================
+
 from .dscatnet import DSCATNet, create_dscatnet, get_model_parameters, set_model_parameters
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttention, CrossScaleAttentionBlock
+
+# =============================================================================
+# Public API
+# =============================================================================
 
 __all__ = [
     "DSCATNet",

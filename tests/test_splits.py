@@ -1,5 +1,8 @@
+# =============================================================================
+# Tests for IID and Non-IID Data Splits
+# =============================================================================
 """
-Test script for IID and Non-IID data splits.
+Tests for IID and Non-IID data splits.
 
 Validates:
 1. IID split creates balanced distributions
@@ -7,6 +10,10 @@ Validates:
 3. Split statistics are computed correctly
 4. All indices are valid and non-overlapping
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import sys
 from pathlib import Path
@@ -27,6 +34,10 @@ from src.data.splits import (
     print_split_summary
 )
 
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
 
 def generate_mock_labels(n_samples=10000, n_classes=7, imbalanced=True):
     """Generate mock labels for testing."""
@@ -39,6 +50,10 @@ def generate_mock_labels(n_samples=10000, n_classes=7, imbalanced=True):
         labels = np.random.randint(0, n_classes, size=n_samples)
     
     return labels.tolist()
+
+# =============================================================================
+# Test Functions
+# =============================================================================
 
 
 def test_train_val_split():

@@ -1,3 +1,6 @@
+# =============================================================================
+# DSCATNet: Dual-Scale Cross-Attention Vision Transformer
+# =============================================================================
 """
 DSCATNet: Dual-Scale Cross-Attention Vision Transformer for Skin Cancer Classification.
 
@@ -11,6 +14,10 @@ This is the main model architecture that combines:
 Reference: Adapted for Federated Learning based on the original DSCATNet paper (PLOS ONE 2024)
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,6 +26,10 @@ import logging
 
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock
+
+# =============================================================================
+# Main Model
+# =============================================================================
 
 
 class DSCATNet(nn.Module):
@@ -231,6 +242,9 @@ def create_dscatnet(
         
     Returns:
         Configured DSCATNet model
+        
+    Raises:
+        ValueError: If variant is not one of 'tiny', 'small', 'base'.
     """
     variants = {
         'tiny': {

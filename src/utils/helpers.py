@@ -1,14 +1,25 @@
+# =============================================================================
+# Utility Functions
+# =============================================================================
 """
 Utility Functions.
 
 Common helper functions used across the project.
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import random
 from typing import Optional
 
 import numpy as np
 import torch
+
+# =============================================================================
+# Reproducibility
+# =============================================================================
 
 
 def set_seed(seed: int = 42) -> None:
@@ -27,6 +38,10 @@ def set_seed(seed: int = 42) -> None:
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+# =============================================================================
+# Device Utilities
+# =============================================================================
+
 
 def get_device(device: Optional[str] = None) -> torch.device:
     """
@@ -41,6 +56,10 @@ def get_device(device: Optional[str] = None) -> torch.device:
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     return torch.device(device)
+
+# =============================================================================
+# Model Utilities
+# =============================================================================
 
 
 def count_parameters(model: torch.nn.Module, trainable_only: bool = True) -> int:
@@ -57,6 +76,10 @@ def count_parameters(model: torch.nn.Module, trainable_only: bool = True) -> int
     if trainable_only:
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     return sum(p.numel() for p in model.parameters())
+
+# =============================================================================
+# Formatting Utilities
+# =============================================================================
 
 
 def format_time(seconds: float) -> str:
