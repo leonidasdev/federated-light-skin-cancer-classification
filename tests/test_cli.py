@@ -32,7 +32,7 @@ def mock_run_experiment_parser():
     parser = argparse.ArgumentParser(
         description="Run DSCATNet Federated Learning Experiments"
     )
-    
+
     parser.add_argument(
         "--mode",
         type=str,
@@ -60,7 +60,7 @@ def mock_run_experiment_parser():
     parser.add_argument("--participation", type=float, help="Client participation rate")
     parser.add_argument("--dirichlet-alpha", type=float, help="Dirichlet alpha")
     parser.add_argument("--resume", type=str, help="Checkpoint to resume from")
-    
+
     return parser
 
 
@@ -68,12 +68,12 @@ def mock_run_experiment_parser():
 def mock_fl_parser():
     """Create a mock parser matching run_fl.py structure."""
     parser = argparse.ArgumentParser(description="Quick Start FL Experiment")
-    
+
     parser.add_argument("--config", type=str, help="Path to YAML config")
     parser.add_argument("--rounds", type=int, default=10, help="Number of rounds")
     parser.add_argument("--clients", type=int, default=5, help="Number of clients")
     parser.add_argument("--dataset", type=str, default="HAM10000", help="Dataset name")
-    
+
     return parser
 
 
