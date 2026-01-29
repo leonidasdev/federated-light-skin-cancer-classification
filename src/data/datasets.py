@@ -20,6 +20,7 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 from typing import Optional, Callable, Dict, List, Tuple, Union, Literal
+from dataclasses import dataclass
 from torch.utils.data import Dataset, DataLoader
 import torch
 
@@ -762,6 +763,210 @@ class DatasetSubset(Dataset):
         from collections import Counter
         subset_labels = [self.dataset.labels[i] for i in self.indices]
         return dict(Counter(subset_labels))
+
+
+# ============================================================================
+# DATASET REGISTRY - Centralized configuration for all datasets
+# ============================================================================
+
+@dataclass
+class DatasetConfig:
+    """Configuration for a single dataset."""
+    dataset_class: type
+    csv_filename: str
+    image_subdir: Optional[str] = None  # None means images are in root
+    alt_csv_filenames: Optional[List[str]] = None  # Alternative CSV names
+    alt_image_subdirs: Optional[List[str]] = None  # Alternative image directories
+
+
+# Forward references for dataset classes (they're defined above)
+DATASET_REGISTRY: Dict[str, DatasetConfig] = {}
+
+
+def _init_dataset_registry():
+    """Initialize the dataset registry after all classes are defined."""
+    global DATASET_REGISTRY
+    DATASET_REGISTRY = {
+        "HAM10000": DatasetConfig(
+            dataset_class=HAM10000Dataset,
+            csv_filename="HAM10000_metadata.csv",
+            image_subdir=None,
+        ),
+        "ISIC2018": DatasetConfig(
+            dataset_class=ISIC2018Dataset,
+            csv_filename="ISIC2018_Task3_Training_GroundTruth.csv",
+            image_subdir="ISIC2018_Task3_Training_Input",
+        ),
+        "ISIC2019": DatasetConfig(
+            dataset_class=ISIC2019Dataset,
+            csv_filename="ISIC_2019_Training_GroundTruth.csv",
+            image_subdir="ISIC_2019_Training_Input",
+        ),
+        "ISIC2020": DatasetConfig(
+            dataset_class=ISIC2020Dataset,
+            csv_filename="ISIC_2020_Training_GroundTruth.csv",
+            image_subdir="ISIC_2020_Training_JPEG/train",
+            alt_csv_filenames=["train.csv"],
+            alt_image_subdirs=["train", "ISIC_2020_Training_JPEG"],
+        ),
+        "PAD-UFES-20": DatasetConfig(
+            dataset_class=PADUFES20Dataset,
+            csv_filename="metadata.csv",
+            image_subdir=None,
+        ),
+    }
+
+
+# Initialize registry
+_init_dataset_registry()
+
+
+def normalize_dataset_name(name: str) -> str:
+    """
+    Normalize dataset name for comparison.
+    
+    Handles variations like 'PADUFES20', 'PAD-UFES-20', 'pad_ufes_20', etc.
+    
+    Args:
+        name: Dataset name in any format
+        
+    Returns:
+        Normalized name matching DATASET_REGISTRY keys
+    """
+    normalized = name.upper().replace("-", "").replace("_", "")
+    
+    # Map normalized forms back to canonical names
+    name_mapping = {
+        "HAM10000": "HAM10000",
+        "ISIC2018": "ISIC2018",
+        "ISIC2019": "ISIC2019",
+        "ISIC2020": "ISIC2020",
+        "PADUFES20": "PAD-UFES-20",
+    }
+    
+    return name_mapping.get(normalized, name)
+
+
+def get_dataset_paths(
+    dataset_name: str,
+    data_root: Union[str, Path],
+) -> Tuple[Optional[Path], Optional[Path]]:
+    """
+    Get the CSV path and image root for a dataset.
+    
+    Handles alternative paths for datasets with multiple possible locations.
+    
+    Args:
+        dataset_name: Name of the dataset (will be normalized)
+        data_root: Root directory containing all datasets
+        
+    Returns:
+        Tuple of (csv_path, image_root) or (None, None) if not found
+    """
+    canonical_name = normalize_dataset_name(dataset_name)
+    
+    if canonical_name not in DATASET_REGISTRY:
+        return None, None
+    
+    config = DATASET_REGISTRY[canonical_name]
+    data_root = Path(data_root)
+    dataset_dir = data_root / canonical_name
+    
+    # Find CSV file
+    csv_path = dataset_dir / config.csv_filename
+    if not csv_path.exists() and config.alt_csv_filenames:
+        for alt_csv in config.alt_csv_filenames:
+            alt_path = dataset_dir / alt_csv
+            if alt_path.exists():
+                csv_path = alt_path
+                break
+    
+    # Find image directory
+    if config.image_subdir:
+        image_root = dataset_dir / config.image_subdir
+        if not image_root.exists() and config.alt_image_subdirs:
+            for alt_dir in config.alt_image_subdirs:
+                alt_path = dataset_dir / alt_dir
+                if alt_path.exists():
+                    image_root = alt_path
+                    break
+    else:
+        image_root = dataset_dir
+    
+    return csv_path, image_root
+
+
+def load_dataset(
+    dataset_name: str,
+    data_root: Union[str, Path],
+    transform: Optional[Callable] = None,
+    classification_mode: ClassificationMode = 'multiclass',
+    filter_unknown: bool = True,
+) -> Optional[BaseDermoscopyDataset]:
+    """
+    Load a dataset by name using the registry.
+    
+    This is the unified way to load any supported dataset, handling
+    path resolution and alternative locations automatically.
+    
+    Args:
+        dataset_name: Name of the dataset (e.g., 'HAM10000', 'ISIC2018')
+        data_root: Root directory containing all datasets
+        transform: Optional transform to apply to images
+        classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary'
+        filter_unknown: Whether to filter out unknown labels
+        
+    Returns:
+        Loaded dataset or None if loading fails
+        
+    Example:
+        >>> dataset = load_dataset('HAM10000', './data', transform=my_transform)
+        >>> if dataset:
+        ...     print(f"Loaded {len(dataset)} samples")
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    canonical_name = normalize_dataset_name(dataset_name)
+    
+    if canonical_name not in DATASET_REGISTRY:
+        logger.warning(f"Unknown dataset: {dataset_name}")
+        return None
+    
+    config = DATASET_REGISTRY[canonical_name]
+    csv_path, image_root = get_dataset_paths(canonical_name, data_root)
+    
+    if csv_path is None or not csv_path.exists():
+        logger.warning(f"Dataset {canonical_name}: CSV not found")
+        return None
+    
+    if image_root is None or not image_root.exists():
+        logger.warning(f"Dataset {canonical_name}: Image directory not found at {image_root}")
+        return None
+    
+    try:
+        dataset = config.dataset_class(
+            root_dir=str(image_root),
+            csv_path=str(csv_path),
+            transform=transform,
+            classification_mode=classification_mode,
+            filter_unknown=filter_unknown,
+        )
+        logger.info(f"Loaded {canonical_name}: {len(dataset)} samples")
+        return dataset
+    except Exception as e:
+        logger.warning(f"Failed to load {canonical_name}: {e}")
+        return None
+
+
+def get_available_datasets() -> List[str]:
+    """
+    Get list of all available dataset names.
+    
+    Returns:
+        List of canonical dataset names
+    """
+    return list(DATASET_REGISTRY.keys())
 
 
 def get_combined_dataset(

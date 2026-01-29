@@ -17,6 +17,14 @@ from .datasets import (
     get_client_dataloader,
     CLASS_NAMES,
     UNIFIED_CLASSES,
+    # New registry-based utilities
+    DATASET_REGISTRY,
+    DatasetConfig,
+    load_dataset,
+    get_dataset_paths,
+    get_available_datasets,
+    normalize_dataset_name,
+    DatasetSubset,
 )
 from .preprocessing import (
     get_train_transforms,
@@ -56,6 +64,14 @@ __all__ = [
     "get_client_dataloader",
     "CLASS_NAMES",
     "UNIFIED_CLASSES",
+    # Dataset Registry (new)
+    "DATASET_REGISTRY",
+    "DatasetConfig",
+    "load_dataset",
+    "get_dataset_paths",
+    "get_available_datasets",
+    "normalize_dataset_name",
+    "DatasetSubset",
     # Preprocessing
     "get_train_transforms",
     "get_val_transforms",

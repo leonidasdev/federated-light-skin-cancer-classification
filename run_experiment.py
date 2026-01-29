@@ -93,12 +93,12 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
-    """Evaluate a trained model checkpoint."""
+    """Evaluate a trained model checkpoint using the DatasetRegistry."""
     from src.models.dscatnet import create_dscatnet
     from src.evaluation.metrics import ModelEvaluator
     from src.data.datasets import (
-        HAM10000Dataset, ISIC2018Dataset, ISIC2019Dataset, 
-        ISIC2020Dataset, PADUFES20Dataset, DatasetSubset
+        DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name,
+        get_available_datasets, DatasetSubset
     )
     from src.data.preprocessing import get_val_transforms
     from torch.utils.data import DataLoader, ConcatDataset
@@ -137,65 +137,38 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     
     logger.info(f"Model loaded: {model_variant}, {num_classes} classes")
     
-    # Setup data
+    # Setup data using registry
     data_root = Path(args.data_root or saved_config.get("data_root", "./data"))
     datasets_to_use = args.datasets or saved_config.get("datasets")
     
     val_transform = get_val_transforms(img_size=image_size)
     
-    all_dataset_classes = [
-        (HAM10000Dataset, "HAM10000"),
-        (ISIC2018Dataset, "ISIC2018"),
-        (ISIC2019Dataset, "ISIC2019"),
-        (ISIC2020Dataset, "ISIC2020"),
-        (PADUFES20Dataset, "PAD-UFES-20"),
-    ]
-    
-    # Filter datasets
+    # Determine which datasets to use
     if datasets_to_use:
-        def normalize_name(name: str) -> str:
-            return name.upper().replace("-", "").replace("_", "")
-        requested = [normalize_name(d) for d in datasets_to_use]
-        dataset_classes = [
-            (cls, name) for cls, name in all_dataset_classes
-            if normalize_name(name) in requested
-        ]
+        dataset_names = [normalize_dataset_name(d) for d in datasets_to_use]
     else:
-        dataset_classes = all_dataset_classes
+        dataset_names = get_available_datasets()
     
-    # Load datasets
+    # Load datasets using registry
     test_datasets = []
-    for dataset_cls, name in dataset_classes:
-        root_path = data_root / name
+    for name in dataset_names:
+        if name not in DATASET_REGISTRY:
+            logger.warning(f"Unknown dataset: {name}, skipping")
+            continue
+            
+        config = DATASET_REGISTRY[name]
+        csv_path, dataset_root = get_dataset_paths(name, data_root)
         
-        if name == "HAM10000":
-            csv_path = root_path / "HAM10000_metadata.csv"
-            dataset_root = root_path
-        elif name == "ISIC2018":
-            csv_path = root_path / "ISIC2018_Task3_Training_GroundTruth.csv"
-            dataset_root = root_path / "ISIC2018_Task3_Training_Input"
-        elif name == "ISIC2019":
-            csv_path = root_path / "ISIC_2019_Training_GroundTruth.csv"
-            dataset_root = root_path / "ISIC_2019_Training_Input"
-        elif name == "ISIC2020":
-            csv_path = root_path / "ISIC_2020_Training_GroundTruth.csv"
-            if not csv_path.exists():
-                csv_path = root_path / "train.csv"
-            dataset_root = root_path / "ISIC_2020_Training_JPEG" / "train"
-            if not dataset_root.exists():
-                dataset_root = root_path / "train"
-        elif name == "PAD-UFES-20":
-            csv_path = root_path / "metadata.csv"
-            dataset_root = root_path
-        else:
+        if csv_path is None or not csv_path.exists():
+            logger.warning(f"Dataset {name}: CSV not found, skipping")
             continue
         
-        if not dataset_root.exists() or not csv_path.exists():
-            logger.warning(f"Dataset {name} not found, skipping")
+        if dataset_root is None or not dataset_root.exists():
+            logger.warning(f"Dataset {name}: Image directory not found, skipping")
             continue
         
         try:
-            dataset = dataset_cls(
+            dataset = config.dataset_class(
                 root_dir=str(dataset_root),
                 csv_path=str(csv_path),
                 transform=val_transform,

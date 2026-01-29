@@ -191,10 +191,13 @@ class CentralizedTrainer:
         logger.info(f"AMP enabled: {self.use_amp}")
         logger.info(f"Model parameters: {sum(p.numel() for p in self.model.parameters()):,}")
     
-    def setup_data(self) -> None:
-        """Setup combined dataset from all sources."""
-        logger.info("Setting up combined dataset for centralized training")
+    def _get_transforms(self) -> Tuple[Any, Any]:
+        """
+        Get train and validation transforms based on config.
         
+        Returns:
+            Tuple of (train_transform, val_transform)
+        """
         train_transform = get_train_transforms(
             img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
@@ -204,86 +207,53 @@ class CentralizedTrainer:
             img_size=self.config.image_size,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
+        return train_transform, val_transform
+    
+    def setup_data(self) -> None:
+        """Setup combined dataset from all sources using the DatasetRegistry."""
+        from ..data.datasets import (
+            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
+        )
+        
+        logger.info("Setting up combined dataset for centralized training")
+        
+        train_transform, val_transform = self._get_transforms()
         
         # Load all datasets and split into train/val using indices so transforms
         # can be different for train and val (use DatasetSubset).
         datasets_train = []
         datasets_val = []
 
-        all_dataset_classes = [
-            (HAM10000Dataset, "HAM10000"),
-            (ISIC2018Dataset, "ISIC2018"),
-            (ISIC2019Dataset, "ISIC2019"),
-            (ISIC2020Dataset, "ISIC2020"),
-            (PADUFES20Dataset, "PAD-UFES-20"),
-        ]
-        
-        # Filter datasets if specific ones are requested
+        # Determine which datasets to load
         if self.config.datasets:
-            # Normalize names for comparison (handle PAD-UFES-20 vs PADUFES20)
-            def normalize_name(name: str) -> str:
-                return name.upper().replace("-", "").replace("_", "")
-            
-            requested = [normalize_name(d) for d in self.config.datasets]
-            dataset_classes = [
-                (cls, name) for cls, name in all_dataset_classes 
-                if normalize_name(name) in requested
-            ]
-            if not dataset_classes:
-                raise ValueError(f"No valid datasets found. Requested: {self.config.datasets}. "
-                               f"Valid options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20")
-            logger.info(f"Using selected datasets: {[name for _, name in dataset_classes]}")
+            dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
+            # Validate all names
+            valid_names = get_available_datasets()
+            invalid = [n for n in dataset_names if n not in valid_names]
+            if invalid:
+                raise ValueError(
+                    f"Unknown datasets: {invalid}. Valid options: {valid_names}"
+                )
+            logger.info(f"Using selected datasets: {dataset_names}")
         else:
-            dataset_classes = all_dataset_classes
+            dataset_names = get_available_datasets()
             logger.info("Using all available datasets")
 
-        for dataset_cls, name in dataset_classes:
-            root_path = Path(self.config.data_root) / name
+        for name in dataset_names:
+            config = DATASET_REGISTRY[name]
+            csv_path, dataset_root = get_dataset_paths(name, self.config.data_root)
 
-            # Determine csv path per dataset
-            if name == "HAM10000":
-                csv_path = root_path / "HAM10000_metadata.csv"
-                dataset_root = root_path
-            elif name == "ISIC2018":
-                csv_path = root_path / "ISIC2018_Task3_Training_GroundTruth.csv"
-                dataset_root = root_path / "ISIC2018_Task3_Training_Input"
-            elif name == "ISIC2019":
-                csv_path = root_path / "ISIC_2019_Training_GroundTruth.csv"
-                dataset_root = root_path / "ISIC_2019_Training_Input"
-            elif name == "ISIC2020":
-                # accept either train.csv or the challenge ground truth filename
-                candidate1 = root_path / "train.csv"
-                candidate2 = root_path / "ISIC_2020_Training_GroundTruth.csv"
-                csv_path = candidate1 if candidate1.exists() else candidate2
-                # Accept several common image-folder names for ISIC2020
-                possible_image_dirs = [
-                    "ISIC_2020_Training_JPEG/train",
-                    "ISIC_2020_Training_JPEG",
-                    "train",
-                ]
-                dataset_root = None
-                for d in possible_image_dirs:
-                    p = root_path / d
-                    if p.exists():
-                        dataset_root = p
-                        break
-                # Fallback to the dataset root itself if no subdir matched
-                if dataset_root is None:
-                    dataset_root = root_path
-            elif name == "PAD-UFES-20":
-                csv_path = root_path / "metadata.csv"
-                dataset_root = root_path
-            else:
-                logger.warning(f"Unknown dataset name: {name}")
+            if csv_path is None or not csv_path.exists():
+                logger.warning(f"Dataset {name}: CSV not found")
                 continue
-
-            if not dataset_root.exists() or not csv_path.exists():
-                logger.warning(f"Dataset {name} missing at {root_path} (root: {dataset_root}, csv: {csv_path})")
+            
+            if dataset_root is None or not dataset_root.exists():
+                logger.warning(f"Dataset {name}: Image directory not found")
                 continue
 
             try:
-                # instantiate full dataset (with train transforms for now)
-                full_dataset = dataset_cls(
+                # Instantiate full dataset (with train transforms for now)
+                full_dataset = config.dataset_class(
                     root_dir=str(dataset_root), 
                     csv_path=str(csv_path), 
                     transform=train_transform,
@@ -296,14 +266,14 @@ class CentralizedTrainer:
 
             n = len(full_dataset)
             if n == 0:
-                logger.warning(f"Dataset {name} contains 0 samples (csv: {csv_path})")
+                logger.warning(f"Dataset {name} contains 0 samples")
                 continue
 
-            # compute split sizes
+            # Compute split sizes
             val_n = int(n * self.config.val_split)
             train_n = n - val_n
 
-            # reproducible random permutation
+            # Reproducible random permutation
             gen = torch.Generator()
             gen.manual_seed(42)
             indices = torch.randperm(n, generator=gen).tolist()

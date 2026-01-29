@@ -227,20 +227,13 @@ class FLSimulator:
         logger.info(f"Device: {self.device}")
         logger.info(f"Output directory: {self.output_dir}")
     
-    def setup_natural_noniid(self) -> None:
+    def _get_transforms(self) -> Tuple[Any, Any]:
         """
-        Setup natural non-IID: each client gets a different dataset.
+        Get train and validation transforms based on config.
         
-        By default:
-        - Client 0: HAM10000
-        - Client 1: ISIC 2018
-        - Client 2: ISIC 2019
-        - Client 3: ISIC 2020
-        
-        If config.datasets is specified, only those datasets are used.
+        Returns:
+            Tuple of (train_transform, val_transform)
         """
-        logger.info("Setting up natural non-IID distribution (each client = different dataset)")
-        
         train_transform = get_train_transforms(
             img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
@@ -250,81 +243,77 @@ class FLSimulator:
             img_size=self.config.image_size,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
+        return train_transform, val_transform
+    
+    def setup_natural_noniid(self) -> None:
+        """
+        Setup natural non-IID: each client gets a different dataset.
         
-        all_dataset_classes = [
-            (HAM10000Dataset, "HAM10000"),
-            (ISIC2018Dataset, "ISIC2018"),
-            (ISIC2019Dataset, "ISIC2019"),
-            (ISIC2020Dataset, "ISIC2020"),
-            (PADUFES20Dataset, "PAD-UFES-20"),
-        ]
+        Uses the DatasetRegistry for centralized path resolution.
         
-        # Filter datasets if specific ones are requested
+        By default:
+        - Client 0: HAM10000
+        - Client 1: ISIC 2018
+        - Client 2: ISIC 2019
+        - Client 3: ISIC 2020
+        
+        If config.datasets is specified, only those datasets are used.
+        """
+        from ..data.datasets import (
+            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
+        )
+        
+        logger.info("Setting up natural non-IID distribution (each client = different dataset)")
+        
+        train_transform, val_transform = self._get_transforms()
+        
+        # Determine which datasets to use
         if self.config.datasets:
-            # Normalize names for comparison (handle PAD-UFES-20 vs PADUFES20)
-            def normalize_name(name: str) -> str:
-                return name.upper().replace("-", "").replace("_", "")
-            
-            requested = [normalize_name(d) for d in self.config.datasets]
-            dataset_classes = [
-                (cls, name) for cls, name in all_dataset_classes
-                if normalize_name(name) in requested
-            ]
-            if not dataset_classes:
+            dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
+            # Validate names
+            valid_names = get_available_datasets()
+            invalid = [n for n in dataset_names if n not in valid_names]
+            if invalid:
                 raise ValueError(
-                    f"No valid datasets found. Requested: {self.config.datasets}. "
-                    f"Valid options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20"
+                    f"Unknown datasets: {invalid}. Valid options: {valid_names}"
                 )
-            logger.info(f"Using selected datasets: {[name for _, name in dataset_classes]}")
+            logger.info(f"Using selected datasets: {dataset_names}")
         else:
-            dataset_classes = all_dataset_classes
+            dataset_names = get_available_datasets()
             logger.info("Using all available datasets")
         
-        for client_id, (dataset_cls, dataset_name) in enumerate(dataset_classes):
+        for client_id, dataset_name in enumerate(dataset_names):
             if client_id >= self.config.num_clients:
                 break
             
-            data_path = Path(self.config.data_root) / dataset_name
+            config = DATASET_REGISTRY[dataset_name]
+            csv_path, dataset_root = get_dataset_paths(dataset_name, self.config.data_root)
+
+            if csv_path is None or not csv_path.exists():
+                logger.warning(f"Dataset {dataset_name}: CSV not found")
+                continue
             
-            # Determine csv path and dataset root similar to centralized setup
-            if dataset_name == "HAM10000":
-                csv_path = data_path / "HAM10000_metadata.csv"
-                dataset_root = data_path
-            elif dataset_name == "ISIC2018":
-                csv_path = data_path / "ISIC2018_Task3_Training_GroundTruth.csv"
-                dataset_root = data_path / "ISIC2018_Task3_Training_Input"
-            elif dataset_name == "ISIC2019":
-                csv_path = data_path / "ISIC_2019_Training_GroundTruth.csv"
-                dataset_root = data_path / "ISIC_2019_Training_Input"
-            elif dataset_name == "ISIC2020":
-                candidate1 = data_path / "train.csv"
-                candidate2 = data_path / "ISIC_2020_Training_GroundTruth.csv"
-                csv_path = candidate1 if candidate1.exists() else candidate2
-                dataset_root = data_path / "train"
-            elif dataset_name == "PAD-UFES-20":
-                csv_path = data_path / "metadata.csv"
-                dataset_root = data_path
-            else:
-                logger.warning(f"Unknown dataset name: {dataset_name}")
+            if dataset_root is None or not dataset_root.exists():
+                logger.warning(f"Dataset {dataset_name}: Image directory not found")
                 continue
 
-            if not dataset_root.exists() or not csv_path.exists():
-                logger.warning(f"Dataset {dataset_name} not found at {data_path} (root: {dataset_root}, csv: {csv_path})")
-                continue
-
-            # instantiate full dataset (with train transforms for now)
+            # Instantiate full dataset (with train transforms for now)
             try:
-                full_dataset = dataset_cls(root_dir=str(dataset_root), csv_path=str(csv_path), transform=train_transform)
+                full_dataset = config.dataset_class(
+                    root_dir=str(dataset_root),
+                    csv_path=str(csv_path),
+                    transform=train_transform
+                )
             except Exception as e:
                 logger.warning(f"Failed loading dataset {dataset_name}: {e}")
                 continue
 
             n = len(full_dataset)
             if n == 0:
-                logger.warning(f"Dataset {dataset_name} contains 0 samples (csv: {csv_path})")
+                logger.warning(f"Dataset {dataset_name} contains 0 samples")
                 continue
 
-            # compute split sizes
+            # Compute split sizes
             val_n = int(n * 0.2)
             train_n = n - val_n
 
@@ -399,15 +388,7 @@ class FLSimulator:
             alpha=self.config.dirichlet_alpha,
         )
         
-        train_transform = get_train_transforms(
-            img_size=self.config.image_size,
-            augmentation_level=self.config.augmentation_level,
-            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
-        )
-        val_transform = get_val_transforms(
-            img_size=self.config.image_size,
-            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
-        )
+        train_transform, val_transform = self._get_transforms()
         
         # `create_noniid_split` returns a dict; enumerate over its values
         # so `indices` is a list of indices (not the dict key int).
@@ -470,81 +451,45 @@ class FLSimulator:
         """
         Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.
         
+        Uses the DatasetRegistry for centralized path resolution.
+        
         This creates heterogeneous label distributions across clients.
         Lower alpha = more heterogeneous (more non-IID)
         Higher alpha = more homogeneous (closer to IID)
         """
+        from ..data.datasets import (
+            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
+        )
+        
         logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
         
-        train_transform = get_train_transforms(
-            img_size=self.config.image_size,
-            augmentation_level=self.config.augmentation_level,
-            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
-        )
-        val_transform = get_val_transforms(
-            img_size=self.config.image_size,
-            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
-        )
+        train_transform, val_transform = self._get_transforms()
         
-        # Load all requested datasets
-        all_dataset_classes = [
-            (HAM10000Dataset, "HAM10000"),
-            (ISIC2018Dataset, "ISIC2018"),
-            (ISIC2019Dataset, "ISIC2019"),
-            (ISIC2020Dataset, "ISIC2020"),
-            (PADUFES20Dataset, "PAD-UFES-20"),
-        ]
-        
-        # Filter datasets if specific ones are requested
+        # Determine which datasets to use
         if self.config.datasets:
-            def normalize_name(name: str) -> str:
-                return name.upper().replace("-", "").replace("_", "")
-            
-            requested = [normalize_name(d) for d in self.config.datasets]
-            dataset_classes = [
-                (cls, name) for cls, name in all_dataset_classes
-                if normalize_name(name) in requested
-            ]
+            dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
         else:
-            dataset_classes = all_dataset_classes
+            dataset_names = get_available_datasets()
         
         # Load and combine datasets
         combined_images = []
         combined_labels = []
         dataset_source = []
         
-        for dataset_cls, dataset_name in dataset_classes:
-            data_path = Path(self.config.data_root) / dataset_name
+        for dataset_name in dataset_names:
+            config = DATASET_REGISTRY[dataset_name]
+            csv_path, dataset_root = get_dataset_paths(dataset_name, self.config.data_root)
             
-            # Determine csv path and dataset root
-            if dataset_name == "HAM10000":
-                csv_path = data_path / "HAM10000_metadata.csv"
-                dataset_root = data_path
-            elif dataset_name == "ISIC2018":
-                csv_path = data_path / "ISIC2018_Task3_Training_GroundTruth.csv"
-                dataset_root = data_path / "ISIC2018_Task3_Training_Input"
-            elif dataset_name == "ISIC2019":
-                csv_path = data_path / "ISIC_2019_Training_GroundTruth.csv"
-                dataset_root = data_path / "ISIC_2019_Training_Input"
-            elif dataset_name == "ISIC2020":
-                candidate1 = data_path / "train.csv"
-                candidate2 = data_path / "ISIC_2020_Training_GroundTruth.csv"
-                csv_path = candidate1 if candidate1.exists() else candidate2
-                dataset_root = data_path / "train"
-                if not dataset_root.exists():
-                    dataset_root = data_path
-            elif dataset_name == "PAD-UFES-20":
-                csv_path = data_path / "metadata.csv"
-                dataset_root = data_path
-            else:
+            if csv_path is None or not csv_path.exists():
+                logger.warning(f"Dataset {dataset_name}: CSV not found")
                 continue
             
-            if not dataset_root.exists() or not csv_path.exists():
-                logger.warning(f"Dataset {dataset_name} not found at {data_path}")
+            if dataset_root is None or not dataset_root.exists():
+                logger.warning(f"Dataset {dataset_name}: Image directory not found")
                 continue
             
             try:
-                full_dataset = dataset_cls(
+                full_dataset = config.dataset_class(
                     root_dir=str(dataset_root),
                     csv_path=str(csv_path),
                     transform=train_transform

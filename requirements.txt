@@ -17,7 +17,7 @@ einops>=0.6.0
 
 # Configuration
 pyyaml>=6.0
-hydra-core>=1.3.0
+# Note: hydra-core is a pytest plugin dependency, not actively used in main code
 
 # Visualization
 matplotlib>=3.7.0
@@ -26,8 +26,8 @@ tensorboard>=2.14.0
 
 # Utilities
 tqdm>=4.65.0
-wandb>=0.15.0
 kaggle>=1.5.12
+# Note: wandb available for experiment tracking but not required
 
 # Development
 jupyter>=1.0.0
@@ -36,4 +36,3 @@ ipykernel>=6.25.0
 # Testing
 pytest>=7.4.0
 pytest-cov>=4.1.0
-ipykernel>=6.25.0
