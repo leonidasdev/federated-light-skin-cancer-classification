@@ -62,23 +62,23 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CentralizedConfig:
     """Configuration for centralized training."""
-    
+
     # Model configuration
     model_variant: str = "small"
     num_classes: int = 7
     pretrained: bool = True
-    
+
     # Training configuration
     num_epochs: int = 100
     batch_size: int = 8
     learning_rate: float = 1e-4
     weight_decay: float = 0.01
     warmup_epochs: int = 5
-    
+
     # Scheduler configuration
     scheduler_type: str = "cosine"  # cosine, plateau
     min_lr: float = 1e-6
-    
+
     # Data configuration
     data_root: str = "./data"
     image_size: int = 224
@@ -86,35 +86,35 @@ class CentralizedConfig:
     use_dermoscopy_norm: bool = False
     val_split: float = 0.15
     test_split: float = 0.15
-    
+
     # Classification mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
     classification_mode: str = "multiclass"
     filter_unknown: bool = True
     use_class_weights: bool = True  # Use class weights in loss for imbalance
-    
+
     # Dataset selection: list of datasets to use, or None/empty for all
     # Valid options: "HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"
     datasets: Optional[List[str]] = None
-    
+
     # Resume training from checkpoint
     resume_from: Optional[str] = None
-    
+
     # Experiment configuration
     experiment_name: str = "centralized_baseline"
     output_dir: str = "./outputs"
     checkpoint_interval: int = 10
     early_stopping_patience: int = 15
-    
+
     # Device configuration
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     num_workers: int = 4
-    
+
     # Mixed precision (AMP) for faster training on compatible GPUs
     use_amp: bool = True
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "CentralizedConfig":
         return cls(**{k: v for k, v in config_dict.items() if k in cls.__dataclass_fields__})
@@ -128,28 +128,28 @@ class CentralizedConfig:
 class CentralizedTrainer:
     """
     Centralized Training for DSCATNet.
-    
+
     Trains on combined data from all datasets as a baseline for comparison
     with federated learning approaches.
     """
-    
+
     def __init__(self, config: CentralizedConfig):
         """
         Initialize the centralized trainer.
-        
+
         Args:
             config: Training configuration.
         """
         self.config = config
         self.device = torch.device(config.device)
-        
+
         # Initialize model
         self.model = create_dscatnet(
             variant=config.model_variant,
             num_classes=config.num_classes,
             pretrained=config.pretrained,
         ).to(self.device)
-        
+
         # Training history
         self.history = {
             "epochs": [],
@@ -159,24 +159,24 @@ class CentralizedTrainer:
             "val_accuracy": [],
             "learning_rate": [],
         }
-        
+
         # Setup output directory
         self.output_dir = Path(config.output_dir) / config.experiment_name
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         self.checkpoint_dir = self.output_dir / "checkpoints"
         self.checkpoint_dir.mkdir(exist_ok=True)
-        
+
         # Best model tracking
         self.best_val_accuracy = 0.0
         self.best_epoch = 0
         self.epochs_without_improvement = 0
-        
+
         # Data loaders (to be setup)
         self.train_loader: Optional[DataLoader] = None
         self.val_loader: Optional[DataLoader] = None
         self.test_loader: Optional[DataLoader] = None
-        
+
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = config.use_amp and self.device.type == "cuda"
         if self.use_amp:
@@ -198,16 +198,16 @@ class CentralizedTrainer:
                 self.scaler = _GradScaler()
         else:
             self.scaler = None
-        
+
         logger.info(f"Initialized CentralizedTrainer: {config.experiment_name}")
         logger.info(f"Device: {self.device}")
         logger.info(f"AMP enabled: {self.use_amp}")
         logger.info(f"Model parameters: {sum(p.numel() for p in self.model.parameters()):,}")
-    
+
     def _get_transforms(self) -> Tuple[Any, Any]:
         """
         Get train and validation transforms based on config.
-        
+
         Returns:
             Tuple of (train_transform, val_transform)
         """
@@ -221,17 +221,17 @@ class CentralizedTrainer:
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
         return train_transform, val_transform
-    
+
     def setup_data(self) -> None:
         """Setup combined dataset from all sources using the DatasetRegistry."""
         from ..data.datasets import (
             DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
         )
-        
+
         logger.info("Setting up combined dataset for centralized training")
-        
+
         train_transform, val_transform = self._get_transforms()
-        
+
         # Load all datasets and split into train/val using indices so transforms
         # can be different for train and val (use DatasetSubset).
         datasets_train = []
@@ -259,7 +259,7 @@ class CentralizedTrainer:
             if csv_path is None or not csv_path.exists():
                 logger.warning(f"Dataset {name}: CSV not found")
                 continue
-            
+
             if dataset_root is None or not dataset_root.exists():
                 logger.warning(f"Dataset {name}: Image directory not found")
                 continue
@@ -267,8 +267,8 @@ class CentralizedTrainer:
             try:
                 # Instantiate full dataset (with train transforms for now)
                 full_dataset = config.dataset_class(
-                    root_dir=str(dataset_root), 
-                    csv_path=str(csv_path), 
+                    root_dir=str(dataset_root),
+                    csv_path=str(csv_path),
                     transform=train_transform,
                     classification_mode=self.config.classification_mode,
                     filter_unknown=self.config.filter_unknown
@@ -300,14 +300,14 @@ class CentralizedTrainer:
             datasets_train.append(train_ds)
             datasets_val.append(val_ds)
             logger.info(f"Loaded {name}: {len(train_ds)} train, {len(val_ds)} val")
-        
+
         if not datasets_train:
             raise RuntimeError("No datasets found. Please check data paths.")
-        
+
         # Combine datasets
         combined_train = ConcatDataset(datasets_train)
         combined_val = ConcatDataset(datasets_val)
-        
+
         # Create data loaders
         self.train_loader = DataLoader(
             combined_train,
@@ -324,15 +324,15 @@ class CentralizedTrainer:
             num_workers=self.config.num_workers,
             pin_memory=(self.device.type == "cuda"),
         )
-        
+
         # Compute class weights if needed
         if self.config.use_class_weights:
             self._compute_class_weights(combined_train)
         else:
             self.class_weights = None
-        
+
         logger.info(f"Combined dataset: {len(combined_train)} train, {len(combined_val)} val")
-    
+
     def _compute_class_weights(self, dataset: ConcatDataset) -> None:
         """Compute class weights for handling class imbalance."""
         # Count labels across all sub-datasets
@@ -344,20 +344,20 @@ class CentralizedTrainer:
             elif hasattr(sub_ds, 'labels'):
                 labels = getattr(sub_ds, 'labels')
                 all_labels.extend(labels)
-        
+
         label_counts = Counter(all_labels)
         total = sum(label_counts.values())
         num_classes = self.config.num_classes
-        
+
         # Compute inverse frequency weights
         weights = torch.zeros(num_classes)
         for cls, count in label_counts.items():
             if 0 <= cls < num_classes:
                 weights[cls] = total / (num_classes * count)
-        
+
         self.class_weights = weights.to(self.device)
         logger.info(f"Class weights: {dict(enumerate(weights.tolist()))}")
-    
+
     def train_epoch(
         self,
         optimizer: torch.optim.Optimizer,
@@ -365,10 +365,10 @@ class CentralizedTrainer:
     ) -> Tuple[float, float]:
         """
         Train for one epoch.
-        
+
         Returns:
             Tuple of (average loss, accuracy).
-            
+
         Raises:
             RuntimeError: If train_loader is not initialized (setup_data() not called).
         """
@@ -381,7 +381,7 @@ class CentralizedTrainer:
             raise RuntimeError("train_loader is not initialized. Call setup_data() before training.")
 
         loader = self.train_loader
-        
+
         # Progress bar for batches
         pbar = tqdm(
             enumerate(loader),
@@ -396,7 +396,7 @@ class CentralizedTrainer:
             images, labels = images.to(self.device), labels.to(self.device)
 
             optimizer.zero_grad()
-            
+
             # Use AMP for faster training on compatible GPUs
             if self.use_amp and self.scaler is not None:
                 with _autocast():
@@ -420,7 +420,7 @@ class CentralizedTrainer:
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
-            
+
             # Update progress bar with current metrics
             current_loss = total_loss / (batch_idx + 1)
             current_acc = correct / total if total > 0 else 0
@@ -433,15 +433,15 @@ class CentralizedTrainer:
         accuracy = correct / total if total > 0 else 0.0
 
         return avg_loss, accuracy
-    
+
     @torch.no_grad()
     def evaluate(self) -> Tuple[float, float, Dict[str, float]]:
         """
         Evaluate model on validation set.
-        
+
         Returns:
             Tuple of (loss, accuracy, per-class metrics).
-            
+
         Raises:
             RuntimeError: If val_loader is not initialized (setup_data() not called).
         """
@@ -461,7 +461,7 @@ class CentralizedTrainer:
         # Per-class tracking
         class_correct = {}
         class_total = {}
-        
+
         # Progress bar for validation
         pbar = tqdm(
             loader,
@@ -500,17 +500,17 @@ class CentralizedTrainer:
         }
 
         return avg_loss, accuracy, per_class
-    
+
     def save_checkpoint(self, epoch: int, optimizer, scheduler, metrics: Dict, is_best: bool = False) -> str:
         """Save training checkpoint with all state needed for resumption.
-        
+
         Args:
             epoch: Current epoch number
             optimizer: Optimizer state
             scheduler: Scheduler state (can be None)
             metrics: Current metrics dict
             is_best: If True, save as best_checkpoint.pt
-            
+
         Returns:
             Path to saved checkpoint
         """
@@ -527,47 +527,47 @@ class CentralizedTrainer:
             "best_epoch": self.best_epoch,
             "epochs_without_improvement": self.epochs_without_improvement,
         }
-        
+
         if is_best:
             path = self.checkpoint_dir / "best_checkpoint.pt"
         else:
             path = self.checkpoint_dir / f"checkpoint_epoch_{epoch}.pt"
-        
+
         torch.save(checkpoint, path)
-        
+
         # Also save model-only file for easy loading
         if is_best:
             model_only_path = self.checkpoint_dir / "best_model.pt"
             torch.save(self.model.state_dict(), model_only_path)
-        
+
         logger.debug(f"Saved checkpoint: {path}")
         return str(path)
-    
+
     def load_checkpoint(self, checkpoint_path: str, optimizer=None, scheduler=None) -> int:
         """Load checkpoint and restore training state.
-        
+
         Args:
             checkpoint_path: Path to checkpoint file
             optimizer: Optimizer to restore state to (optional)
             scheduler: Scheduler to restore state to (optional)
-            
+
         Returns:
             Epoch number to resume from
         """
         logger.info(f"Loading checkpoint from {checkpoint_path}")
         checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
-        
+
         self.model.load_state_dict(checkpoint["model_state_dict"])
-        
+
         if optimizer and "optimizer_state_dict" in checkpoint:
             optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        
+
         if scheduler and "scheduler_state_dict" in checkpoint and checkpoint["scheduler_state_dict"]:
             scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
-        
+
         if self.scaler and "scaler_state_dict" in checkpoint and checkpoint["scaler_state_dict"]:
             self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
-        
+
         # Restore training state
         if "history" in checkpoint:
             self.history = checkpoint["history"]
@@ -577,16 +577,16 @@ class CentralizedTrainer:
             self.best_epoch = checkpoint["best_epoch"]
         if "epochs_without_improvement" in checkpoint:
             self.epochs_without_improvement = checkpoint["epochs_without_improvement"]
-        
+
         epoch = checkpoint.get("epoch", 0)
         logger.info(f"Resumed from epoch {epoch}, best accuracy: {self.best_val_accuracy:.4f}")
         return epoch
-    
-    
+
+
     def run(self) -> Dict[str, Any]:
         """
         Run complete centralized training.
-        
+
         Returns:
             Dictionary with training history and results.
         """
@@ -637,7 +637,7 @@ class CentralizedTrainer:
 
         # Training loop
         start_time = time.time()
-        
+
         # Epoch progress bar
         epoch_pbar = tqdm(
             range(start_epoch, self.config.num_epochs + 1),
@@ -648,7 +648,7 @@ class CentralizedTrainer:
 
         for epoch in epoch_pbar:
             epoch_start = time.time()
-            
+
             epoch_pbar.set_description(f"Epoch {epoch}/{self.config.num_epochs}")
 
             # Train
@@ -682,7 +682,7 @@ class CentralizedTrainer:
                 'val_acc': f'{val_acc:.4f}',
                 'best': f'{self.best_val_accuracy:.4f}'
             })
-            
+
             logger.info(
                 f"Epoch {epoch}/{self.config.num_epochs} | "
                 f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
@@ -740,15 +740,15 @@ class CentralizedTrainer:
 def run_centralized_training(config: Optional[CentralizedConfig] = None) -> Dict[str, Any]:
     """
     Convenience function to run centralized training.
-    
+
     Args:
         config: Training configuration. If None, uses defaults.
-        
+
     Returns:
         Training results.
     """
     if config is None:
         config = CentralizedConfig()
-    
+
     trainer = CentralizedTrainer(config)
     return trainer.run()

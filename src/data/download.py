@@ -47,7 +47,7 @@ ISIC_API_BASE_URL = "https://api.isic-archive.com/api/v2"
 ISIC_DATASET_NAMES = {
     "HAM10000": "HAM10000",
     "ISIC2018": "ISIC_2018_Task_3_Training",
-    "ISIC2019": "ISIC_2019_Training", 
+    "ISIC2019": "ISIC_2019_Training",
     "ISIC2020": "ISIC_2020_Training_JPEG",
 }
 
@@ -130,16 +130,16 @@ def get_data_root() -> Path:
 def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Path]:
     """
     Create the expected directory structure for all datasets.
-    
+
     Returns:
         Dictionary mapping dataset names to their paths
     """
     if data_root is None:
         data_root = get_data_root()
-    
+
     data_root = Path(data_root)
     data_root.mkdir(parents=True, exist_ok=True)
-    
+
     paths = {}
     for dataset_name in DATASET_INFO:
         dataset_path = data_root / dataset_name
@@ -147,11 +147,11 @@ def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Pa
         # Create images subdirectory
         (dataset_path / "images").mkdir(exist_ok=True)
         paths[dataset_name] = dataset_path
-        
+
     # Also create raw and processed subdirectories
     (data_root / "raw").mkdir(exist_ok=True)
     (data_root / "processed").mkdir(exist_ok=True)
-    
+
     print(f"Created directory structure at: {data_root}")
     return paths
 
@@ -163,13 +163,13 @@ def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Pa
 class ISICArchiveClient:
     """
     Client for ISIC Archive API v2.
-    
+
     Downloads dermoscopy images and metadata from the official ISIC Archive.
     No API key required.
-    
+
     API Documentation: https://api.isic-archive.com/api/v2/docs
     """
-    
+
     def __init__(
         self,
         base_url: str = ISIC_API_BASE_URL,
@@ -180,7 +180,7 @@ class ISICArchiveClient:
     ):
         """
         Initialize ISIC Archive API client.
-        
+
         Args:
             base_url: ISIC API base URL
             max_retries: Maximum retry attempts for failed requests
@@ -191,7 +191,7 @@ class ISICArchiveClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.max_workers = max_workers
-        
+
         # Setup session with retry logic
         self.session = requests.Session()
         retry_strategy = Retry(
@@ -203,16 +203,16 @@ class ISICArchiveClient:
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
-        
+
         # Set headers
         self.session.headers.update({
             "Accept": "application/json",
             "User-Agent": "ISIC-Downloader/1.0 (Federated Learning Research)"
         })
-    
+
     def _make_request(
-        self, 
-        endpoint: str, 
+        self,
+        endpoint: str,
         params: Optional[Dict] = None
     ) -> requests.Response:
         """Make API request with error handling."""
@@ -225,7 +225,7 @@ class ISICArchiveClient:
         except requests.exceptions.RequestException as e:
             logger.error(f"API request failed: {url} - {e}")
             raise
-    
+
     def get_image_list(
         self,
         collection: Optional[str] = None,
@@ -234,12 +234,12 @@ class ISICArchiveClient:
     ) -> List[Dict[str, Any]]:
         """
         Get list of images from ISIC Archive.
-        
+
         Args:
             collection: Collection/dataset name filter
             limit: Maximum images to return per request
             offset: Offset for pagination
-            
+
         Returns:
             List of image metadata dictionaries
         """
@@ -252,10 +252,10 @@ class ISICArchiveClient:
             # Include both keys defensively so the server receives the intended filter.
             params["collections"] = collection
             params["collection"] = collection
-        
+
         response = self._make_request("/images/", params=params)
         return response.json().get("results", [])
-    
+
     def get_all_images_for_collection(
         self,
         collection: str,
@@ -263,11 +263,11 @@ class ISICArchiveClient:
     ) -> List[Dict[str, Any]]:
         """
         Get all images from a specific collection with pagination.
-        
+
         Args:
             collection: Collection/dataset name
             batch_size: Number of images per API call
-            
+
         Returns:
             List of all image metadata
         """
@@ -319,7 +319,7 @@ class ISICArchiveClient:
                 time.sleep(0.1)
 
         return all_images
-    
+
     def download_image(
         self,
         image_id: str,
@@ -328,12 +328,12 @@ class ISICArchiveClient:
     ) -> bool:
         """
         Download a single image from ISIC Archive.
-        
+
         Args:
             image_id: ISIC image ID (e.g., "ISIC_0024306")
             output_path: Path to save the image
             size: Image size - "full", "thumbnail", or pixel size
-            
+
         Returns:
             True if successful
         """
@@ -381,20 +381,20 @@ class ISICArchiveClient:
         except Exception as e:
             logger.warning(f"Failed to save {image_id}: {e}")
             return False
-    
+
     def _download_worker(
         self,
         task: Tuple[str, Path]
     ) -> Tuple[str, bool]:
         """Worker function for parallel downloads."""
         image_id, output_path = task
-        
+
         if output_path.exists():
             return (image_id, True)  # Skip existing
-            
+
         success = self.download_image(image_id, output_path)
         return (image_id, success)
-    
+
     def download_images_parallel(
         self,
         images: List[Dict[str, Any]],
@@ -403,21 +403,21 @@ class ISICArchiveClient:
     ) -> Dict[str, Any]:
         """
         Download multiple images in parallel.
-        
+
         Args:
             images: List of image metadata dictionaries
             output_dir: Directory to save images
             max_workers: Number of parallel workers
-            
+
         Returns:
             Download statistics
         """
         if max_workers is None:
             max_workers = self.max_workers
-        
+
         output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Prepare download tasks
         tasks = []
         for img in images:
@@ -426,25 +426,25 @@ class ISICArchiveClient:
                 continue
             output_path = output_dir / f"{image_id}.jpg"
             tasks.append((image_id, output_path))
-        
+
         # Check for existing files
         existing = sum(1 for _, path in tasks if path.exists())
         to_download = [(id_, path) for id_, path in tasks if not path.exists()]
-        
+
         print(f"  Found {existing} existing images, downloading {len(to_download)} new images")
-        
+
         if not to_download:
             return {"total": len(tasks), "success": len(tasks), "failed": 0, "skipped": existing}
-        
+
         success_count = existing
         failed_count = 0
-        
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(self._download_worker, task): task 
+                executor.submit(self._download_worker, task): task
                 for task in to_download
             }
-            
+
             with tqdm(total=len(to_download), desc="  Downloading images", unit=" img") as pbar:
                 for future in concurrent.futures.as_completed(futures):
                     image_id, success = future.result()
@@ -453,14 +453,14 @@ class ISICArchiveClient:
                     else:
                         failed_count += 1
                     pbar.update(1)
-        
+
         return {
             "total": len(tasks),
             "success": success_count,
             "failed": failed_count,
             "skipped": existing
         }
-    
+
     def save_metadata_csv(
         self,
         images: List[Dict[str, Any]],
@@ -468,7 +468,7 @@ class ISICArchiveClient:
     ) -> None:
         """
         Save image metadata to CSV file.
-        
+
         Args:
             images: List of image metadata dictionaries
             output_path: Path to save CSV file
@@ -476,10 +476,10 @@ class ISICArchiveClient:
         if not images:
             logger.warning("No images to save metadata for")
             return
-        
+
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Flatten nested metadata
         rows = []
         for img in images:
@@ -488,13 +488,13 @@ class ISICArchiveClient:
                 "attribution": img.get("attribution", ""),
                 "copyright_license": img.get("copyright_license", ""),
             }
-            
+
             # Extract diagnosis/label from metadata
             metadata = img.get("metadata", {})
             clinical = metadata.get("clinical", {})
-            
+
             row["diagnosis"] = (
-                metadata.get("diagnosis", "") or 
+                metadata.get("diagnosis", "") or
                 clinical.get("diagnosis", "") or
                 img.get("diagnosis", "")
             )
@@ -504,26 +504,26 @@ class ISICArchiveClient:
                 metadata.get("benign_malignant", "") or
                 clinical.get("benign_malignant", "")
             )
-            
+
             # Patient/acquisition info
             row["age_approx"] = clinical.get("age_approx", "")
             row["sex"] = clinical.get("sex", "")
             row["anatom_site_general"] = clinical.get("anatom_site_general", "")
-            
+
             # Image acquisition
             acquisition = metadata.get("acquisition", {})
             row["image_type"] = acquisition.get("image_type", "")
             row["dermoscopic_type"] = acquisition.get("dermoscopic_type", "")
-            
+
             rows.append(row)
-        
+
         # Write CSV
         fieldnames = list(rows[0].keys()) if rows else []
         with open(output_path, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(rows)
-        
+
         print(f"  Saved metadata to {output_path}")
 
 
@@ -539,70 +539,70 @@ def download_dataset_isic(
 ) -> bool:
     """
     Download a dataset from ISIC Archive.
-    
+
     Args:
         dataset_name: Name of dataset (HAM10000, ISIC2018, ISIC2019, ISIC2020)
         data_root: Root directory for datasets
         max_workers: Number of parallel download workers
         force_redownload: If True, redownload even if files exist
-        
+
     Returns:
         True if successful
     """
     if dataset_name not in DATASET_INFO:
         print(f"Unknown dataset: {dataset_name}")
         return False
-    
+
     if data_root is None:
         data_root = get_data_root()
-    
+
     data_root = Path(data_root)
     dataset_path = data_root / dataset_name
     dataset_path.mkdir(parents=True, exist_ok=True)
     images_dir = dataset_path / "images"
     images_dir.mkdir(exist_ok=True)
-    
+
     info = DATASET_INFO[dataset_name]
     isic_collection = info.get("isic_dataset", dataset_name)
-    
+
     print(f"\n{'='*60}")
     print(f"Downloading: {dataset_name}")
     print(f"Collection: {isic_collection}")
     print(f"Expected images: ~{info['approx_images']:,}")
     print(f"{'='*60}")
-    
+
     # Check if already downloaded
     if not force_redownload:
         existing_images = len(list(images_dir.glob("*.jpg")))
         if existing_images >= info["approx_images"] * 0.95:  # 95% threshold
             print(f"Dataset appears complete ({existing_images:,} images found)")
             return True
-    
+
     # Initialize API client
     client = ISICArchiveClient(max_workers=max_workers)
-    
+
     try:
         # Get all images for collection
         print("\nStep 1: Fetching image metadata from ISIC Archive...")
         images = client.get_all_images_for_collection(isic_collection)
-        
+
         if not images:
             print(f"No images found for collection: {isic_collection}")
             print("  This may indicate the collection name has changed.")
             print("  Please check: https://api.isic-archive.com/api/v2/collections/")
             return False
-        
+
         print(f"  Found {len(images):,} images")
-        
+
         # Save metadata
         print("\nStep 2: Saving metadata...")
         metadata_path = dataset_path / "metadata.csv"
         client.save_metadata_csv(images, metadata_path)
-        
+
         # Download images
         print("\nStep 3: Downloading images...")
         stats = client.download_images_parallel(images, images_dir, max_workers)
-        
+
         print(f"\n{'='*60}")
         print(f"Download Summary for {dataset_name}:")
         print(f"  Total images: {stats['total']:,}")
@@ -610,9 +610,9 @@ def download_dataset_isic(
         print(f"  Failed: {stats['failed']:,}")
         print(f"  Skipped (existing): {stats['skipped']:,}")
         print(f"{'='*60}")
-        
+
         return stats["failed"] == 0
-        
+
     except Exception as e:
         logger.error(f"Error downloading {dataset_name}: {e}")
         print(f"Download failed: {e}")
@@ -626,34 +626,34 @@ def download_all_datasets(
 ) -> Dict[str, bool]:
     """
     Download all (or specified) datasets from ISIC Archive.
-    
+
     Args:
         data_root: Root directory for datasets
         datasets: List of datasets to download (None = all)
         max_workers: Number of parallel workers
-        
+
     Returns:
         Dictionary mapping dataset names to success status
     """
     if datasets is None:
         datasets = list(DATASET_INFO.keys())
-    
+
     results = {}
-    
+
     print("\n" + "=" * 70)
     print("ISIC ARCHIVE DATASET DOWNLOADER")
     print("=" * 70)
     print(f"Datasets to download: {', '.join(datasets)}")
     print(f"Total estimated images: ~{sum(DATASET_INFO[d]['approx_images'] for d in datasets):,}")
     print("=" * 70)
-    
+
     for dataset_name in datasets:
         results[dataset_name] = download_dataset_isic(
             dataset_name,
             data_root=data_root,
             max_workers=max_workers
         )
-    
+
     # Print final summary
     print("\n" + "=" * 70)
     print("FINAL DOWNLOAD SUMMARY")
@@ -661,11 +661,11 @@ def download_all_datasets(
     for dataset_name, success in results.items():
         status = "OK" if success else "FAIL"
         print(f"  {status} {dataset_name}")
-    
+
     successful = sum(results.values())
     print(f"\nCompleted: {successful}/{len(results)} datasets")
     print("=" * 70)
-    
+
     return results
 
 
@@ -676,25 +676,25 @@ def download_all_datasets(
 def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[str, Any]:
     """
     Verify that a dataset is properly set up.
-    
+
     Args:
         dataset_name: Name of dataset (HAM10000, ISIC2018, etc.)
         data_root: Root data directory
-        
+
     Returns:
         Dictionary with verification results
     """
     if data_root is None:
         data_root = get_data_root()
-    
+
     data_root = Path(data_root)
-    
+
     if dataset_name not in DATASET_INFO:
         return {"valid": False, "error": f"Unknown dataset: {dataset_name}"}
-    
+
     info = DATASET_INFO[dataset_name]
     dataset_path = data_root / dataset_name
-    
+
     result = {
         "valid": True,
         "dataset": dataset_name,
@@ -706,7 +706,7 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
         "csv_found": False,
         "completeness": 0.0
     }
-    
+
     # Check expected files
     for expected in info["expected_files"]:
         full_path = dataset_path / expected
@@ -716,24 +716,24 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
                 result["csv_found"] = True
         else:
             result["missing_files"].append(expected)
-    
+
     # Count images
     images_dir = dataset_path / "images"
     if images_dir.exists():
         for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
             result["image_count"] += len(list(images_dir.glob(ext)))
-    
+
     # Also check root directory for images (backward compatibility)
     for ext in ["*.jpg", "*.jpeg", "*.png"]:
         result["image_count"] += len(list(dataset_path.glob(ext)))
-    
+
     # Calculate completeness
     expected_images = info["approx_images"]
     result["completeness"] = min(100.0, (result["image_count"] / expected_images) * 100)
-    
+
     # Valid if we have enough images (>90% threshold)
     result["valid"] = result["image_count"] >= expected_images * 0.9
-    
+
     return result
 
 
@@ -750,28 +750,28 @@ def print_verification_report(results: Dict[str, Dict]) -> None:
     print("\n" + "=" * 70)
     print("DATASET VERIFICATION REPORT")
     print("=" * 70)
-    
+
     all_valid = True
     total_images = 0
-    
+
     for dataset_name, result in results.items():
         status = "OK" if result["valid"] else "FAIL"
         all_valid = all_valid and result["valid"]
         total_images += result["image_count"]
-        
+
         info = DATASET_INFO[dataset_name]
         expected = info["approx_images"]
-        
+
         print(f"\n{status} {dataset_name} (Client {info['client_id']})")
         print(f"  Path: {result['path']}")
         print(f"  Images: {result['image_count']:,} / ~{expected:,} ({result['completeness']:.1f}%)")
         print(f"  Metadata CSV: {'Found' if result['csv_found'] else 'Missing'}")
-        
+
         if result["missing_files"] and not result["valid"]:
             print("  Missing files:")
             for f in result["missing_files"]:
                 print(f"    - {f}")
-    
+
     print("\n" + "=" * 70)
     print(f"Total images across all datasets: {total_images:,}")
     if all_valid:
@@ -795,7 +795,7 @@ No API key required. Downloads directly from the official ISIC Archive.
 
     # Download all datasets (~80,000 images, may take several hours)
     python run_download.py --download-all
-    
+
     # Download specific dataset
     python run_download.py --download HAM10000
     python run_download.py --download ISIC2018
@@ -863,39 +863,39 @@ Total: ~78,487 dermoscopy images
 
 class DatasetSetupWizard:
     """Interactive wizard for setting up datasets."""
-    
+
     def __init__(self, data_root: Optional[Path] = None):
         self.data_root = Path(data_root) if data_root else get_data_root()
-        
+
     def run(self, auto_download: bool = False) -> None:
         """
         Run the interactive setup wizard.
-        
+
         Args:
             auto_download: If True, automatically download missing datasets
         """
         print("\n" + "=" * 70)
         print("DERMOSCOPY DATASET SETUP WIZARD")
         print("=" * 70)
-        
+
         # Create directory structure
         print("\nStep 1: Creating directory structure...")
         create_directory_structure(self.data_root)
-        
+
         # Verify current state
         print("\nStep 2: Checking existing datasets...")
         results = verify_all_datasets(self.data_root)
         print_verification_report(results)
-        
+
         # Check which datasets are missing
         missing = [name for name, result in results.items() if not result["valid"]]
-        
+
         if not missing:
             print("\nAll datasets are ready! You can proceed with training.")
             return
-        
+
         print(f"\nMissing/incomplete datasets: {', '.join(missing)}")
-        
+
         if auto_download:
             print("\nStep 3: Downloading missing datasets...")
             download_all_datasets(self.data_root, datasets=missing)
@@ -903,7 +903,7 @@ class DatasetSetupWizard:
             print_download_instructions()
             print("\nTo download automatically, run:")
             print("  python -m src.data.download --download-all")
-        
+
     def quick_verify(self) -> bool:
         """Quick verification of all datasets."""
         results = verify_all_datasets(self.data_root)
@@ -916,7 +916,7 @@ class DatasetSetupWizard:
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="ISIC Archive Dataset Download Utility",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -961,12 +961,12 @@ Examples:
         "--force", action="store_true",
         help="Force redownload even if files exist"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Set data root
     data_root = Path(args.data_root) if args.data_root else None
-    
+
     if args.download:
         # Download specific dataset
         download_dataset_isic(
@@ -993,7 +993,7 @@ Examples:
         # Default: show status and instructions
         results = verify_all_datasets(data_root)
         print_verification_report(results)
-        
+
         missing = [name for name, result in results.items() if not result["valid"]]
         if missing:
             print("\nRun with --download-all to download missing datasets.")

@@ -181,10 +181,10 @@ ClassificationMode = Literal['multiclass', 'multiclass_8', 'binary']
 class BaseDermoscopyDataset(Dataset):
     """
     Base class for dermoscopy datasets.
-    
+
     Provides common functionality for loading and transforming
     dermoscopy images across different datasets.
-    
+
     Args:
         root_dir: Root directory containing images
         csv_path: Path to metadata CSV file
@@ -194,7 +194,7 @@ class BaseDermoscopyDataset(Dataset):
         filter_unknown: Whether to filter out unknown/UNK labels
         use_unified_classes: Legacy parameter (ignored, use classification_mode)
     """
-    
+
     def __init__(
         self,
         root_dir: str,
@@ -211,7 +211,7 @@ class BaseDermoscopyDataset(Dataset):
         self.target_transform = target_transform
         self.classification_mode = classification_mode
         self.filter_unknown = filter_unknown
-        
+
         # Determine number of classes based on mode
         if classification_mode == 'binary':
             self.num_classes = 2
@@ -222,21 +222,21 @@ class BaseDermoscopyDataset(Dataset):
         else:  # multiclass (default 7)
             self.num_classes = 7
             self.class_names = CLASS_NAMES_7
-        
+
         # Load metadata
         self.metadata = self._load_metadata()
-        
+
         # Build image list
         self.image_paths, self.labels = self._build_image_list()
-        
+
     def _load_metadata(self) -> pd.DataFrame:
         """Load and preprocess metadata CSV."""
         raise NotImplementedError
-        
+
     def _build_image_list(self) -> Tuple[List[str], List[int]]:
         """Build list of image paths and labels."""
         raise NotImplementedError
-    
+
     def _map_label(self, label: str) -> int:
         """Map string label to integer class based on classification mode."""
         if self.classification_mode == 'binary':
@@ -246,19 +246,19 @@ class BaseDermoscopyDataset(Dataset):
             return ISIC2019_CLASSES.get(label, UNIFIED_CLASSES_7.get(label, -1))
         else:  # multiclass (7)
             return UNIFIED_CLASSES_7.get(label, -1)
-        
+
     def __len__(self) -> int:
         return len(self.image_paths)
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         # Load image
         img_path = self.image_paths[idx]
         image = Image.open(img_path).convert('RGB')
         image = np.array(image)
-        
+
         # Get label
         label = self.labels[idx]
-        
+
         # Apply transforms
         if self.transform:
             transformed = self.transform(image=image)
@@ -272,29 +272,29 @@ class BaseDermoscopyDataset(Dataset):
             # If tensor is HWC (last dim channels), convert to CHW
             if image.ndim == 3 and image.shape[-1] in (1, 3):
                 image = image.permute(2, 0, 1).contiguous()
-        
+
         if self.target_transform:
             label = self.target_transform(label)
-            
+
         return image, label
-    
+
     def get_class_distribution(self) -> Dict[int, int]:
         """Get distribution of classes in the dataset."""
         from collections import Counter
         return dict(Counter(self.labels))
-    
+
     def get_class_weights(self) -> torch.Tensor:
         """Compute class weights for imbalanced dataset handling."""
         dist = self.get_class_distribution()
         total = sum(dist.values())
-        
+
         weights = torch.zeros(self.num_classes)
         for cls, count in dist.items():
             if 0 <= cls < self.num_classes:
                 weights[cls] = total / (self.num_classes * count)
-        
+
         return weights
-    
+
     def get_sample_weights(self) -> torch.Tensor:
         """Get per-sample weights for weighted sampling (handles class imbalance)."""
         class_weights = self.get_class_weights()
@@ -308,7 +308,7 @@ class BaseDermoscopyDataset(Dataset):
 class HAM10000Dataset(BaseDermoscopyDataset):
     """
     HAM10000 Dataset (Human Against Machine with 10000 training images).
-    
+
     7 diagnostic categories:
     - akiec: Actinic keratoses and intraepithelial carcinoma
     - bcc: Basal cell carcinoma
@@ -317,23 +317,23 @@ class HAM10000Dataset(BaseDermoscopyDataset):
     - mel: Melanoma
     - nv: Melanocytic nevi
     - vasc: Vascular lesions
-    
+
     Reference: Tschandl et al., 2018
     """
-    
+
     def _load_metadata(self) -> pd.DataFrame:
         df = pd.read_csv(self.csv_path)
         return df
-    
+
     def _build_image_list(self) -> Tuple[List[str], List[int]]:
         image_paths = []
         labels = []
-        
+
         for _, row in self.metadata.iterrows():
             # HAM10000 has images in multiple folders
             img_id = row['image_id']
             label_str = row['dx']
-            
+
             # Try different possible paths
             for subdir in ['HAM10000_images_part_1', 'HAM10000_images_part_2', 'images']:
                 img_path = self.root_dir / subdir / f"{img_id}.jpg"
@@ -341,7 +341,7 @@ class HAM10000Dataset(BaseDermoscopyDataset):
                     break
             else:
                 img_path = self.root_dir / f"{img_id}.jpg"
-            
+
             if img_path.exists():
                 mapped_label = self._map_label(label_str)
                 # Filter unknown labels if requested
@@ -349,36 +349,36 @@ class HAM10000Dataset(BaseDermoscopyDataset):
                     continue
                 image_paths.append(str(img_path))
                 labels.append(mapped_label)
-        
+
         return image_paths, labels
 
 
 class ISIC2018Dataset(BaseDermoscopyDataset):
     """
     ISIC 2018 Challenge Dataset (Task 3: Lesion Diagnosis).
-    
+
     7 diagnostic categories (same as HAM10000):
     - MEL, NV, BCC, AKIEC, BKL, DF, VASC
-    
+
     Note: Uses AKIEC (not AK like ISIC2019).
     """
-    
+
     def _load_metadata(self) -> pd.DataFrame:
         df = pd.read_csv(self.csv_path)
         return df
-    
+
     def _build_image_list(self) -> Tuple[List[str], List[int]]:
         image_paths = []
         labels = []
-        
+
         # ISIC 2018 Task 3 ground truth format
         # Columns: image, MEL, NV, BCC, AKIEC, BKL, DF, VASC (one-hot)
         label_cols = ['MEL', 'NV', 'BCC', 'AKIEC', 'BKL', 'DF', 'VASC']
-        
+
         for _, row in self.metadata.iterrows():
             img_id = row['image']
             img_path = self.root_dir / f"{img_id}.jpg"
-            
+
             if img_path.exists():
                 # Find which column is 1 (one-hot encoded)
                 label_str = None
@@ -386,24 +386,24 @@ class ISIC2018Dataset(BaseDermoscopyDataset):
                     if col in row and row[col] == 1.0:
                         label_str = col
                         break
-                
+
                 if label_str:
                     mapped_label = self._map_label(label_str)
                     if self.filter_unknown and mapped_label == -1:
                         continue
                     image_paths.append(str(img_path))
                     labels.append(mapped_label)
-        
+
         return image_paths, labels
 
 
 class ISIC2019Dataset(BaseDermoscopyDataset):
     """
     ISIC 2019 Challenge Dataset.
-    
+
     9 categories (8 diagnostic + UNK):
     - MEL: Melanoma
-    - NV: Melanocytic nevus  
+    - NV: Melanocytic nevus
     - BCC: Basal cell carcinoma
     - AK: Actinic keratosis (Note: AK not AKIEC like 2018)
     - BKL: Benign keratosis
@@ -412,22 +412,22 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
     - SCC: Squamous cell carcinoma (NEW in 2019)
     - UNK: Unknown (none in training set, but supported)
     """
-    
+
     def _load_metadata(self) -> pd.DataFrame:
         df = pd.read_csv(self.csv_path)
         return df
-    
+
     def _build_image_list(self) -> Tuple[List[str], List[int]]:
         image_paths = []
         labels = []
-        
+
         # ISIC 2019 ground truth format (includes UNK)
         label_cols = ['MEL', 'NV', 'BCC', 'AK', 'BKL', 'DF', 'VASC', 'SCC', 'UNK']
-        
+
         for _, row in self.metadata.iterrows():
             img_id = row['image']
             img_path = self.root_dir / f"{img_id}.jpg"
-            
+
             if img_path.exists():
                 # Find which column is 1
                 label_str = None
@@ -435,7 +435,7 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
                     if col in row and row[col] == 1.0:
                         label_str = col
                         break
-                
+
                 if label_str:
                     mapped_label = self._map_label(label_str)
                     # Filter unknown labels if requested
@@ -443,38 +443,38 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
                         continue
                     image_paths.append(str(img_path))
                     labels.append(mapped_label)
-        
+
         return image_paths, labels
 
 
 class ISIC2020Dataset(BaseDermoscopyDataset):
     """
     ISIC 2020 Challenge Dataset.
-    
+
     Binary classification: benign (0) vs malignant (1)
-    
+
     The 'diagnosis' column contains specific diagnoses:
     - nevus, melanoma, seborrheic keratosis, lentigo NOS,
       lichenoid keratosis, solar lentigo, cafe-au-lait macule,
       atypical melanocytic proliferation, unknown
-    
+
     In multiclass mode, we use the diagnosis field for richer labels.
     In binary mode, we use the target field directly.
     """
-    
+
     def _load_metadata(self) -> pd.DataFrame:
         df = pd.read_csv(self.csv_path)
         return df
-    
+
     def _build_image_list(self) -> Tuple[List[str], List[int]]:
         image_paths = []
         labels = []
-        
+
         for _, row in self.metadata.iterrows():
             img_id = row['image_name']
-            
+
             img_path = self.root_dir / f"{img_id}.jpg"
-            
+
             if img_path.exists():
                 # Choose label based on classification mode
                 if self.classification_mode == 'binary':
@@ -487,30 +487,30 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
                     diagnosis = row.get('diagnosis', 'unknown')
                     if pd.isna(diagnosis):
                         diagnosis = 'unknown'
-                    
+
                     # Use diagnosis-to-unified mapping for better granularity
                     mapped_label = ISIC2020_DIAGNOSIS_TO_UNIFIED.get(
-                        diagnosis, 
+                        diagnosis,
                         self._map_label(row['benign_malignant'])
                     )
-                    
+
                     # Filter unknown labels if requested
                     if self.filter_unknown and mapped_label == -1:
                         continue
-                    
+
                     image_paths.append(str(img_path))
                     labels.append(mapped_label)
-        
+
         return image_paths, labels
 
 
 class PADUFES20Dataset(BaseDermoscopyDataset):
     """
     PAD-UFES-20 Dataset (Brazilian clinical skin lesion images).
-    
+
     Collected from the Dermatological and Surgical Assistance Program (PAD)
     at the Federal University of Espírito Santo (UFES), Brazil.
-    
+
     6 diagnostic categories:
     - BCC: Basal Cell Carcinoma
     - SCC: Squamous Cell Carcinoma (includes Bowen's disease)
@@ -518,29 +518,29 @@ class PADUFES20Dataset(BaseDermoscopyDataset):
     - SEK: Seborrheic Keratosis
     - MEL: Melanoma
     - NEV: Nevus
-    
+
     Dataset characteristics:
     - 2,298 clinical images (smartphone-acquired, varying sizes)
     - 1,373 patients, 1,641 skin lesions
     - Images split across: imgs_part_1, imgs_part_2, imgs_part_3
     - ~58% biopsy-proven samples
     - Includes rich metadata (age, gender, Fitzpatrick type, etc.)
-    
+
     Reference: Pacheco et al., 2020
     """
-    
+
     def _load_metadata(self) -> pd.DataFrame:
         df = pd.read_csv(self.csv_path)
         return df
-    
+
     def _build_image_list(self) -> Tuple[List[str], List[int]]:
         image_paths = []
         labels = []
-        
+
         for _, row in self.metadata.iterrows():
             img_id = row['img_id']  # e.g., PAT_1516_1765_530.png
             label_str = row['diagnostic']  # BCC, SCC, ACK, SEK, MEL, NEV
-            
+
             # Images are split across 3 folders
             img_path = None
             for part_dir in ['imgs_part_1', 'imgs_part_2', 'imgs_part_3']:
@@ -548,23 +548,23 @@ class PADUFES20Dataset(BaseDermoscopyDataset):
                 if candidate.exists():
                     img_path = candidate
                     break
-            
+
             # Also check root directory directly
             if img_path is None:
                 candidate = self.root_dir / img_id
                 if candidate.exists():
                     img_path = candidate
-            
+
             if img_path is not None and img_path.exists():
                 mapped_label = self._map_label(label_str)
-                
+
                 # Filter unknown labels if requested
                 if self.filter_unknown and mapped_label == -1:
                     continue
-                    
+
                 image_paths.append(str(img_path))
                 labels.append(mapped_label)
-        
+
         return image_paths, labels
 
 
@@ -583,7 +583,7 @@ def get_client_dataloader(
 ) -> Tuple[DataLoader, DataLoader]:
     """
     Get train and validation DataLoaders for a specific FL client.
-    
+
     Args:
         client_id: Client identifier (1-4)
         data_root: Root directory for all datasets
@@ -596,22 +596,22 @@ def get_client_dataloader(
         classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary'
         filter_unknown: Whether to filter out unknown/UNK labels
         use_weighted_sampling: Use weighted sampler for class imbalance
-        
+
     Returns:
         Tuple of (train_loader, val_loader)
     """
     from torch.utils.data import WeightedRandomSampler
     from .preprocessing import get_train_transforms, get_val_transforms
     from .splits import train_val_split
-    
+
     data_root = Path(data_root)
-    
+
     # Default transforms if not provided
     if train_transform is None:
         train_transform = get_train_transforms()
     if val_transform is None:
         val_transform = get_val_transforms()
-    
+
     # Dataset paths based on client ID
     dataset_configs = {
         1: {
@@ -641,10 +641,10 @@ def get_client_dataloader(
             'csv': data_root / 'PAD-UFES-20' / 'metadata.csv'
         }
     }
-    
+
     if client_id not in dataset_configs:
         raise ValueError(f"Invalid client_id: {client_id}. Must be 1-5.")
-    
+
     config = dataset_configs[client_id]
 
     # Accept alternative ISIC2020 ground-truth filename if `train.csv` is not present
@@ -663,7 +663,7 @@ def get_client_dataloader(
         selected_root = next((p for p in possible_image_dirs if p.exists()), data_root / 'ISIC2020')
         dataset_configs[4]['root'] = selected_root
         config = dataset_configs[4]
-    
+
     # Create full dataset with training transform initially
     full_dataset = config['class'](
         root_dir=str(config['root']),
@@ -672,18 +672,18 @@ def get_client_dataloader(
         classification_mode=classification_mode,
         filter_unknown=filter_unknown
     )
-    
+
     # Split into train/val
     train_indices, val_indices = train_val_split(
         len(full_dataset),
         val_split=val_split,
         seed=seed
     )
-    
+
     # Create train and val datasets
     train_dataset = DatasetSubset(full_dataset, train_indices, train_transform)
     val_dataset = DatasetSubset(full_dataset, val_indices, val_transform)
-    
+
     # Setup weighted sampling for class imbalance (especially for ISIC2020)
     train_sampler = None
     shuffle_train = True
@@ -697,7 +697,7 @@ def get_client_dataloader(
             replacement=True
         )
         shuffle_train = False  # Can't use shuffle with sampler
-    
+
     # Create DataLoaders
     train_loader = DataLoader(
         train_dataset,
@@ -708,7 +708,7 @@ def get_client_dataloader(
         pin_memory=torch.cuda.is_available(),
         drop_last=True
     )
-    
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -716,7 +716,7 @@ def get_client_dataloader(
         num_workers=num_workers,
         pin_memory=torch.cuda.is_available()
     )
-    
+
     return train_loader, val_loader
 
 
@@ -726,7 +726,7 @@ class DatasetSubset(Dataset):
     Accepts a `BaseDermoscopyDataset` so attribute access (e.g. `image_paths`)
     is recognized by static type checkers like Pylance.
     """
-    
+
     def __init__(self, dataset: "BaseDermoscopyDataset", indices: List[int], transform: Optional[Callable] = None):
         self.dataset: BaseDermoscopyDataset = dataset
         self.indices = indices
@@ -734,18 +734,18 @@ class DatasetSubset(Dataset):
         # Expose num_classes and class_names from parent
         self.num_classes = dataset.num_classes
         self.class_names = dataset.class_names
-        
+
     def __len__(self) -> int:
         return len(self.indices)
-    
+
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
         # Get original item
         real_idx = self.indices[idx]
-        
+
         # Access the base dataset's image path and label directly
         img_path = self.dataset.image_paths[real_idx]
         label = self.dataset.labels[real_idx]
-        
+
         # Load image
         image = Image.open(img_path).convert('RGB')
         image = np.array(image)
@@ -763,7 +763,7 @@ class DatasetSubset(Dataset):
                 image = image.permute(2, 0, 1).contiguous()
 
         return image, label
-    
+
     def get_class_distribution(self) -> Dict[int, int]:
         """Get distribution of classes in this subset."""
         from collections import Counter
@@ -830,17 +830,17 @@ _init_dataset_registry()
 def normalize_dataset_name(name: str) -> str:
     """
     Normalize dataset name for comparison.
-    
+
     Handles variations like 'PADUFES20', 'PAD-UFES-20', 'pad_ufes_20', etc.
-    
+
     Args:
         name: Dataset name in any format
-        
+
     Returns:
         Normalized name matching DATASET_REGISTRY keys
     """
     normalized = name.upper().replace("-", "").replace("_", "")
-    
+
     # Map normalized forms back to canonical names
     name_mapping = {
         "HAM10000": "HAM10000",
@@ -849,7 +849,7 @@ def normalize_dataset_name(name: str) -> str:
         "ISIC2020": "ISIC2020",
         "PADUFES20": "PAD-UFES-20",
     }
-    
+
     return name_mapping.get(normalized, name)
 
 
@@ -859,25 +859,25 @@ def get_dataset_paths(
 ) -> Tuple[Optional[Path], Optional[Path]]:
     """
     Get the CSV path and image root for a dataset.
-    
+
     Handles alternative paths for datasets with multiple possible locations.
-    
+
     Args:
         dataset_name: Name of the dataset (will be normalized)
         data_root: Root directory containing all datasets
-        
+
     Returns:
         Tuple of (csv_path, image_root) or (None, None) if not found
     """
     canonical_name = normalize_dataset_name(dataset_name)
-    
+
     if canonical_name not in DATASET_REGISTRY:
         return None, None
-    
+
     config = DATASET_REGISTRY[canonical_name]
     data_root = Path(data_root)
     dataset_dir = data_root / canonical_name
-    
+
     # Find CSV file
     csv_path = dataset_dir / config.csv_filename
     if not csv_path.exists() and config.alt_csv_filenames:
@@ -886,7 +886,7 @@ def get_dataset_paths(
             if alt_path.exists():
                 csv_path = alt_path
                 break
-    
+
     # Find image directory
     if config.image_subdir:
         image_root = dataset_dir / config.image_subdir
@@ -898,7 +898,7 @@ def get_dataset_paths(
                     break
     else:
         image_root = dataset_dir
-    
+
     return csv_path, image_root
 
 
@@ -911,20 +911,20 @@ def load_dataset(
 ) -> Optional[BaseDermoscopyDataset]:
     """
     Load a dataset by name using the registry.
-    
+
     This is the unified way to load any supported dataset, handling
     path resolution and alternative locations automatically.
-    
+
     Args:
         dataset_name: Name of the dataset (e.g., 'HAM10000', 'ISIC2018')
         data_root: Root directory containing all datasets
         transform: Optional transform to apply to images
         classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary'
         filter_unknown: Whether to filter out unknown labels
-        
+
     Returns:
         Loaded dataset or None if loading fails
-        
+
     Example:
         >>> dataset = load_dataset('HAM10000', './data', transform=my_transform)
         >>> if dataset:
@@ -932,24 +932,24 @@ def load_dataset(
     """
     import logging
     logger = logging.getLogger(__name__)
-    
+
     canonical_name = normalize_dataset_name(dataset_name)
-    
+
     if canonical_name not in DATASET_REGISTRY:
         logger.warning(f"Unknown dataset: {dataset_name}")
         return None
-    
+
     config = DATASET_REGISTRY[canonical_name]
     csv_path, image_root = get_dataset_paths(canonical_name, data_root)
-    
+
     if csv_path is None or not csv_path.exists():
         logger.warning(f"Dataset {canonical_name}: CSV not found")
         return None
-    
+
     if image_root is None or not image_root.exists():
         logger.warning(f"Dataset {canonical_name}: Image directory not found at {image_root}")
         return None
-    
+
     try:
         dataset = config.dataset_class(
             root_dir=str(image_root),
@@ -968,7 +968,7 @@ def load_dataset(
 def get_available_datasets() -> List[str]:
     """
     Get list of all available dataset names.
-    
+
     Returns:
         List of canonical dataset names
     """
@@ -984,21 +984,21 @@ def get_combined_dataset(
 ) -> Tuple[Dataset, Dict[str, int]]:
     """
     Create a combined dataset from multiple sources.
-    
+
     Args:
         data_root: Root directory for all datasets
         datasets: List of dataset names to combine
         transform: Transform to apply
         classification_mode: Classification mode for all datasets
         filter_unknown: Whether to filter unknown labels
-        
+
     Returns:
         Tuple of (combined_dataset, dataset_sizes)
     """
     from torch.utils.data import ConcatDataset
-    
+
     data_root = Path(data_root)
-    
+
     dataset_configs = {
         'HAM10000': {
             'class': HAM10000Dataset,
@@ -1026,17 +1026,17 @@ def get_combined_dataset(
             'csv': data_root / 'PAD-UFES-20' / 'metadata.csv'
         }
     }
-    
+
     loaded_datasets = []
     dataset_sizes = {}
-    
+
     for name in datasets:
         if name not in dataset_configs:
             print(f"Warning: Unknown dataset {name}, skipping.")
             continue
-            
+
         config = dataset_configs[name]
-        
+
         # Check for alternative paths
         if name == 'ISIC2020':
             if not config['csv'].exists():
@@ -1047,11 +1047,11 @@ def get_combined_dataset(
                 alt_root = data_root / 'ISIC2020' / 'train'
                 if alt_root.exists():
                     config['root'] = alt_root
-        
+
         if not config['csv'].exists():
             print(f"Warning: CSV not found for {name} at {config['csv']}, skipping.")
             continue
-            
+
         ds = config['class'](
             root_dir=str(config['root']),
             csv_path=str(config['csv']),
@@ -1059,11 +1059,11 @@ def get_combined_dataset(
             classification_mode=classification_mode,
             filter_unknown=filter_unknown
         )
-        
+
         dataset_sizes[name] = len(ds)
         loaded_datasets.append(ds)
         print(f"Loaded {name}: {len(ds)} images")
-    
+
     combined = ConcatDataset(loaded_datasets)
     return combined, dataset_sizes
 
@@ -1074,14 +1074,14 @@ def print_dataset_statistics(
 ):
     """Print statistics for all datasets."""
     data_root = Path(data_root)
-    
+
     print(f"\n{'='*60}")
     print(f"Dataset Statistics (mode: {classification_mode})")
     print(f"{'='*60}\n")
-    
+
     dataset_configs = {
         'HAM10000': (HAM10000Dataset, 'HAM10000', 'HAM10000_metadata.csv'),
-        'ISIC2018': (ISIC2018Dataset, 'ISIC2018/ISIC2018_Task3_Training_Input', 
+        'ISIC2018': (ISIC2018Dataset, 'ISIC2018/ISIC2018_Task3_Training_Input',
                      'ISIC2018/ISIC2018_Task3_Training_GroundTruth.csv'),
         'ISIC2019': (ISIC2019Dataset, 'ISIC2019/ISIC_2019_Training_Input',
                      'ISIC2019/ISIC_2019_Training_GroundTruth.csv'),
@@ -1089,29 +1089,29 @@ def print_dataset_statistics(
                      'ISIC2020/ISIC_2020_Training_GroundTruth.csv'),
         'PAD-UFES-20': (PADUFES20Dataset, 'PAD-UFES-20', 'PAD-UFES-20/metadata.csv'),
     }
-    
-    class_names = (CLASS_NAMES_BINARY if classification_mode == 'binary' 
+
+    class_names = (CLASS_NAMES_BINARY if classification_mode == 'binary'
                    else CLASS_NAMES_8 if classification_mode == 'multiclass_8'
                    else CLASS_NAMES_7)
-    
+
     total_samples = 0
     total_dist = {}
-    
+
     for name, (cls, root_suffix, csv_suffix) in dataset_configs.items():
         root = data_root / root_suffix
         csv = data_root / csv_suffix
-        
+
         # Handle ISIC2020 alternatives
         if name == 'ISIC2020':
             if not csv.exists():
                 csv = data_root / 'ISIC2020' / 'train.csv'
             if not root.exists():
                 root = data_root / 'ISIC2020' / 'train'
-        
+
         if not csv.exists():
             print(f"{name}: CSV not found at {csv}")
             continue
-            
+
         try:
             ds = cls(
                 root_dir=str(root),
@@ -1119,23 +1119,23 @@ def print_dataset_statistics(
                 classification_mode=classification_mode,
                 filter_unknown=True
             )
-            
+
             dist = ds.get_class_distribution()
             total_samples += len(ds)
-            
+
             print(f"\n{name}:")
             print(f"  Total samples: {len(ds)}")
             print("  Class distribution:")
-            
+
             for idx, count in sorted(dist.items()):
                 if 0 <= idx < len(class_names):
                     pct = 100 * count / len(ds)
                     print(f"    {idx}: {class_names[idx]}: {count} ({pct:.1f}%)")
                     total_dist[idx] = total_dist.get(idx, 0) + count
-                    
+
         except Exception as e:
             print(f"{name}: Error loading - {e}")
-    
+
     print(f"\n{'='*60}")
     print(f"Combined Statistics (Total: {total_samples} samples)")
     print(f"{'='*60}")

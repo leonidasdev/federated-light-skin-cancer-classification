@@ -33,12 +33,12 @@ from pathlib import Path
 class DSCATNetFedAvg(FedAvg):
     """
     Custom FedAvg strategy for DSCATNet with additional features:
-    
+
     - Checkpoint saving
     - Detailed metrics logging
     - Client-specific weighting
     - Early stopping support
-    
+
     Args:
         save_path: Directory to save model checkpoints
         save_every: Save checkpoint every N rounds
@@ -46,7 +46,7 @@ class DSCATNetFedAvg(FedAvg):
         min_delta: Minimum improvement to reset patience
         **kwargs: Arguments passed to FedAvg
     """
-    
+
     def __init__(
         self,
         save_path: Optional[str] = None,
@@ -56,18 +56,18 @@ class DSCATNetFedAvg(FedAvg):
         **kwargs
     ):
         super().__init__(**kwargs)
-        
+
         self.save_path = Path(save_path) if save_path else None
         self.save_every = save_every
         self.early_stopping_patience = early_stopping_patience
         self.min_delta = min_delta
-        
+
         # Training tracking
         self.current_round = 0
         self.best_accuracy = 0.0
         self.patience_counter = 0
         self.should_stop = False
-        
+
         # History for analysis
         self.metrics_history: Dict[str, List] = {
             'round': [],
@@ -78,11 +78,11 @@ class DSCATNetFedAvg(FedAvg):
             'num_clients': [],
             'client_metrics': []
         }
-        
+
         # Create save directory
         if self.save_path:
             self.save_path.mkdir(parents=True, exist_ok=True)
-    
+
     def configure_fit(
         self,
         server_round: int,
@@ -91,10 +91,10 @@ class DSCATNetFedAvg(FedAvg):
     ):
         """Configure fit with current round information."""
         self.current_round = server_round
-        
+
         # Get base configuration
         config = super().configure_fit(server_round, parameters, client_manager)
-        
+
         # Add round info to each client's config
         if config:
             updated_config = []
@@ -103,9 +103,9 @@ class DSCATNetFedAvg(FedAvg):
                 fit_ins.config["total_rounds"] = 100  # Update based on actual
                 updated_config.append((client, fit_ins))
             return updated_config
-        
+
         return config
-    
+
     def aggregate_fit(
         self,
         server_round: int,
@@ -117,22 +117,22 @@ class DSCATNetFedAvg(FedAvg):
         """
         if not results:
             return None, {}
-        
+
         # Aggregate using parent class
         aggregated_params, metrics = super().aggregate_fit(
             server_round, results, failures
         )
-        
+
         # Collect client metrics
         client_metrics = []
         total_train_loss = 0.0
         total_train_acc = 0.0
         total_samples = 0
-        
+
         for client_proxy, fit_res in results:
             num_samples = fit_res.num_examples
             client_metric = fit_res.metrics
-            
+
             client_metrics.append({
                 'client_id': client_metric.get('client_id', 'unknown'),
                 'train_loss': float(client_metric.get('train_loss', 0) or 0.0),
@@ -155,33 +155,33 @@ class DSCATNetFedAvg(FedAvg):
             total_train_loss += client_loss * num_samples
             total_train_acc += client_acc * num_samples
             total_samples += num_samples
-        
+
         # Compute weighted averages
         avg_train_loss = total_train_loss / total_samples if total_samples > 0 else 0
         avg_train_acc = total_train_acc / total_samples if total_samples > 0 else 0
-        
+
         # Update history
         self.metrics_history['round'].append(server_round)
         self.metrics_history['train_loss'].append(avg_train_loss)
         self.metrics_history['train_accuracy'].append(avg_train_acc)
         self.metrics_history['num_clients'].append(len(results))
         self.metrics_history['client_metrics'].append(client_metrics)
-        
+
         # Add to aggregated metrics
         metrics['avg_train_loss'] = avg_train_loss
         metrics['avg_train_accuracy'] = avg_train_acc
         metrics['num_clients_trained'] = len(results)
         metrics['num_failures'] = len(failures)
-        
+
         # Save checkpoint periodically
         if self.save_path and server_round % self.save_every == 0:
             self._save_checkpoint(aggregated_params, server_round)
-        
+
         print(f"\n[Round {server_round}] Training - "
               f"Loss: {avg_train_loss:.4f}, Accuracy: {avg_train_acc:.2f}%")
-        
+
         return aggregated_params, metrics
-    
+
     def aggregate_evaluate(
         self,
         server_round: int,
@@ -193,16 +193,16 @@ class DSCATNetFedAvg(FedAvg):
         """
         if not results:
             return None, {}
-        
+
         # Aggregate using parent class
         aggregated_loss, metrics = super().aggregate_evaluate(
             server_round, results, failures
         )
-        
+
         # Compute weighted accuracy
         total_acc = 0.0
         total_samples = 0
-        
+
         for client_proxy, eval_res in results:
             num_samples = eval_res.num_examples
             # Safely coerce reported accuracy to float to avoid mixing types
@@ -214,18 +214,18 @@ class DSCATNetFedAvg(FedAvg):
 
             total_acc += acc * num_samples
             total_samples += num_samples
-        
+
         avg_accuracy = total_acc / total_samples if total_samples > 0 else 0
-        
+
         # Update history
         self.metrics_history['val_loss'].append(aggregated_loss)
         self.metrics_history['val_accuracy'].append(avg_accuracy)
-        
+
         # Early stopping check
         if avg_accuracy > self.best_accuracy + self.min_delta:
             self.best_accuracy = avg_accuracy
             self.patience_counter = 0
-            
+
             # Save best model
             if self.save_path:
                 # Some Flower versions store current parameters on the strategy;
@@ -242,17 +242,17 @@ class DSCATNetFedAvg(FedAvg):
             if self.patience_counter >= self.early_stopping_patience:
                 self.should_stop = True
                 print(f"\nEarly stopping triggered at round {server_round}")
-        
+
         metrics['avg_val_accuracy'] = avg_accuracy
         metrics['best_accuracy'] = self.best_accuracy
         metrics['patience_counter'] = self.patience_counter
-        
+
         print(f"[Round {server_round}] Evaluation - "
               f"Loss: {aggregated_loss:.4f}, Accuracy: {avg_accuracy:.2f}% "
               f"(Best: {self.best_accuracy:.2f}%)")
-        
+
         return aggregated_loss, metrics
-    
+
     def _save_checkpoint(
         self,
         parameters: Optional[Parameters],
@@ -262,20 +262,20 @@ class DSCATNetFedAvg(FedAvg):
         """Save model checkpoint."""
         if parameters is None or self.save_path is None:
             return
-        
+
         # Convert parameters to numpy arrays
         ndarrays = parameters_to_ndarrays(parameters)
-        
+
         # Create filename
         filename = f"model_round_{round_num}"
         if suffix:
             filename += f"_{suffix}"
         filename += ".npz"
-        
+
         # Save
         filepath = self.save_path / filename
         np.savez(filepath, *ndarrays)
-        
+
         # Also save metrics history
         metrics_path = self.save_path / f"metrics_round_{round_num}.npz"
         np.savez(
@@ -286,7 +286,7 @@ class DSCATNetFedAvg(FedAvg):
             val_loss=self.metrics_history['val_loss'],
             val_accuracy=self.metrics_history['val_accuracy']
         )
-    
+
     def get_history(self) -> Dict[str, List]:
         """Return training history."""
         return self.metrics_history
@@ -304,7 +304,7 @@ def create_fedavg_strategy(
 ) -> DSCATNetFedAvg:
     """
     Factory function to create FedAvg strategy for DSCATNet.
-    
+
     Args:
         initial_parameters: Initial model parameters as numpy arrays
         min_fit_clients: Minimum clients for training
@@ -314,13 +314,13 @@ def create_fedavg_strategy(
         fraction_evaluate: Fraction of clients for evaluation
         save_path: Path to save checkpoints
         evaluate_metrics_aggregation_fn: Custom metrics aggregation function
-        
+
     Returns:
         Configured DSCATNetFedAvg strategy
     """
     # Convert to Flower Parameters
     initial_params = ndarrays_to_parameters(initial_parameters)
-    
+
     # Default metrics aggregation if not provided
     if evaluate_metrics_aggregation_fn is None:
         def _default_evaluate_metrics_aggregation_fn(metrics):
@@ -343,7 +343,7 @@ def create_fedavg_strategy(
             return aggregated
 
         evaluate_metrics_aggregation_fn = _default_evaluate_metrics_aggregation_fn
-    
+
     strategy = DSCATNetFedAvg(
         initial_parameters=initial_params,
         min_fit_clients=min_fit_clients,
@@ -354,5 +354,5 @@ def create_fedavg_strategy(
         evaluate_metrics_aggregation_fn=evaluate_metrics_aggregation_fn,
         save_path=save_path
     )
-    
+
     return strategy

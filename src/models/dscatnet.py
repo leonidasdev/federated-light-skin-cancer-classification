@@ -35,11 +35,11 @@ from .cross_attention import CrossScaleAttentionBlock
 class DSCATNet(nn.Module):
     """
     Dual-Scale Cross-Attention Vision Transformer (DSCATNet).
-    
+
     A lightweight vision transformer designed for dermoscopic image classification
     that captures both fine-grained local features and global contextual information
     through dual-scale patch embeddings and cross-attention mechanisms.
-    
+
     Args:
         img_size: Input image size (default: 224)
         in_channels: Number of input channels (default: 3)
@@ -54,7 +54,7 @@ class DSCATNet(nn.Module):
         attn_drop_rate: Attention dropout rate (default: 0.0)
         fusion_method: How to fuse dual-scale features ('concat', 'add', 'attention')
     """
-    
+
     def __init__(
         self,
         img_size: int = 224,
@@ -71,13 +71,13 @@ class DSCATNet(nn.Module):
         fusion_method: str = 'concat'
     ):
         super().__init__()
-        
+
         self.img_size = img_size
         self.num_classes = num_classes
         self.embed_dim = embed_dim
         self.depth = depth
         self.fusion_method = fusion_method
-        
+
         # Dual-scale patch embedding
         self.patch_embed = DualScalePatchEmbedding(
             img_size=img_size,
@@ -86,10 +86,10 @@ class DSCATNet(nn.Module):
             in_channels=in_channels,
             embed_dim=embed_dim
         )
-        
+
         # Dropout after embedding
         self.pos_drop = nn.Dropout(p=drop_rate)
-        
+
         # Transformer blocks with cross-scale attention
         self.blocks = nn.ModuleList([
             CrossScaleAttentionBlock(
@@ -102,11 +102,11 @@ class DSCATNet(nn.Module):
             )
             for _ in range(depth)
         ])
-        
+
         # Final layer normalization
         self.norm_fine = nn.LayerNorm(embed_dim)
         self.norm_coarse = nn.LayerNorm(embed_dim)
-        
+
         # Fusion and classification head
         if fusion_method == 'concat':
             # Concatenate CLS tokens from both scales
@@ -135,10 +135,10 @@ class DSCATNet(nn.Module):
             )
         else:
             raise ValueError(f"Unknown fusion method: {fusion_method}")
-        
+
         # Initialize weights
         self._init_weights()
-        
+
     def _init_weights(self):
         """Initialize linear and normalization layers."""
         for m in self.modules():
@@ -149,36 +149,36 @@ class DSCATNet(nn.Module):
             elif isinstance(m, nn.LayerNorm):
                 nn.init.ones_(m.weight)
                 nn.init.zeros_(m.bias)
-                
+
     def forward_features(self, x: torch.Tensor) -> torch.Tensor:
         """
         Extract features from input image.
-        
+
         Args:
             x: Input tensor of shape (B, C, H, W)
-            
+
         Returns:
             Fused feature representation of shape (B, embed_dim)
         """
         # Create dual-scale patch embeddings
         fine_tokens, coarse_tokens = self.patch_embed(x)
-        
+
         # Apply dropout
         fine_tokens = self.pos_drop(fine_tokens)
         coarse_tokens = self.pos_drop(coarse_tokens)
-        
+
         # Process through transformer blocks
         for block in self.blocks:
             fine_tokens, coarse_tokens = block(fine_tokens, coarse_tokens)
-        
+
         # Apply final layer norm
         fine_tokens = self.norm_fine(fine_tokens)
         coarse_tokens = self.norm_coarse(coarse_tokens)
-        
+
         # Extract CLS tokens
         fine_cls = fine_tokens[:, 0]    # (B, embed_dim)
         coarse_cls = coarse_tokens[:, 0]  # (B, embed_dim)
-        
+
         # Fuse dual-scale representations
         if self.fusion_method == 'concat':
             fused = torch.cat([fine_cls, coarse_cls], dim=-1)  # (B, embed_dim * 2)
@@ -192,27 +192,27 @@ class DSCATNet(nn.Module):
             attn_weights = F.softmax(self.fusion_attention(cls_stack), dim=1)  # (B, 2, 1)
             # Weighted sum
             fused = (attn_weights * cls_stack).sum(dim=1)  # (B, embed_dim)
-        
+
         return fused
-    
+
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the network.
-        
+
         Args:
             x: Input tensor of shape (B, C, H, W)
-            
+
         Returns:
             Class logits of shape (B, num_classes)
         """
         features = self.forward_features(x)
         logits = self.classifier(features)
         return logits
-    
+
     def get_num_parameters(self) -> int:
         """Return the total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-    
+
     def get_model_config(self) -> Dict[str, Any]:
         """Return model configuration dictionary."""
         return {
@@ -233,16 +233,16 @@ def create_dscatnet(
 ) -> DSCATNet:
     """
     Factory function to create DSCATNet variants.
-    
+
     Args:
         num_classes: Number of output classes
         img_size: Input image size
         variant: Model variant ('tiny', 'small', 'base')
         **kwargs: Additional arguments passed to DSCATNet
-        
+
     Returns:
         Configured DSCATNet model
-        
+
     Raises:
         ValueError: If variant is not one of 'tiny', 'small', 'base'.
     """
@@ -266,10 +266,10 @@ def create_dscatnet(
             'mlp_ratio': 4.0
         }
     }
-    
+
     if variant not in variants:
         raise ValueError(f"Unknown variant: {variant}. Choose from {list(variants.keys())}")
-    
+
     config = variants[variant]
     config.update(kwargs)
 

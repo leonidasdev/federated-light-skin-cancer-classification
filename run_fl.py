@@ -19,20 +19,20 @@ import torch
 
 def main():
     parser = argparse.ArgumentParser(description="Quick Start FL Experiment")
-    
+
     parser.add_argument(
-        "--quick", 
-        action="store_true", 
+        "--quick",
+        action="store_true",
         help="Quick test run (5 rounds, 2 epochs)"
     )
     parser.add_argument(
-        "--full", 
-        action="store_true", 
+        "--full",
+        action="store_true",
         help="Full experiment (50 rounds)"
     )
     parser.add_argument(
-        "--data-root", 
-        type=str, 
+        "--data-root",
+        type=str,
         default="./data",
         help="Data directory"
     )
@@ -53,21 +53,21 @@ def main():
         action="store_true",
         help="Print full configuration on start"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Import here to avoid slow startup
     from src.federated.simulation import SimulationConfig, FLSimulator
-    
+
     # Build base config kwargs
     config_kwargs = {
         "data_root": args.data_root,
     }
-    
+
     # Add datasets if specified
     if args.datasets:
         config_kwargs["datasets"] = args.datasets
-    
+
     # Configure based on mode
     if args.quick:
         config = SimulationConfig(
@@ -102,7 +102,7 @@ def main():
             **config_kwargs,
         )
         print("Default mode: 20 rounds, 2 local epochs")
-    
+
     # Print device info
     device = "CUDA" if torch.cuda.is_available() else "CPU"
     if torch.cuda.is_available():
@@ -112,7 +112,7 @@ def main():
     if args.datasets:
         print(f"Datasets: {', '.join(args.datasets)}")
     print()
-    
+
     # Print full config if verbose
     if args.verbose:
         print("=" * 50)
@@ -122,16 +122,16 @@ def main():
             print(f"  {key}: {value}")
         print("=" * 50)
         print()
-    
+
     # Run simulation (with optional resume)
     simulator = FLSimulator(config)
-    
+
     if args.resume:
         print(f"Resuming from checkpoint: {args.resume}")
         results = simulator.run(resume_from=args.resume)
     else:
         results = simulator.run()
-    
+
     # Print summary
     print("\n" + "=" * 50)
     print("RESULTS SUMMARY")
@@ -142,7 +142,7 @@ def main():
     print(f"Communication:     {results['total_communication_mb']:.1f} MB")
     print(f"Results saved to:  {config.output_dir}/{config.experiment_name}")
     print("=" * 50)
-    
+
     return 0
 
 

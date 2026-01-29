@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # Get path to the download module
     project_root = Path(__file__).parent
     download_script = project_root / "src" / "data" / "download.py"
-    
+
     # Run the download module as __main__
     # This avoids importing through src/__init__.py which requires torch
     sys.argv[0] = str(download_script)

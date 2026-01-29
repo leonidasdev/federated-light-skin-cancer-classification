@@ -25,7 +25,7 @@ import torch
 def set_seed(seed: int = 42) -> None:
     """
     Set random seed for reproducibility.
-    
+
     Args:
         seed: Random seed value.
     """
@@ -46,10 +46,10 @@ def set_seed(seed: int = 42) -> None:
 def get_device(device: Optional[str] = None) -> torch.device:
     """
     Get torch device.
-    
+
     Args:
         device: Device string ('cuda', 'cpu', or None for auto).
-        
+
     Returns:
         torch.device object.
     """
@@ -65,11 +65,11 @@ def get_device(device: Optional[str] = None) -> torch.device:
 def count_parameters(model: torch.nn.Module, trainable_only: bool = True) -> int:
     """
     Count model parameters.
-    
+
     Args:
         model: PyTorch model.
         trainable_only: Whether to count only trainable parameters.
-        
+
     Returns:
         Number of parameters.
     """
@@ -85,34 +85,34 @@ def count_parameters(model: torch.nn.Module, trainable_only: bool = True) -> int
 def format_time(seconds: float) -> str:
     """
     Format seconds into human-readable string.
-    
+
     Args:
         seconds: Time in seconds.
-        
+
     Returns:
         Formatted string (e.g., "2h 15m 30s").
     """
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
-    
+
     parts = []
     if hours > 0:
         parts.append(f"{hours}h")
     if minutes > 0:
         parts.append(f"{minutes}m")
     parts.append(f"{secs}s")
-    
+
     return " ".join(parts)
 
 
 def format_size(size_bytes: int) -> str:
     """
     Format bytes into human-readable string.
-    
+
     Args:
         size_bytes: Size in bytes.
-        
+
     Returns:
         Formatted string (e.g., "1.5 GB").
     """
