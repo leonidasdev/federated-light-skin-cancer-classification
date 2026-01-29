@@ -650,6 +650,9 @@ def run_comparison(args: argparse.Namespace) -> Dict[str, Any]:
 
 
 def main():
+    # Version info
+    __version__ = "1.0.0"
+    
     parser = argparse.ArgumentParser(
         description="Run DSCATNet Federated Learning Experiments",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -685,6 +688,11 @@ Examples:
     # Mode Selection
     # ==========================================================================
     parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    parser.add_argument(
         "--mode",
         type=str,
         choices=["centralized", "federated", "comparison", "evaluate"],
@@ -716,6 +724,11 @@ Examples:
         nargs="+",
         choices=["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"],
         help="Specific dataset(s) to use. For FL natural non-IID, each dataset = one client"
+    )
+    common_group.add_argument(
+        "--list-datasets",
+        action="store_true",
+        help="List available datasets with their details and exit"
     )
     
     # ==========================================================================
@@ -779,17 +792,17 @@ Examples:
     fed_group.add_argument(
         "--client-selection",
         type=float,
-        help="Fraction of clients to select each round (0.0-1.0, default: 1.0 = all)"
+        help="Fraction of clients to select each round (0.0-1.0, e.g., 0.75 = select 75%% of clients randomly)"
     )
     fed_group.add_argument(
         "--parallel-clients",
         type=int,
-        help="Number of clients to train in parallel (CPU only, 0=auto, 1=sequential)"
+        help="Number of clients to train in parallel (CPU only, 0=auto, 1=sequential, e.g., 4 for quad-core)"
     )
     fed_group.add_argument(
         "--train-val-split",
         type=float,
-        help="Train/val split ratio (default: 0.8 = 80%% train, 20%% val)"
+        help="Validation set fraction (e.g., 0.15 = 15%% for validation, 85%% for training)"
     )
     
     # ==========================================================================
@@ -809,6 +822,20 @@ Examples:
     
     # Parse args
     args = parser.parse_args()
+    
+    # Handle --list-datasets flag
+    if args.list_datasets:
+        from src.data.datasets import DATASET_REGISTRY
+        print("\n" + "=" * 60)
+        print("Available Datasets")
+        print("=" * 60)
+        for name, info in DATASET_REGISTRY.items():
+            print(f"\n[*] {name}")
+            print(f"    Directory: {info.get('dir_name', 'N/A')}")
+            print(f"    CSV File:  {info.get('csv_file', 'N/A')}")
+            print(f"    Classes:   {info.get('num_classes', 'N/A')}")
+        print("\n" + "=" * 60)
+        return 0
     
     # Print header
     print("\n" + "=" * 60)

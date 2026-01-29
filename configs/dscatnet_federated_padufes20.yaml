@@ -46,6 +46,7 @@ federated:
     weight_decay: 0.01
     local_epochs: 1
     num_rounds: 50
+    train_val_split: 0.15  # Fraction for validation set (default: 0.15)
 
   # ---------------------------------------------------------------------------
   # Federation Configuration
@@ -54,6 +55,13 @@ federated:
     num_clients: 4
     aggregation: FedAvg
     participation: 1.0
+    
+    # Client Selection (alternative to participation)
+    # client_selection_fraction: 0.75  # Randomly select 75% of clients per round
+    
+    # Parallel client training (for multi-GPU or fast CPUs)
+    # parallel_clients: 2  # Number of clients to train in parallel
+    
     noniid_type: dirichlet
     dirichlet_alpha: 0.5
 

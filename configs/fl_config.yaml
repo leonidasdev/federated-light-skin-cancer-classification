@@ -52,11 +52,16 @@ federated:
   min_evaluate_clients: 4
   min_available_clients: 4
   
+  # Client Selection (new features)
+  # client_selection_fraction: 0.75  # Randomly select 75% of clients per round
+  # parallel_clients: 2              # Number of clients to train in parallel
+  
   # ---------------------------------------------------------------------------
   # Local Training
   # ---------------------------------------------------------------------------
   local_epochs: 3
   local_batch_size: 8
+  train_val_split: 0.15  # Fraction for validation set
   
   # ---------------------------------------------------------------------------
   # Optimizer Configuration

@@ -55,6 +55,7 @@ federated:
     weight_decay: 0.01
     local_epochs: 4     # Local epochs per FL round
     num_rounds: 25      # Total federated learning rounds
+    train_val_split: 0.15  # Fraction for validation set (default: 0.15)
 
   # ---------------------------------------------------------------------------
   # Federation Configuration
@@ -63,6 +64,12 @@ federated:
     num_clients: 4
     aggregation: FedAvg
     participation: 1.0  # Fraction of clients participating each round
+    
+    # Client Selection (alternative to participation)
+    # client_selection_fraction: 0.75  # Randomly select 75% of clients per round
+    
+    # Parallel client training (for multi-GPU or fast CPUs)
+    # parallel_clients: 2  # Number of clients to train in parallel
     
     # Non-IID Distribution Settings
     # Options: natural, dirichlet, label_skew, quantity_skew
