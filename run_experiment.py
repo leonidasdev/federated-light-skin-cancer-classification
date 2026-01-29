@@ -153,18 +153,18 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     test_datasets = []
     for name in dataset_names:
         if name not in DATASET_REGISTRY:
-            logger.warning(f"Unknown dataset: {name}, skipping")
+            logger.warning(f"Unknown dataset: {name}, skipping. Valid datasets: {', '.join(get_available_datasets())}")
             continue
 
         config = DATASET_REGISTRY[name]
         csv_path, dataset_root = get_dataset_paths(name, data_root)
 
         if csv_path is None or not csv_path.exists():
-            logger.warning(f"Dataset {name}: CSV not found, skipping")
+            logger.warning(f"Dataset {name}: CSV file not found at {csv_path}. Run 'python run_download.py --verify' to check setup.")
             continue
 
         if dataset_root is None or not dataset_root.exists():
-            logger.warning(f"Dataset {name}: Image directory not found, skipping")
+            logger.warning(f"Dataset {name}: Image directory not found at {dataset_root}. Run 'python run_download.py --instructions' for setup help.")
             continue
 
         try:

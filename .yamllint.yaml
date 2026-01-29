@@ -1,0 +1,29 @@
+# =============================================================================
+# YAML Lint Configuration
+# =============================================================================
+
+extends: default
+
+rules:
+  # Line length (compatible with our YAML files)
+  line-length:
+    max: 120
+    allow-non-breakable-inline-mappings: true
+  
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+  
+  # Document markers
+  document-start: disable
+  document-end: disable
+  
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: disable
+  
+  # Truthy values (allow yes/no, on/off)
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']

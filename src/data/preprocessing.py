@@ -46,18 +46,32 @@ def get_train_transforms(
     augmentation_level: str = 'medium'
 ) -> A.Compose:
     """
-    Get training transforms with data augmentation.
+    Get training transforms with configurable data augmentation.
+
+    Creates an Albumentations pipeline for dermoscopy image preprocessing
+    with various levels of augmentation suitable for skin lesion classification.
 
     Args:
-        img_size: Target image size
-        use_dermoscopy_norm: Use dermoscopy-specific normalization
-        augmentation_level: 'light', 'medium', or 'heavy'
+        img_size: Target image size (both height and width).
+        use_dermoscopy_norm: If True, use dermoscopy-specific normalization
+            statistics (computed from ISIC datasets). If False, use ImageNet
+            statistics for compatibility with pretrained models.
+        augmentation_level: Augmentation intensity. Options:
+            - 'none': Only resize and normalize (for validation/test-like behavior)
+            - 'light': Basic flips and small rotations
+            - 'medium': Adds brightness/contrast, affine transforms, blur
+            - 'heavy': Maximum augmentation with color jitter, dropout, etc.
 
     Returns:
-        Albumentations Compose transform
+        Albumentations Compose transform pipeline that outputs torch tensors.
 
     Raises:
-        ValueError: If augmentation_level is not 'light', 'medium', or 'heavy'.
+        ValueError: If augmentation_level is not one of the valid options.
+
+    Example:
+        >>> train_transforms = get_train_transforms(img_size=224, augmentation_level='medium')
+        >>> transformed = train_transforms(image=img_array)
+        >>> tensor = transformed['image']  # Shape: (3, 224, 224)
     """
     mean = DERMOSCOPY_MEAN if use_dermoscopy_norm else IMAGENET_MEAN
     std = DERMOSCOPY_STD if use_dermoscopy_norm else IMAGENET_STD

@@ -806,15 +806,22 @@ class FLSimulator:
         """
         Run a single FL round with optional parallel client training.
 
-        Supports partial client participation via client_selection_fraction and
-        parallel training via parallel_clients configuration.
+        Executes one complete round of federated learning: client selection,
+        local training, and model aggregation. Supports partial client
+        participation via client_selection_fraction and parallel training
+        via parallel_clients configuration.
 
         Args:
-            round_num: Current round number.
-            pbar: Optional progress bar to update.
+            round_num: Current round number (1-indexed).
+            pbar: Optional tqdm progress bar to update with status.
 
         Returns:
-            Dictionary of aggregated metrics.
+            Dictionary containing aggregated metrics:
+                - train_loss (float): Weighted average training loss across clients
+                - train_accuracy (float): Weighted average training accuracy
+                - val_loss (float): Validation loss on aggregated model
+                - val_accuracy (float): Validation accuracy on aggregated model
+                - communication_cost_mb (float): MB of data transferred this round
         """
         start_time = time.time()
 
@@ -986,8 +993,34 @@ class FLSimulator:
         """
         Run the complete FL simulation.
 
+        Executes the federated learning training loop for the configured
+        number of rounds, handling client selection, local training, and
+        model aggregation. Supports checkpoint resumption and early stopping.
+
         Returns:
-            Dictionary containing training history and final results.
+            Dictionary containing training results with keys:
+                - history (dict): Round-by-round metrics containing:
+                    - rounds (list[int]): Round numbers
+                    - train_loss (list[float]): Training loss per round
+                    - train_accuracy (list[float]): Training accuracy per round
+                    - val_loss (list[float]): Validation loss per round
+                    - val_accuracy (list[float]): Validation accuracy per round
+                    - communication_cost (list[float]): MB transferred per round
+                - best_val_accuracy (float): Best validation accuracy achieved
+                - best_round (int): Round number with best accuracy
+                - total_time_seconds (float): Total training duration
+                - total_communication_mb (float): Cumulative data transferred
+                - config (dict): Configuration used for the simulation
+
+        Raises:
+            RuntimeError: If no clients are available for training.
+
+        Example:
+            >>> config = SimulationConfig(num_rounds=10, num_clients=3)
+            >>> simulator = FLSimulator(config)
+            >>> results = simulator.run()
+            >>> print(f"Best accuracy: {results['best_val_accuracy']:.4f}")
+            Best accuracy: 0.8523
         """
         logger.info("Starting FL simulation")
         logger.info(f"Configuration: {self.config.num_rounds} rounds, {len(self.client_data) if self.client_data else self.config.num_clients} clients")

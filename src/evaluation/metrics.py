@@ -120,12 +120,35 @@ class ModelEvaluator:
         """
         Evaluate model on given dataloader.
 
+        Computes comprehensive metrics for skin cancer classification including
+        accuracy, balanced accuracy, F1 scores, and optional AUC-ROC.
+
         Args:
-            dataloader: DataLoader with test/validation data.
-            compute_auc: Whether to compute AUC-ROC.
+            dataloader: DataLoader with test/validation data. Should yield
+                (images, labels) tuples where images are normalized tensors.
+            compute_auc: Whether to compute AUC-ROC. Set to False for faster
+                evaluation or when only hard predictions are needed.
 
         Returns:
-            EvaluationResults with all metrics.
+            EvaluationResults dataclass containing:
+                - accuracy: Overall classification accuracy
+                - balanced_accuracy: Mean per-class accuracy (handles imbalance)
+                - precision_macro: Macro-averaged precision
+                - recall_macro: Macro-averaged recall (sensitivity)
+                - f1_macro: Macro-averaged F1 score
+                - f1_weighted: Class-weighted F1 score
+                - auc_macro: Macro AUC-ROC (None if compute_auc=False or error)
+                - confusion_matrix: NxN numpy array of predictions vs labels
+                - per_class_metrics: Dict mapping class names to their metrics
+                - predictions: Array of predicted class indices
+                - labels: Array of true class indices
+                - probabilities: Array of predicted class probabilities
+
+        Example:
+            >>> evaluator = ModelEvaluator(model, device, num_classes=7)
+            >>> results = evaluator.evaluate(test_loader)
+            >>> print(f"Balanced Accuracy: {results.balanced_accuracy:.2%}")
+            Balanced Accuracy: 84.52%
         """
         self.model.eval()
 

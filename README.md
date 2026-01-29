@@ -24,8 +24,9 @@
 13. [Notebooks](#notebooks)
 14. [Testing](#testing)
 15. [Troubleshooting](#troubleshooting)
-16. [Citation](#citation)
-17. [License](#license)
+16. [Documentation](#documentation)
+17. [Citation](#citation)
+18. [License](#license)
 
 ---
 
@@ -98,7 +99,7 @@ federated-light-skin-cancer-classification/
 │   │   ├── server.py                 # FL server utilities
 │   │   ├── simulation.py             # FL simulator (FedAvg)
 │   │   └── strategy.py               # Aggregation strategies
-│   ├── training/                     # Baseline training
+│   ├── centralized/                  # Baseline training
 │   │   └── centralized.py            # Centralized trainer
 │   ├── data/                         # Data handling
 │   │   ├── datasets.py               # Dataset classes (HAM10000, ISIC, PAD-UFES-20)
@@ -111,6 +112,7 @@ federated-light-skin-cancer-classification/
 │   │   └── visualization.py          # Plotting functions
 │   └── utils/                        # Helpers
 │       ├── checkpoints.py            # Checkpoint management
+│       ├── config_schema.py          # YAML config validation
 │       ├── helpers.py                # Seed, device, formatting
 │       └── logging_utils.py          # Logging configuration
 │
@@ -121,16 +123,25 @@ federated-light-skin-cancer-classification/
 │
 ├── tests/                            # Unit tests
 │   ├── test_centralized.py           # Centralized training tests
+│   ├── test_cli.py                   # CLI argument parsing tests
+│   ├── test_config_loading.py        # Config loading/validation tests
+│   ├── test_datasets.py              # Dataset registry tests
 │   ├── test_evaluation.py            # Evaluation metrics tests
 │   ├── test_preprocessing.py         # Preprocessing pipeline tests
 │   ├── test_simulation.py            # FL simulation tests
 │   └── test_splits.py                # Data splitting tests
+│
+├── docs/                             # Documentation
+│   ├── ARCHITECTURE.md               # System architecture
+│   ├── CONFIG_OPTIONS.md             # Configuration reference
+│   └── CONTRIBUTING.md               # Contributing guidelines
 │
 ├── run_experiment.py                 # Main entry point
 ├── run_fl.py                         # Quick FL runner
 ├── run_download.py                   # Dataset downloader
 ├── run_tests.py                      # Test runner
 ├── requirements.txt                  # Python dependencies
+├── pyproject.toml                    # Project configuration
 └── README.md
 ```
 
@@ -850,6 +861,9 @@ The project includes comprehensive unit tests for all major components.
 | Module | Description |
 |--------|-------------|
 | `test_centralized.py` | Tests for centralized training configuration and trainer |
+| `test_cli.py` | Tests for CLI argument parsing and validation |
+| `test_config_loading.py` | Tests for YAML config loading and schema validation |
+| `test_datasets.py` | Tests for dataset registry and loading functions |
 | `test_evaluation.py` | Tests for evaluation metrics and visualization functions |
 | `test_preprocessing.py` | Tests for image transforms, augmentation levels, and normalization |
 | `test_simulation.py` | Tests for FL simulation, FedAvg aggregation, and client management |
@@ -883,18 +897,21 @@ Expected output:
 
 ```
 ======================== test session starts ========================
-collected 35 items
+collected 104 items / 2 deselected / 102 selected
 
-tests/test_centralized.py ....                                 [ 14%]
-tests/test_evaluation.py ....                                  [ 28%]
-tests/test_preprocessing.py ......                             [ 45%]
-tests/test_simulation.py ........                              [ 68%]
+tests/test_centralized.py ........                             [  7%]
+tests/test_cli.py ..........................                   [ 33%]
+tests/test_config_loading.py ..........                        [ 43%]
+tests/test_datasets.py .....................                   [ 63%]
+tests/test_evaluation.py .......                               [ 70%]
+tests/test_preprocessing.py ......                             [ 76%]
+tests/test_simulation.py ................                      [ 92%]
 tests/test_splits.py ........                                  [100%]
 
-======================== 32 passed, 3 skipped =======================
+================= 102 passed, 2 deselected in 28s ===================
 ```
 
-> **Note**: Some integration tests are skipped by default as they require actual datasets to be present.
+> **Note**: Two integration tests are deselected by default (marked `@pytest.mark.slow`). Run them with `pytest -m slow`.
 
 ---
 
@@ -924,6 +941,21 @@ python run_download.py --verify
 # Check expected paths
 python run_download.py --instructions
 ```
+
+---
+
+## Documentation
+
+Additional documentation is available in the `docs/` directory:
+
+| Document | Description |
+|----------|-------------|
+| [docs/README.md](docs/README.md) | Documentation index and navigation |
+| [docs/CONFIG_OPTIONS.md](docs/CONFIG_OPTIONS.md) | Complete configuration reference |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and module documentation |
+| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contributing guidelines and code style |
+
+For AI assistants (Claude, GPT, etc.), see [CLAUDE.md](CLAUDE.md) for comprehensive codebase context.
 
 ---
 
