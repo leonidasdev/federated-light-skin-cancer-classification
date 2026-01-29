@@ -96,7 +96,8 @@ class TestFLSimulator:
             pretrained=False,
         )
         
-        simulator = FLSimulator(config)
+        # Creating the simulator should create output directories
+        FLSimulator(config)
         
         assert (tmp_path / "dir_test").exists()
         assert (tmp_path / "dir_test" / "checkpoints").exists()
@@ -294,6 +295,78 @@ class TestClientSelection:
         expected_max = min(os.cpu_count() or 1, 4)
         assert 1 <= workers <= expected_max
     
+    def test_client_selection_single_client(self, tmp_path):
+        """Test client selection with only 1 client available."""
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+        
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="single_client_test",
+            pretrained=False,
+            client_selection_fraction=0.5,
+            min_fit_clients=1,
+        )
+        
+        simulator = FLSimulator(config)
+        
+        # Mock single client
+        dummy_data = torch.randn(8, 3, 32, 32)
+        dummy_labels = torch.randint(0, 7, (8,))
+        dummy_loader = DataLoader(TensorDataset(dummy_data, dummy_labels), batch_size=2)
+        
+        simulator.client_data[0] = ClientData(
+            client_id=0,
+            train_loader=dummy_loader,
+            val_loader=dummy_loader,
+            num_train_samples=100,
+            num_val_samples=20,
+            class_distribution={0: 50, 1: 50},
+            dataset_name="single_client",
+        )
+        
+        selected = simulator._select_clients(round_num=1)
+        # With only 1 client, should select 1 (min_fit_clients)
+        assert len(selected) == 1
+        assert 0 in selected
+    
+    def test_client_selection_respects_min_fit_clients(self, tmp_path):
+        """Test that client selection respects min_fit_clients."""
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+        
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="min_fit_test",
+            pretrained=False,
+            client_selection_fraction=0.1,  # Would select 0.4 clients
+            min_fit_clients=2,  # But minimum is 2
+        )
+        
+        simulator = FLSimulator(config)
+        
+        # Mock 4 clients
+        dummy_data = torch.randn(8, 3, 32, 32)
+        dummy_labels = torch.randint(0, 7, (8,))
+        dummy_loader = DataLoader(TensorDataset(dummy_data, dummy_labels), batch_size=2)
+        
+        for i in range(4):
+            simulator.client_data[i] = ClientData(
+                client_id=i,
+                train_loader=dummy_loader,
+                val_loader=dummy_loader,
+                num_train_samples=100,
+                num_val_samples=20,
+                class_distribution={0: 50, 1: 50},
+                dataset_name=f"client_{i}",
+            )
+        
+        selected = simulator._select_clients(round_num=1)
+        # 10% of 4 = 0.4, but min_fit_clients=2
+        assert len(selected) >= 2
+    
     def test_train_val_split_config(self):
         """Test that train_val_split config is applied."""
         from src.federated.simulation import SimulationConfig
@@ -342,7 +415,6 @@ class TestCommunicationCost:
     
     def test_model_size_calculation(self, tmp_path):
         """Test model size calculation for communication cost."""
-        import torch
         from src.federated.simulation import SimulationConfig, FLSimulator
         from src.models.dscatnet import get_model_parameters
         

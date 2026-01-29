@@ -23,14 +23,12 @@ API Reference: https://isic-archive.com/api/v2
 # =============================================================================
 
 import csv
-import json
-import shutil
 import time
 import logging
 import concurrent.futures
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Tuple
-from urllib.parse import urljoin, urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -770,7 +768,7 @@ def print_verification_report(results: Dict[str, Dict]) -> None:
         print(f"  Metadata CSV: {'Found' if result['csv_found'] else 'Missing'}")
         
         if result["missing_files"] and not result["valid"]:
-            print(f"  Missing files:")
+            print("  Missing files:")
             for f in result["missing_files"]:
                 print(f"    - {f}")
     
@@ -904,7 +902,7 @@ class DatasetSetupWizard:
         else:
             print_download_instructions()
             print("\nTo download automatically, run:")
-            print(f"  python -m src.data.download --download-all")
+            print("  python -m src.data.download --download-all")
         
     def quick_verify(self) -> bool:
         """Quick verification of all datasets."""

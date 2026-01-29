@@ -9,6 +9,7 @@ Usage:
     python run_fl.py              # Run with defaults
     python run_fl.py --quick      # Quick test run
     python run_fl.py --full       # Full experiment
+    python run_fl.py --datasets HAM10000 ISIC2019  # Specific datasets
 """
 
 import argparse
@@ -35,11 +36,37 @@ def main():
         default="./data",
         help="Data directory"
     )
+    parser.add_argument(
+        "--datasets",
+        type=str,
+        nargs="+",
+        choices=["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"],
+        help="Specific dataset(s) to use (default: all available)"
+    )
+    parser.add_argument(
+        "--resume",
+        type=str,
+        help="Path to checkpoint file to resume training from"
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print full configuration on start"
+    )
     
     args = parser.parse_args()
     
     # Import here to avoid slow startup
     from src.federated.simulation import SimulationConfig, FLSimulator
+    
+    # Build base config kwargs
+    config_kwargs = {
+        "data_root": args.data_root,
+    }
+    
+    # Add datasets if specified
+    if args.datasets:
+        config_kwargs["datasets"] = args.datasets
     
     # Configure based on mode
     if args.quick:
@@ -50,7 +77,7 @@ def main():
             checkpoint_interval=5,
             early_stopping_patience=3,
             experiment_name="fl_quick_test",
-            data_root=args.data_root,
+            **config_kwargs,
         )
         print("Quick test mode: 5 rounds, 1 local epoch")
     elif args.full:
@@ -61,7 +88,7 @@ def main():
             checkpoint_interval=5,
             early_stopping_patience=10,
             experiment_name="fl_full_experiment",
-            data_root=args.data_root,
+            **config_kwargs,
         )
         print("Full experiment mode: 50 rounds, 3 local epochs")
     else:
@@ -72,7 +99,7 @@ def main():
             checkpoint_interval=5,
             early_stopping_patience=7,
             experiment_name="fl_default",
-            data_root=args.data_root,
+            **config_kwargs,
         )
         print("Default mode: 20 rounds, 2 local epochs")
     
@@ -82,11 +109,28 @@ def main():
         device += f" ({torch.cuda.get_device_name(0)})"
     print(f"Device: {device}")
     print(f"Data root: {args.data_root}")
+    if args.datasets:
+        print(f"Datasets: {', '.join(args.datasets)}")
     print()
     
-    # Run simulation
+    # Print full config if verbose
+    if args.verbose:
+        print("=" * 50)
+        print("Configuration:")
+        print("=" * 50)
+        for key, value in vars(config).items():
+            print(f"  {key}: {value}")
+        print("=" * 50)
+        print()
+    
+    # Run simulation (with optional resume)
     simulator = FLSimulator(config)
-    results = simulator.run()
+    
+    if args.resume:
+        print(f"Resuming from checkpoint: {args.resume}")
+        results = simulator.run(resume_from=args.resume)
+    else:
+        results = simulator.run()
     
     # Print summary
     print("\n" + "=" * 50)

@@ -41,6 +41,20 @@ from .helpers import (
 )
 
 # =============================================================================
+# Config Schema Imports
+# =============================================================================
+
+from .config_schema import (
+    ConfigType,
+    validate_config,
+    validate_config_dict,
+    get_default_config,
+    ExperimentConfig,
+    FLConfig,
+    ModelConfig,
+)
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -60,4 +74,12 @@ __all__ = [
     "count_parameters",
     "format_time",
     "format_size",
+    # Config Schema
+    "ConfigType",
+    "validate_config",
+    "validate_config_dict",
+    "get_default_config",
+    "ExperimentConfig",
+    "FLConfig",
+    "ModelConfig",
 ]

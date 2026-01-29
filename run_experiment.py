@@ -234,7 +234,7 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         
         results_dict = results.to_dict()
         results_dict["checkpoint"] = str(checkpoint_path)
-        results_dict["datasets"] = [name for _, name in dataset_classes]
+        results_dict["datasets"] = dataset_names
         
         results_file = output_dir / f"evaluation_results_{timestamp}.json"
         with open(results_file, "w") as f:
@@ -564,9 +564,7 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
 
 def run_comparison(args: argparse.Namespace) -> Dict[str, Any]:
     """Run both centralized and federated experiments for comparison."""
-    from src.evaluation.metrics import compare_results, print_comparison
     from src.evaluation.visualization import (
-        plot_training_curves,
         plot_fl_vs_centralized,
     )
     
@@ -730,6 +728,16 @@ Examples:
         action="store_true",
         help="List available datasets with their details and exit"
     )
+    common_group.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show effective configuration and exit without running experiment"
+    )
+    common_group.add_argument(
+        "--validate-config",
+        action="store_true",
+        help="Validate config file and check for errors, then exit"
+    )
     
     # ==========================================================================
     # Model Configuration
@@ -837,6 +845,91 @@ Examples:
         print("\n" + "=" * 60)
         return 0
     
+    # Handle --validate-config flag
+    if args.validate_config:
+        if not args.config:
+            print("Error: --validate-config requires --config <file>")
+            return 1
+        
+        config_path = Path(args.config)
+        if not config_path.exists():
+            print(f"Error: Config file not found: {config_path}")
+            return 1
+        
+        try:
+            config = load_config(args.config)
+            print("\n" + "=" * 60)
+            print("Config Validation: PASSED")
+            print("=" * 60)
+            print(f"File: {args.config}")
+            print(f"Top-level keys: {list(config.keys())}")
+            
+            # Check for common issues
+            warnings = []
+            if "centralized" in config and "federated" in config:
+                warnings.append("Both 'centralized' and 'federated' sections present")
+            if "model" in config:
+                model_cfg = config["model"]
+                if "variant" in model_cfg and model_cfg["variant"] not in ["tiny", "small", "base"]:
+                    warnings.append(f"Unknown model variant: {model_cfg['variant']}")
+            
+            if warnings:
+                print("\nWarnings:")
+                for w in warnings:
+                    print(f"  ⚠ {w}")
+            else:
+                print("\n✓ No warnings found")
+            
+            print("=" * 60)
+            return 0
+        except yaml.YAMLError as e:
+            print(f"Error: Invalid YAML syntax in {args.config}")
+            print(f"Details: {e}")
+            return 1
+    
+    # Handle --dry-run flag
+    if args.dry_run:
+        print("\n" + "=" * 60)
+        print("DRY RUN - Configuration Preview")
+        print("=" * 60)
+        print(f"Mode: {args.mode}")
+        print(f"Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
+        
+        if args.config:
+            config = load_config(args.config)
+            print(f"\nConfig file: {args.config}")
+            print("\nEffective configuration:")
+            for key, value in config.items():
+                if isinstance(value, dict):
+                    print(f"\n[{key}]")
+                    for k, v in value.items():
+                        print(f"  {k}: {v}")
+                else:
+                    print(f"{key}: {value}")
+        
+        print("\nCLI overrides:")
+        cli_overrides = {}
+        if args.epochs:
+            cli_overrides["epochs"] = args.epochs
+        if args.rounds:
+            cli_overrides["rounds"] = args.rounds
+        if args.lr:
+            cli_overrides["lr"] = args.lr
+        if args.datasets:
+            cli_overrides["datasets"] = args.datasets
+        if args.model_variant:
+            cli_overrides["model_variant"] = args.model_variant
+        
+        if cli_overrides:
+            for k, v in cli_overrides.items():
+                print(f"  --{k.replace('_', '-')}: {v}")
+        else:
+            print("  (none)")
+        
+        print("\n" + "=" * 60)
+        print("Use without --dry-run to execute experiment")
+        return 0
+    
     # Print header
     print("\n" + "=" * 60)
     print("DSCATNet Federated Learning Experiment")
@@ -848,13 +941,13 @@ Examples:
     
     # Run experiment based on mode
     if args.mode == "centralized":
-        results = run_centralized(args)
+        run_centralized(args)
     elif args.mode == "federated":
-        results = run_federated(args)
+        run_federated(args)
     elif args.mode == "comparison":
-        results = run_comparison(args)
+        run_comparison(args)
     elif args.mode == "evaluate":
-        results = run_evaluate(args)
+        run_evaluate(args)
     
     print("\nExperiment completed successfully!")
     return 0

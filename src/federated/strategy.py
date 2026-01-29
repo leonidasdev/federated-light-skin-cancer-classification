@@ -327,7 +327,6 @@ def create_fedavg_strategy(
             if not metrics:
                 return {}
 
-            total_samples = sum(n for n, _ in metrics)
             aggregated = {}
 
             for key in metrics[0][1].keys():

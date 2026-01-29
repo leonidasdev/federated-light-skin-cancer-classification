@@ -1,64 +1,77 @@
+# =============================================================================
+# Test Runner and Project Setup
+# =============================================================================
 """
 Run all tests and setup verification for the project.
+
+Usage:
+    python run_tests.py              # Show help
+    python run_tests.py --setup      # Setup project structure
+    python run_tests.py --test       # Run tests only
+    python run_tests.py --verbose    # Run tests with verbose output
+    python run_tests.py --coverage   # Run tests with coverage report
 """
+
+# =============================================================================
+# Imports
+# =============================================================================
 
 import sys
 from pathlib import Path
 
-# Add project root to path
-project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root))
+# =============================================================================
+# Configuration
+# =============================================================================
+
+PROJECT_ROOT = Path(__file__).parent
 
 
-def run_tests():
-    """Run all test modules."""
+# =============================================================================
+# Functions
+# =============================================================================
+
+
+def run_tests(verbose: bool = False, coverage: bool = False) -> bool:
+    """
+    Run all test modules using pytest.
+    
+    Args:
+        verbose: If True, show detailed test output.
+        coverage: If True, generate code coverage report.
+        
+    Returns:
+        True if all tests passed, False otherwise.
+    """
+    import pytest
+    
     print("=" * 70)
     print("FEDERATED LEARNING SKIN CANCER PROJECT - TEST SUITE")
     print("=" * 70)
     
-    all_passed = True
+    args = [str(PROJECT_ROOT / "tests")]
     
-    # Test preprocessing
-    print("\n\n>>> Running preprocessing tests...")
-    try:
-        from tests.test_preprocessing import run_all_tests as test_preprocessing
-        if not test_preprocessing():
-            all_passed = False
-    except Exception as e:
-        print(f"Preprocessing tests failed: {e}")
-        all_passed = False
-    
-    # Test splits
-    print("\n\n>>> Running split tests...")
-    try:
-        from tests.test_splits import run_all_tests as test_splits
-        if not test_splits():
-            all_passed = False
-    except Exception as e:
-        print(f"Split tests failed: {e}")
-        all_passed = False
-    
-    # Verify datasets
-    print("\n\n>>> Verifying datasets...")
-    try:
-        from src.data.verify import DatasetVerifier
-        verifier = DatasetVerifier(str(project_root / "data"))
-        verifier.verify_all(verbose=True)
-    except Exception as e:
-        print(f"Dataset verification failed: {e}")
-    
-    # Summary
-    print("\n" + "=" * 70)
-    if all_passed:
-        print("ALL TESTS PASSED")
+    if verbose:
+        args.append("-v")
     else:
-        print("SOME TESTS FAILED")
-    print("=" * 70)
+        args.append("-q")
     
-    return all_passed
+    if coverage:
+        args.extend([
+            "--cov=src",
+            "--cov-report=term-missing",
+            "--cov-report=html:htmlcov",
+        ])
+    
+    exit_code = pytest.main(args)
+    
+    if coverage:
+        print("\n" + "-" * 70)
+        print("HTML coverage report generated: htmlcov/index.html")
+    
+    return exit_code == 0
 
 
-def setup_project():
+def setup_project() -> None:
     """Setup project directories and verify environment."""
     print("=" * 70)
     print("PROJECT SETUP")
@@ -77,13 +90,14 @@ def setup_project():
         "experiments/centralized",
         "experiments/federated",
         "checkpoints",
-        "logs"
+        "logs",
+        "outputs",
     ]
     
     for dir_name in dirs_to_create:
-        dir_path = project_root / dir_name
+        dir_path = PROJECT_ROOT / dir_name
         dir_path.mkdir(parents=True, exist_ok=True)
-        print(f"  Created: {dir_path}")
+        print(f"  ✓ Created: {dir_path}")
     
     print("\nProject structure ready!")
     
@@ -93,17 +107,22 @@ def setup_project():
     print("-" * 70)
     print("""
 1. Download the datasets:
-   python -m src.data.download --instructions
+   python run_download.py --instructions
    
 2. Verify datasets are properly organized:
-   python -m src.data.download --verify
+   python run_download.py --verify
    
 3. Explore datasets with the Jupyter notebook:
    jupyter notebook notebooks/01_dataset_exploration.ipynb
    
 4. Run tests to verify everything works:
-   python run_tests.py
+   pytest tests/ -v
 """)
+
+
+# =============================================================================
+# Main
+# =============================================================================
 
 
 if __name__ == "__main__":
@@ -112,16 +131,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Project setup and testing")
     parser.add_argument("--setup", action="store_true", help="Setup project structure")
     parser.add_argument("--test", action="store_true", help="Run all tests")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Verbose test output")
+    parser.add_argument("--coverage", "-c", action="store_true", help="Run with coverage report")
     
     args = parser.parse_args()
     
     if args.setup:
         setup_project()
-    elif args.test:
-        success = run_tests()
+    elif args.test or args.coverage:
+        success = run_tests(verbose=args.verbose, coverage=args.coverage)
         sys.exit(0 if success else 1)
     else:
-        # Default: do both
-        setup_project()
-        print("\n")
-        run_tests()
+        # Default: show help
+        parser.print_help()

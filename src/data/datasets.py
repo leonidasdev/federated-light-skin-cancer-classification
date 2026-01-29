@@ -1125,7 +1125,7 @@ def print_dataset_statistics(
             
             print(f"\n{name}:")
             print(f"  Total samples: {len(ds)}")
-            print(f"  Class distribution:")
+            print("  Class distribution:")
             
             for idx, count in sorted(dist.items()):
                 if 0 <= idx < len(class_names):

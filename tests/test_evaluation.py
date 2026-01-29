@@ -90,6 +90,71 @@ class TestMetricsCalculation:
         assert comparison["accuracy"]["federated"] == 0.85
         assert comparison["accuracy"]["absolute_diff"] == pytest.approx(-0.05)
     
+    def test_compare_results_with_zero_values(self):
+        """Test comparison when centralized has zero values (edge case)."""
+        from src.evaluation.metrics import EvaluationResults, compare_results
+        
+        cent_results = EvaluationResults(
+            accuracy=0.0,  # Zero accuracy
+            balanced_accuracy=0.0,
+            precision_macro=0.0,
+            recall_macro=0.0,
+            f1_macro=0.0,
+            f1_weighted=0.0,
+            auc_macro=0.5,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
+        )
+        
+        fed_results = EvaluationResults(
+            accuracy=0.85,
+            balanced_accuracy=0.83,
+            precision_macro=0.82,
+            recall_macro=0.81,
+            f1_macro=0.81,
+            f1_weighted=0.84,
+            auc_macro=0.92,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
+        )
+        
+        # Should not raise ZeroDivisionError
+        comparison = compare_results(cent_results, fed_results)
+        
+        assert "accuracy" in comparison
+        # When centralized is 0, relative diff should be 0 (handled gracefully)
+        assert comparison["accuracy"]["relative_diff_pct"] == 0
+    
+    def test_compare_results_identical_values(self):
+        """Test comparison when both results are identical."""
+        from src.evaluation.metrics import EvaluationResults, compare_results
+        
+        results = EvaluationResults(
+            accuracy=0.85,
+            balanced_accuracy=0.83,
+            precision_macro=0.82,
+            recall_macro=0.81,
+            f1_macro=0.81,
+            f1_weighted=0.84,
+            auc_macro=0.92,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
+        )
+        
+        comparison = compare_results(results, results)
+        
+        assert comparison["accuracy"]["absolute_diff"] == 0.0
+        assert comparison["accuracy"]["relative_diff_pct"] == 0.0
+    
     def test_compute_federated_metrics(self):
         """Test aggregation of metrics from multiple clients."""
         from src.evaluation.metrics import EvaluationResults, compute_federated_metrics

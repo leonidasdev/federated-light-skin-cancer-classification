@@ -17,8 +17,8 @@ import json
 import logging
 from collections import Counter
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Union
-from dataclasses import dataclass, asdict, field
+from typing import Dict, List, Optional, Tuple, Any
+from dataclasses import dataclass, asdict
 
 import torch
 import torch.nn as nn
@@ -29,11 +29,6 @@ from tqdm import tqdm
 
 from ..models.dscatnet import create_dscatnet
 from ..data.datasets import (
-    HAM10000Dataset,
-    ISIC2018Dataset,
-    ISIC2019Dataset,
-    ISIC2020Dataset,
-    PADUFES20Dataset,
     DatasetSubset,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms

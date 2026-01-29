@@ -191,7 +191,6 @@ def create_noniid_split(
     
     np_labels = np.array(labels)
     num_classes = len(np.unique(np_labels[np_labels >= 0]))
-    num_samples = len(np_labels)
     
     # Group indices by class
     class_indices = defaultdict(list)

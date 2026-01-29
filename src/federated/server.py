@@ -197,9 +197,6 @@ class FederatedServer:
         if not metrics:
             return {}
         
-        # Weighted average by number of samples
-        total_samples = sum(num for num, _ in metrics)
-        
         aggregated = {}
         metric_keys = metrics[0][1].keys()
         

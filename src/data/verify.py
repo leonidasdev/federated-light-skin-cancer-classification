@@ -330,12 +330,12 @@ class DatasetVerifier:
             print(f"  Metadata valid: {result['metadata_valid']}")
             
             if result["class_distribution"]:
-                print(f"  Class distribution:")
+                print("  Class distribution:")
                 for cls, count in result["class_distribution"].items():
                     print(f"    {cls}: {count:,}")
             
             if result["errors"]:
-                print(f"  Errors:")
+                print("  Errors:")
                 for error in result["errors"]:
                     print(f"    - {error}")
             
@@ -403,7 +403,7 @@ def compute_dataset_statistics(
         
         if not csv_path.exists():
             if verbose:
-                print(f"  Skipping - CSV not found")
+                print("  Skipping - CSV not found")
             continue
         
         try:
@@ -420,7 +420,7 @@ def compute_dataset_statistics(
                         with Image.open(img_path) as img:
                             widths.append(img.width)
                             heights.append(img.height)
-                    except:
+                    except (IOError, OSError):
                         pass
             
             if widths:
@@ -454,7 +454,7 @@ def check_cross_dataset_consistency(data_root: str) -> Dict[str, Any]:
     - Potential preprocessing issues
     """
     verifier = DatasetVerifier(data_root)
-    results = verifier.verify_all(verbose=False)
+    verifier.verify_all(verbose=False)  # Run verification for side effects
     
     consistency = {
         "label_mapping_required": True,

@@ -1,0 +1,122 @@
+# =============================================================================
+# DSCATNet Model Configuration Template
+# =============================================================================
+#
+# Description:
+#   Template for configuring the DSCATNet (Dual-Scale Cross-Attention
+#   Vision Transformer) architecture for dermoscopic image classification.
+#
+# Validation:
+#   python src/utils/config_schema.py configs/my_model_config.yaml --type model
+#
+# Architecture Overview:
+#   DSCATNet uses dual-scale patch embeddings (fine + coarse) with
+#   cross-attention fusion to capture both local and global features
+#   in dermoscopic images.
+#
+# =============================================================================
+
+model:
+  # ---------------------------------------------------------------------------
+  # Model Name
+  # ---------------------------------------------------------------------------
+  name: DSCATNet
+  
+  # ---------------------------------------------------------------------------
+  # Input Configuration
+  # ---------------------------------------------------------------------------
+  img_size: 224                   # Input image size (32-512)
+  in_channels: 3                  # Number of input channels (1-4)
+  num_classes: 7                  # Number of output classes (2-10)
+                                  #   7: HAM10000/ISIC2018 classes
+                                  #   8: ISIC2019 classes (includes SCC)
+                                  #   2: Binary (benign vs malignant)
+  
+  # ---------------------------------------------------------------------------
+  # Architecture Parameters
+  # ---------------------------------------------------------------------------
+  embed_dim: 384                  # Embedding dimension (64-1024)
+                                  # Must be divisible by num_heads
+  depth: 6                        # Number of transformer blocks (1-24)
+  num_heads: 6                    # Attention heads (1-16)
+                                  # embed_dim must be divisible by num_heads
+  mlp_ratio: 4.0                  # MLP hidden dimension ratio (1.0-8.0)
+                                  # MLP hidden dim = embed_dim * mlp_ratio
+  
+  # ---------------------------------------------------------------------------
+  # Dual-Scale Patch Sizes
+  # ---------------------------------------------------------------------------
+  # These control the two scales of feature extraction:
+  #   - Fine scale: captures local details (lesion texture, borders)
+  #   - Coarse scale: captures global context (overall shape, color)
+  #
+  # For img_size=224:
+  #   - fine_patch_size=8  → 28×28 = 784 patches
+  #   - coarse_patch_size=16 → 14×14 = 196 patches
+  #
+  fine_patch_size: 8              # Fine scale patch size (4-32)
+                                  # img_size must be divisible by this
+  coarse_patch_size: 16           # Coarse scale patch size (8-64)
+                                  # img_size must be divisible by this
+  
+  # ---------------------------------------------------------------------------
+  # Regularization
+  # ---------------------------------------------------------------------------
+  drop_rate: 0.1                  # Dropout rate (0.0-0.5)
+  attn_drop_rate: 0.0             # Attention dropout rate (0.0-0.5)
+  
+  # ---------------------------------------------------------------------------
+  # Feature Fusion
+  # ---------------------------------------------------------------------------
+  fusion_method: concat           # Options: concat, add, attention
+                                  #   concat: Concatenate + projection
+                                  #   add: Element-wise addition
+                                  #   attention: Cross-attention fusion
+
+# =============================================================================
+# Model Variants
+# =============================================================================
+# Pre-defined variants for different resource constraints.
+# Use variant name when creating model: create_dscatnet(variant="small")
+#
+variants:
+  tiny:
+    embed_dim: 192
+    depth: 4
+    num_heads: 3
+    mlp_ratio: 3.0
+    approx_params: "~5M"          # For documentation purposes
+    
+  small:
+    embed_dim: 384
+    depth: 6
+    num_heads: 6
+    mlp_ratio: 4.0
+    approx_params: "~15M"
+    
+  base:
+    embed_dim: 384
+    depth: 8
+    num_heads: 6
+    mlp_ratio: 4.0
+    approx_params: "~20M"
+
+# =============================================================================
+# Usage Notes
+# =============================================================================
+#
+# Resource Requirements (approximate):
+#   - tiny:  5M params, ~2GB GPU RAM, fast training
+#   - small: 15M params, ~4GB GPU RAM, balanced
+#   - base:  20M params, ~6GB GPU RAM, best accuracy
+#
+# Recommendations:
+#   - Use 'tiny' for quick prototyping or resource-constrained FL clients
+#   - Use 'small' for balanced performance/efficiency (default)
+#   - Use 'base' for maximum accuracy when resources allow
+#
+# Patch Size Guidelines:
+#   - Smaller fine_patch_size → More patches → Better local detail
+#   - Larger coarse_patch_size → Fewer patches → Better global context
+#   - Both must divide img_size evenly
+#

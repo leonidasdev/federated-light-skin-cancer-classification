@@ -1,13 +1,17 @@
 # =============================================================================
-# Test Configuration - pytest conftest.py
+# Pytest Configuration and Shared Fixtures
 # =============================================================================
 """
 Shared pytest fixtures and configuration for the test suite.
 
 This module provides:
-1. Path setup to eliminate sys.path manipulation in tests
-2. Shared fixtures for common test resources
-3. Test markers configuration
+- Path setup (auto-loaded by pytest)
+- Shared fixtures for common test resources
+- Custom pytest markers (slow, integration, gpu)
+
+Note:
+    Fixtures defined here are automatically available to all tests.
+    No need to import them explicitly.
 """
 
 # =============================================================================

@@ -34,10 +34,10 @@ __author__ = "Leonardo Chen"
 # Package Imports
 # =============================================================================
 
-# Make key modules accessible at package level
-from . import models
-from . import federated
-from . import data
-from . import centralized
-from . import evaluation
-from . import utils
+# Make key modules accessible at package level (explicit re-exports)
+from . import models as models
+from . import federated as federated
+from . import data as data
+from . import centralized as centralized
+from . import evaluation as evaluation
+from . import utils as utils

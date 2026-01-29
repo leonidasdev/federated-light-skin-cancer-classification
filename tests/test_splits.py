@@ -15,14 +15,9 @@ Validates:
 # Imports
 # =============================================================================
 
-import sys
-from pathlib import Path
 import numpy as np
+import pytest
 from collections import Counter
-
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from src.data.splits import (
     train_val_split,
@@ -58,8 +53,6 @@ def generate_mock_labels(n_samples=10000, n_classes=7, imbalanced=True):
 
 def test_train_val_split():
     """Test basic train/val split."""
-    print("Testing train/val split...")
-    
     total = 1000
     train_idx, val_idx = train_val_split(total, val_split=0.2, seed=42)
     
@@ -77,14 +70,10 @@ def test_train_val_split():
     # Check reproducibility
     train_idx2, val_idx2 = train_val_split(total, val_split=0.2, seed=42)
     assert train_idx == train_idx2, "Same seed should produce same split"
-    
-    print("  OK Train/val split test passed")
 
 
 def test_iid_split():
     """Test IID split creates balanced distributions."""
-    print("Testing IID split...")
-    
     n_samples = 10000
     n_clients = 4
     labels = generate_mock_labels(n_samples, n_classes=7, imbalanced=True)
@@ -118,14 +107,10 @@ def test_iid_split():
         if max(props) > 0:
             assert max(props) - min(props) < 0.15, \
                 f"IID split should have similar distributions, class {cls} varies too much"
-    
-    print("  OK IID split test passed")
 
 
 def test_noniid_dirichlet_split():
     """Test Non-IID split with Dirichlet distribution."""
-    print("Testing Non-IID Dirichlet split...")
-    
     n_samples = 10000
     n_clients = 4
     labels = generate_mock_labels(n_samples, n_classes=7, imbalanced=False)
@@ -146,14 +131,10 @@ def test_noniid_dirichlet_split():
         if alpha == 0.1:
             assert stats['heterogeneity_score'] > 0.3, \
                 f"Low alpha should be heterogeneous, got {stats['heterogeneity_score']}"
-    
-    print("  OK Non-IID Dirichlet split test passed")
 
 
 def test_label_skew_split():
     """Test Non-IID split with label skew."""
-    print("Testing label skew split...")
-    
     n_samples = 10000
     labels = generate_mock_labels(n_samples, n_classes=7, imbalanced=False)
     
@@ -171,14 +152,10 @@ def test_label_skew_split():
         # (might have more due to overlap in assignment)
         assert unique_classes <= 5, \
             f"Client {client_id} has too many classes: {unique_classes}"
-    
-    print("  OK Label skew split test passed")
 
 
 def test_quantity_skew_split():
     """Test Non-IID split with quantity skew."""
-    print("Testing quantity skew split...")
-    
     n_samples = 10000
     labels = generate_mock_labels(n_samples, n_classes=7)
     
@@ -192,14 +169,10 @@ def test_quantity_skew_split():
     # With imbalance_factor=0.7, should have significant variance
     assert max(sizes) / min(sizes) > 1.5, \
         "Quantity skew should create imbalanced client sizes"
-    
-    print("  OK Quantity skew split test passed")
 
 
 def test_statistics_computation():
     """Test that statistics are computed correctly."""
-    print("Testing statistics computation...")
-    
     labels = generate_mock_labels(10000, n_classes=7)
     client_data = create_noniid_split(labels, num_clients=4, alpha=0.5, seed=42)
     
@@ -219,14 +192,10 @@ def test_statistics_computation():
     assert len(stats['samples_per_client']) == 4
     assert len(stats['class_distribution']) == 4
     assert 0 <= stats['heterogeneity_score'] <= 2.0
-    
-    print("  OK Statistics computation test passed")
 
 
 def test_reproducibility():
     """Test that splits are reproducible with same seed."""
-    print("Testing reproducibility...")
-    
     labels = generate_mock_labels(5000, n_classes=7)
     
     # IID
@@ -242,14 +211,10 @@ def test_reproducibility():
     
     for client_id in split3:
         assert split3[client_id] == split4[client_id], "Same seed should reproduce"
-    
-    print("  OK Reproducibility test passed")
 
 
 def test_visualization():
     """Test that print summary works."""
-    print("Testing print summary...")
-    
     labels = generate_mock_labels(10000, n_classes=7)
     client_data = create_noniid_split(labels, num_clients=4, alpha=0.5, seed=42)
     
@@ -257,68 +222,13 @@ def test_visualization():
     
     # This should not raise an error
     print_split_summary(client_data, labels, class_names)
-    
-    print("  OK Print summary test passed")
 
 
-def compare_split_methods():
-    """Compare different split methods visually."""
-    print("\n" + "=" * 60)
-    print("SPLIT METHOD COMPARISON")
-    print("=" * 60)
-    
-    labels = generate_mock_labels(10000, n_classes=7, imbalanced=True)
-    class_names = ['AK', 'BCC', 'BKL', 'DF', 'MEL', 'NV', 'VASC']
-    
-    methods = {
-        'IID': create_iid_split(labels, num_clients=4, seed=42),
-        'Non-IID (α=0.5)': create_noniid_split(labels, num_clients=4, alpha=0.5, seed=42),
-        'Non-IID (α=0.1)': create_noniid_split(labels, num_clients=4, alpha=0.1, seed=42),
-        'Label Skew': create_label_skew_split(labels, num_clients=4, num_classes_per_client=3, seed=42),
-    }
-    
-    for name, client_data in methods.items():
-        stats = get_dataset_statistics(client_data, labels)
-        print(f"\n{name}:")
-        print(f"  Heterogeneity score: {stats['heterogeneity_score']:.4f}")
-        print(f"  Samples per client: {list(stats['samples_per_client'].values())}")
-
-
-def run_all_tests():
-    """Run all split tests."""
-    print("\n" + "=" * 60)
-    print("IID/NON-IID SPLIT TESTS")
-    print("=" * 60 + "\n")
-    
-    try:
-        test_train_val_split()
-        test_iid_split()
-        test_noniid_dirichlet_split()
-        test_label_skew_split()
-        test_quantity_skew_split()
-        test_statistics_computation()
-        test_reproducibility()
-        test_visualization()
-        
-        print("\n" + "=" * 60)
-        print("ALL TESTS PASSED")
-        print("=" * 60)
-        
-        # Show comparison
-        compare_split_methods()
-        
-        return True
-        
-    except AssertionError as e:
-        print(f"\nFAIL Test failed: {e}")
-        return False
-    except Exception as e:
-        print(f"\nFAIL Error during testing: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
+# =============================================================================
+# Main
+# =============================================================================
 
 
 if __name__ == "__main__":
-    success = run_all_tests()
-    sys.exit(0 if success else 1)
+    import pytest
+    pytest.main([__file__, "-v"])

@@ -15,28 +15,21 @@ Validates that:
 # Imports
 # =============================================================================
 
-import sys
 from pathlib import Path
+
 import numpy as np
 import pytest
 import torch
 from PIL import Image
-from typing import Optional
-import matplotlib.pyplot as plt
-
-# Add project root to path
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
 
 from src.data.preprocessing import (
     get_train_transforms,
     get_val_transforms,
     get_standardized_transforms,
-    IMAGENET_MEAN,
-    IMAGENET_STD,
-    DERMOSCOPY_MEAN,
-    DERMOSCOPY_STD
 )
+
+# Project root for finding test data
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # =============================================================================
 # Test Functions
@@ -45,8 +38,6 @@ from src.data.preprocessing import (
 
 def test_transform_output_shape():
     """Test that transforms produce correct output shape."""
-    print("Testing output shape...")
-    
     # Create dummy image
     dummy_img = np.random.randint(0, 255, (600, 450, 3), dtype=np.uint8)
     
@@ -63,14 +54,10 @@ def test_transform_output_shape():
     
     assert result['image'].shape == torch.Size([3, 224, 224]), \
         f"Expected (3, 224, 224), got {result['image'].shape}"
-    
-    print("  OK Output shape test passed")
 
 
 def test_normalization():
     """Test that normalization is applied correctly."""
-    print("Testing normalization...")
-    
     # Create solid color image
     solid_img = np.ones((224, 224, 3), dtype=np.uint8) * 128
     
@@ -83,14 +70,10 @@ def test_normalization():
     # Check that values are normalized (not in 0-255 range)
     assert tensor.min() < 1.0, "Values should be normalized"
     assert tensor.max() < 3.0, "Values should be normalized"
-    
-    print("  OK Normalization test passed")
 
 
 def test_augmentation_levels():
     """Test different augmentation levels."""
-    print("Testing augmentation levels...")
-    
     dummy_img = np.random.randint(0, 255, (300, 300, 3), dtype=np.uint8)
     
     # Test all augmentation levels including 'none' (matches original DSCATNet paper)
@@ -100,14 +83,10 @@ def test_augmentation_levels():
         
         assert result['image'].shape == torch.Size([3, 224, 224]), \
             f"Failed for augmentation level: {level}"
-    
-    print("  OK Augmentation levels test passed")
 
 
 def test_dermoscopy_normalization():
     """Test dermoscopy-specific normalization."""
-    print("Testing dermoscopy normalization...")
-    
     dummy_img = np.random.randint(0, 255, (224, 224, 3), dtype=np.uint8)
     
     # ImageNet normalization
@@ -121,14 +100,10 @@ def test_dermoscopy_normalization():
     # Results should be different
     assert not torch.allclose(result_imagenet['image'], result_derm['image']), \
         "ImageNet and dermoscopy normalization should produce different results"
-    
-    print("  OK Dermoscopy normalization test passed")
 
 
 def test_standardized_transforms():
     """Test the unified standardized transform function."""
-    print("Testing standardized transforms...")
-    
     dummy_img = np.random.randint(0, 255, (400, 400, 3), dtype=np.uint8)
     
     # Training mode
@@ -144,15 +119,11 @@ def test_standardized_transforms():
     result_val = tf_val(image=dummy_img)
     
     assert result_train['image'].shape == result_val['image'].shape
-    
-    print("  OK Standardized transforms test passed")
 
-
-@pytest.fixture
 def sample_image_path():
     """Provide a sample image path if available."""
     # Try to find a sample image from the datasets
-    data_root = project_root / "data"
+    data_root = PROJECT_ROOT / "data"
     possible_paths = [
         data_root / "HAM10000" / "HAM10000_images_part_1",
         data_root / "ISIC2018" / "ISIC2018_Task3_Training_Input",
@@ -173,138 +144,28 @@ def test_with_real_image(sample_image_path):
     """Test transforms with a real dermoscopy image."""
     if sample_image_path is None:
         pytest.skip("No sample image available")
-    
-    print(f"Testing with real image: {sample_image_path}")
-    
+
     img = Image.open(sample_image_path).convert('RGB')
     img_array = np.array(img)
-    
-    print(f"  Original size: {img_array.shape}")
-    
+
     # Apply transforms
     train_tf = get_train_transforms(img_size=224, augmentation_level='medium')
     val_tf = get_val_transforms(img_size=224)
-    
+
     train_result = train_tf(image=img_array)
     val_result = val_tf(image=img_array)
-    
-    print(f"  After train transform: {train_result['image'].shape}")
-    print(f"  After val transform: {val_result['image'].shape}")
-    
+
     # Verify dtype
     assert train_result['image'].dtype == torch.float32
     assert val_result['image'].dtype == torch.float32
-    
-    print("  OK Real image test passed")
-    
+
     return train_result['image'], val_result['image']
 
 
-def visualize_transforms(image_path: str, output_path: Optional[str] = None):
-    """Visualize transform effects on a dermoscopy image."""
-    img = Image.open(image_path).convert('RGB')
-    img_array = np.array(img)
-    
-    fig, axes = plt.subplots(2, 4, figsize=(16, 8))
-    
-    # Original
-    axes[0, 0].imshow(img_array)
-    axes[0, 0].set_title('Original')
-    axes[0, 0].axis('off')
-    
-    # Validation transform
-    val_tf = get_val_transforms(img_size=224)
-    val_result = val_tf(image=img_array)['image']
-    val_img = denormalize(val_result)
-    axes[0, 1].imshow(val_img)
-    axes[0, 1].set_title('Validation (224x224)')
-    axes[0, 1].axis('off')
-    
-    # Different augmentation levels
-    levels = ['light', 'medium', 'heavy']
-    for i, level in enumerate(levels):
-        train_tf = get_train_transforms(img_size=224, augmentation_level=level)
-        train_result = train_tf(image=img_array)['image']
-        train_img = denormalize(train_result)
-        axes[0, 2 + i - (0 if i < 2 else 2)].imshow(train_img)
-        axes[0, 2 + i - (0 if i < 2 else 2)].set_title(f'Aug: {level}')
-        axes[0, 2 + i - (0 if i < 2 else 2)].axis('off')
-    
-    # More augmentation samples
-    train_tf = get_train_transforms(img_size=224, augmentation_level='medium')
-    for i in range(4):
-        result = train_tf(image=img_array)['image']
-        aug_img = denormalize(result)
-        axes[1, i].imshow(aug_img)
-        axes[1, i].set_title(f'Sample {i+1}')
-        axes[1, i].axis('off')
-    
-    plt.suptitle('Preprocessing Pipeline Visualization', fontsize=14, fontweight='bold')
-    plt.tight_layout()
-    
-    if output_path:
-        plt.savefig(output_path, dpi=150, bbox_inches='tight')
-        print(f"Saved visualization to: {output_path}")
-    
-    plt.show()
-
-
-def denormalize(tensor, mean=IMAGENET_MEAN, std=IMAGENET_STD):
-    """Denormalize a tensor for visualization."""
-    mean = torch.tensor(mean).view(3, 1, 1)
-    std = torch.tensor(std).view(3, 1, 1)
-    
-    img = tensor * std + mean
-    img = img.permute(1, 2, 0).numpy()
-    img = np.clip(img, 0, 1)
-    
-    return img
-
-
-def run_all_tests():
-    """Run all preprocessing tests."""
-    print("\n" + "=" * 60)
-    print("PREPROCESSING PIPELINE TESTS")
-    print("=" * 60 + "\n")
-    
-    try:
-        test_transform_output_shape()
-        test_normalization()
-        test_augmentation_levels()
-        test_dermoscopy_normalization()
-        test_standardized_transforms()
-        
-        print("\n" + "=" * 60)
-        print("ALL TESTS PASSED")
-        print("=" * 60)
-        return True
-        
-    except AssertionError as e:
-        print(f"\nFAIL Test failed: {e}")
-        return False
-    except Exception as e:
-        print(f"\nFAIL Error during testing: {e}")
-        return False
+# =============================================================================
+# Main
+# =============================================================================
 
 
 if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Test preprocessing pipeline")
-    parser.add_argument("--image", type=str, help="Path to test image")
-    parser.add_argument("--visualize", action="store_true", help="Visualize transforms")
-    parser.add_argument("--output", type=str, help="Output path for visualization")
-    
-    args = parser.parse_args()
-    
-    # Run basic tests
-    success = run_all_tests()
-    
-    # Test with real image if provided
-    if args.image and Path(args.image).exists():
-        test_with_real_image(args.image)
-        
-        if args.visualize:
-            visualize_transforms(args.image, args.output)
-    
-    sys.exit(0 if success else 1)
+    pytest.main([__file__, "-v"])

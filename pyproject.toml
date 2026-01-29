@@ -1,0 +1,77 @@
+# =============================================================================
+# Project Configuration
+# =============================================================================
+
+[project]
+name = "federated-skin-cancer-classification"
+version = "0.1.0"
+description = "Federated Learning for Skin Cancer Classification with DSCATNet"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Leonardo Chen"}
+]
+requires-python = ">=3.10"
+
+# =============================================================================
+# Ruff Configuration
+# =============================================================================
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+]
+ignore = [
+    "E501",  # line too long - handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.ipynb" = [
+    "E402",  # module level import not at top - common in notebooks
+]
+"tests/*.py" = [
+    "F401",  # unused imports - test fixtures may appear unused
+]
+
+# =============================================================================
+# Pytest Configuration
+# =============================================================================
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "gpu: marks tests that require GPU",
+]
+
+# =============================================================================
+# Coverage Configuration
+# =============================================================================
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "src/__pycache__/*",
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true

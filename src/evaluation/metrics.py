@@ -27,11 +27,10 @@ from sklearn.metrics import (
     f1_score,
     roc_auc_score,
     confusion_matrix,
-    classification_report,
     balanced_accuracy_score,
 )
 
-from ..data.datasets import UNIFIED_CLASSES, CLASS_NAMES as DATASET_CLASS_NAMES
+from ..data.datasets import CLASS_NAMES as DATASET_CLASS_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +225,7 @@ class ModelEvaluator:
         print("EVALUATION REPORT")
         print("=" * 60)
         
-        print(f"\nOverall Metrics:")
+        print("\nOverall Metrics:")
         print(f"  Accuracy:          {results.accuracy:.4f}")
         print(f"  Balanced Accuracy: {results.balanced_accuracy:.4f}")
         print(f"  Precision (macro): {results.precision_macro:.4f}")
@@ -236,7 +235,7 @@ class ModelEvaluator:
         if results.auc_macro is not None:
             print(f"  AUC-ROC (macro):   {results.auc_macro:.4f}")
         
-        print(f"\nPer-Class Metrics:")
+        print("\nPer-Class Metrics:")
         print("-" * 60)
         print(f"{'Class':<15} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'Support':>10}")
         print("-" * 60)

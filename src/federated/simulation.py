@@ -16,9 +16,9 @@ import os
 import time
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Sized, cast, Callable
+from typing import Dict, List, Optional, Tuple, Any, Sized, cast
 from dataclasses import dataclass, asdict
 
 import numpy as np
@@ -31,11 +31,6 @@ from flwr.common import Scalar
 
 from ..models.dscatnet import create_dscatnet, get_model_parameters, set_model_parameters
 from ..data.datasets import (
-    HAM10000Dataset,
-    ISIC2018Dataset,
-    ISIC2019Dataset,
-    ISIC2020Dataset,
-    PADUFES20Dataset,
     DatasetSubset,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
@@ -548,7 +543,6 @@ class FLSimulator:
             raise RuntimeError("No data loaded. Please check dataset paths.")
         
         total_samples = len(combined_labels)
-        labels_array = np.array(combined_labels)
         logger.info(f"Total samples for Dirichlet split: {total_samples}")
         
         # Create Dirichlet split
@@ -893,7 +887,6 @@ class FLSimulator:
             client_val_metrics.append(metrics)
         
         # Aggregate metrics
-        total_train_samples = sum(r[1] for r in fit_results)
         total_val_samples = sum(r[1] for r in eval_results)
         
         avg_train_loss = np.mean([m["train_loss"] for m in client_train_metrics])

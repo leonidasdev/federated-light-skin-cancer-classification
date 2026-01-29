@@ -29,6 +29,9 @@ htmlcov/
 .mypy_cache/
 .pyright/
 
+# Linter cache
+.ruff_cache/
+
 # Virtual environments
 venv/
 ENV/
