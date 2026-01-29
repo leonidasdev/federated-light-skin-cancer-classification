@@ -17,7 +17,6 @@ from .datasets import (
     get_client_dataloader,
     CLASS_NAMES,
     UNIFIED_CLASSES,
-    # New registry-based utilities
     DATASET_REGISTRY,
     DatasetConfig,
     load_dataset,
@@ -64,7 +63,7 @@ __all__ = [
     "get_client_dataloader",
     "CLASS_NAMES",
     "UNIFIED_CLASSES",
-    # Dataset Registry (new)
+    # Dataset Registry
     "DATASET_REGISTRY",
     "DatasetConfig",
     "load_dataset",
