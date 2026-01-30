@@ -64,19 +64,6 @@ def mock_run_experiment_parser():
     return parser
 
 
-@pytest.fixture
-def mock_fl_parser():
-    """Create a mock parser matching run_fl.py structure."""
-    parser = argparse.ArgumentParser(description="Quick Start FL Experiment")
-
-    parser.add_argument("--config", type=str, help="Path to YAML config")
-    parser.add_argument("--rounds", type=int, default=10, help="Number of rounds")
-    parser.add_argument("--clients", type=int, default=5, help="Number of clients")
-    parser.add_argument("--dataset", type=str, default="HAM10000", help="Dataset name")
-
-    return parser
-
-
 # =============================================================================
 # Mode Validation Tests
 # =============================================================================
@@ -237,21 +224,6 @@ class TestNumericArguments:
 
 class TestDefaultValues:
     """Test default values for optional arguments."""
-
-    def test_fl_parser_default_rounds(self, mock_fl_parser):
-        """Test FL parser has default rounds."""
-        args = mock_fl_parser.parse_args([])
-        assert args.rounds == 10
-
-    def test_fl_parser_default_clients(self, mock_fl_parser):
-        """Test FL parser has default clients."""
-        args = mock_fl_parser.parse_args([])
-        assert args.clients == 5
-
-    def test_fl_parser_default_dataset(self, mock_fl_parser):
-        """Test FL parser has default dataset."""
-        args = mock_fl_parser.parse_args([])
-        assert args.dataset == "HAM10000"
 
     def test_optional_none_when_not_provided(self, mock_run_experiment_parser):
         """Test optional args are None when not provided."""

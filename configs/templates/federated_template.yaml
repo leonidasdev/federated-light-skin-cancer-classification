@@ -7,7 +7,7 @@
 #   Copy this file and modify values as needed.
 #
 # Usage:
-#   python run_fl.py --config configs/my_fl_config.yaml
+#   python run_experiment.py --mode federated --config configs/my_fl_config.yaml
 #
 # Validation:
 #   python src/utils/config_schema.py configs/my_fl_config.yaml --type federated

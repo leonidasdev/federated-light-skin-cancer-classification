@@ -157,7 +157,7 @@ List of federated experiment configurations:
 
 ## Federated Learning Configuration
 
-Used by `run_fl.py` for federated training.
+Used by `run_experiment.py --mode federated` for federated training.
 
 ### federated
 

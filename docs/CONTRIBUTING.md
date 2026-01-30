@@ -267,7 +267,6 @@ federated-light-skin-cancer-classification/
 ├── notebooks/              # Jupyter notebooks
 ├── docs/                   # Documentation
 ├── run_experiment.py       # Main experiment runner
-├── run_fl.py               # Alternative FL runner
 ├── run_download.py         # Dataset downloader
 └── run_tests.py            # Test runner
 ```

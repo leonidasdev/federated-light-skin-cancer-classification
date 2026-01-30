@@ -9,7 +9,6 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 │                              ENTRY POINTS                                   │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  run_experiment.py    Main CLI: centralized, federated, evaluate, compare   │
-│  run_fl.py            Quick FL runner with presets                          │
 │  run_download.py      Dataset download and verification                     │
 │  run_tests.py         Test suite runner                                     │
 └─────────────────────────────────────────────────────────────────────────────┘

@@ -137,7 +137,6 @@ federated-light-skin-cancer-classification/
 │   └── CONTRIBUTING.md               # Contributing guidelines
 │
 ├── run_experiment.py                 # Main entry point
-├── run_fl.py                         # Quick FL runner
 ├── run_download.py                   # Dataset downloader
 ├── run_tests.py                      # Test runner
 ├── requirements.txt                  # Python dependencies
@@ -778,18 +777,6 @@ python run_download.py [OPTIONS]
 | `--download-all` | Download all datasets |
 | `--workers N` | Parallel download workers (default: 8) |
 | `--force` | Force re-download existing files |
-
-### `run_fl.py` (Quick FL Runner)
-
-```bash
-python run_fl.py [OPTIONS]
-```
-
-| Argument | Description |
-|----------|-------------|
-| `--quick` | Quick test (5 rounds, small settings) |
-| `--full` | Full experiment preset |
-| `--data-root` | Data directory |
 
 ---
 
