@@ -60,58 +60,77 @@ DATASET_INFO = {
     "HAM10000": {
         "description": "Human Against Machine with 10000 training images",
         "isic_dataset": "HAM10000",
-        "source": "https://api.isic-archive.com",
+        "source": "kaggle",  # Prefer Kaggle for HAM10000
+        "kaggle_dataset": "kmader/skin-cancer-mnist-ham10000",
         "archive_url": "https://isic-archive.com/",
         "download_url": "https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000",
         "classes": 7,
         "approx_images": 10015,
         "expected_files": [
-            "metadata.csv",
-            "images/"
+            "HAM10000_metadata.csv",
+            "HAM10000_images_part_1/",
+            "HAM10000_images_part_2/"
         ],
         "client_id": 1
     },
     "ISIC2018": {
         "description": "ISIC 2018 Challenge - Task 3: Lesion Diagnosis",
         "isic_dataset": "ISIC_2018_Task_3_Training",
-        "source": "https://api.isic-archive.com",
+        "source": "isic",
         "archive_url": "https://challenge.isic-archive.com/data/#2018",
         "download_url": "https://challenge.isic-archive.com/data/#2018",
         "classes": 7,
         "approx_images": 10015,
         "expected_files": [
-            "metadata.csv",
-            "images/"
+            "ISIC2018_Task3_Training_GroundTruth.csv",
+            "ISIC2018_Task3_Training_Input/"
         ],
         "client_id": 2
     },
     "ISIC2019": {
         "description": "ISIC 2019 Challenge - Dermoscopic Image Classification",
         "isic_dataset": "ISIC_2019_Training",
-        "source": "https://api.isic-archive.com",
+        "source": "isic",
         "archive_url": "https://challenge.isic-archive.com/data/#2019",
         "download_url": "https://challenge.isic-archive.com/data/#2019",
         "classes": 8,
         "approx_images": 25331,
         "expected_files": [
-            "metadata.csv",
-            "images/"
+            "ISIC_2019_Training_GroundTruth.csv",
+            "ISIC_2019_Training_Input/"
         ],
         "client_id": 3
     },
     "ISIC2020": {
         "description": "ISIC 2020 Challenge - Melanoma Classification (SIIM-ISIC)",
         "isic_dataset": "ISIC_2020_Training_JPEG",
-        "source": "https://api.isic-archive.com",
+        "source": "isic",
         "archive_url": "https://challenge.isic-archive.com/data/#2020",
         "download_url": "https://challenge.isic-archive.com/data/#2020",
         "classes": 2,
         "approx_images": 33126,
         "expected_files": [
-            "metadata.csv",
-            "images/"
+            "ISIC_2020_Training_GroundTruth.csv",
+            "ISIC_2020_Training_JPEG/"
         ],
         "client_id": 4
+    },
+    "PAD-UFES-20": {
+        "description": "PAD-UFES-20: Brazilian clinical skin lesion images",
+        "source": "mendeley",
+        "mendeley_doi": "10.17632/zr7vgbcyr2.1",
+        "mendeley_url": "https://data.mendeley.com/public-api/datasets/zr7vgbcyr2/files/download",
+        "archive_url": "https://data.mendeley.com/datasets/zr7vgbcyr2/1",
+        "download_url": "https://data.mendeley.com/datasets/zr7vgbcyr2/1",
+        "classes": 6,
+        "approx_images": 2298,
+        "expected_files": [
+            "metadata.csv",
+            "imgs_part_1/",
+            "imgs_part_2/",
+            "imgs_part_3/"
+        ],
+        "client_id": 5
     }
 }
 
@@ -157,8 +176,387 @@ def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Pa
 
 
 # =============================================================================
-# ISIC Archive API Client
+# Kaggle API Download (for HAM10000)
 # =============================================================================
+
+def check_kaggle_available() -> bool:
+    """Check if Kaggle CLI is available and configured."""
+    import shutil
+    import subprocess
+
+    # Check if kaggle command exists
+    if shutil.which("kaggle") is None:
+        return False
+
+    # Check if credentials are configured
+    kaggle_json = Path.home() / ".kaggle" / "kaggle.json"
+    if not kaggle_json.exists():
+        # Also check Windows location
+        kaggle_json_win = Path.home() / "AppData" / "Roaming" / "kaggle" / "kaggle.json"
+        if not kaggle_json_win.exists():
+            return False
+
+    return True
+
+
+def download_ham10000_kaggle(
+    data_root: Optional[Path] = None,
+    force_redownload: bool = False
+) -> bool:
+    """
+    Download HAM10000 dataset from Kaggle.
+
+    Requires:
+        - kaggle package installed: pip install kaggle
+        - Kaggle API credentials in ~/.kaggle/kaggle.json
+
+    Args:
+        data_root: Root directory for datasets
+        force_redownload: If True, redownload even if files exist
+
+    Returns:
+        True if successful
+    """
+    import subprocess
+    import shutil
+    import zipfile
+
+    if data_root is None:
+        data_root = get_data_root()
+
+    data_root = Path(data_root)
+    dataset_path = data_root / "HAM10000"
+    dataset_path.mkdir(parents=True, exist_ok=True)
+
+    info = DATASET_INFO["HAM10000"]
+
+    print(f"\n{'='*60}")
+    print(f"Downloading: HAM10000 from Kaggle")
+    print(f"Dataset: {info['kaggle_dataset']}")
+    print(f"Expected images: ~{info['approx_images']:,}")
+    print(f"{'='*60}")
+
+    # Check if already downloaded
+    if not force_redownload:
+        part1_dir = dataset_path / "HAM10000_images_part_1"
+        part2_dir = dataset_path / "HAM10000_images_part_2"
+        if part1_dir.exists() and part2_dir.exists():
+            existing_images = len(list(part1_dir.glob("*.jpg"))) + len(list(part2_dir.glob("*.jpg")))
+            if existing_images >= info["approx_images"] * 0.95:
+                print(f"Dataset appears complete ({existing_images:,} images found)")
+                return True
+
+    # Check Kaggle availability
+    if not check_kaggle_available():
+        print("ERROR: Kaggle CLI not available or not configured.")
+        print("  1. Install: pip install kaggle")
+        print("  2. Get API token from https://www.kaggle.com/account")
+        print("  3. Save to ~/.kaggle/kaggle.json (Unix) or %USERPROFILE%\\.kaggle\\kaggle.json (Windows)")
+        return False
+
+    try:
+        # Create temp directory for download
+        temp_dir = data_root / "raw" / "kaggle_ham10000"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+
+        print("\nStep 1: Downloading from Kaggle...")
+        # Download dataset
+        cmd = [
+            "kaggle", "datasets", "download",
+            "-d", info["kaggle_dataset"],
+            "-p", str(temp_dir),
+            "--unzip"
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Kaggle download failed: {result.stderr}")
+            return False
+
+        print("  Download completed!")
+
+        print("\nStep 2: Organizing files...")
+        # Find and move the required files
+        # The Kaggle dataset contains:
+        # - HAM10000_metadata.csv
+        # - HAM10000_images_part_1/
+        # - HAM10000_images_part_2/
+        # - hmnist_*.csv (not needed)
+
+        # Move metadata CSV
+        for csv_name in ["HAM10000_metadata.csv"]:
+            src = temp_dir / csv_name
+            if src.exists():
+                dst = dataset_path / csv_name
+                shutil.copy2(src, dst)
+                print(f"  Copied {csv_name}")
+
+        # Move image directories
+        for part in ["HAM10000_images_part_1", "HAM10000_images_part_2"]:
+            src_dir = temp_dir / part
+            if src_dir.exists():
+                dst_dir = dataset_path / part
+                if dst_dir.exists():
+                    shutil.rmtree(dst_dir)
+                shutil.copytree(src_dir, dst_dir)
+                img_count = len(list(dst_dir.glob("*.jpg")))
+                print(f"  Copied {part}/ ({img_count:,} images)")
+
+        # Cleanup temp directory
+        print("\nStep 3: Cleaning up...")
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+        # Verify
+        part1_dir = dataset_path / "HAM10000_images_part_1"
+        part2_dir = dataset_path / "HAM10000_images_part_2"
+        total_images = len(list(part1_dir.glob("*.jpg"))) + len(list(part2_dir.glob("*.jpg")))
+
+        print(f"\n{'='*60}")
+        print(f"HAM10000 Download Summary:")
+        print(f"  Total images: {total_images:,}")
+        print(f"  Location: {dataset_path}")
+        print(f"{'='*60}")
+
+        return total_images >= info["approx_images"] * 0.9
+
+    except Exception as e:
+        logger.error(f"Error downloading HAM10000 from Kaggle: {e}")
+        print(f"Download failed: {e}")
+        return False
+
+
+# =============================================================================
+# Mendeley Data Download (for PAD-UFES-20)
+# =============================================================================
+
+def download_padufes20_mendeley(
+    data_root: Optional[Path] = None,
+    force_redownload: bool = False
+) -> bool:
+    """
+    Download PAD-UFES-20 dataset from Mendeley Data.
+
+    Direct download from:
+    https://data.mendeley.com/datasets/zr7vgbcyr2/1
+
+    No API key required.
+
+    Args:
+        data_root: Root directory for datasets
+        force_redownload: If True, redownload even if files exist
+
+    Returns:
+        True if successful
+    """
+    import zipfile
+    import shutil
+
+    if data_root is None:
+        data_root = get_data_root()
+
+    data_root = Path(data_root)
+    dataset_path = data_root / "PAD-UFES-20"
+    dataset_path.mkdir(parents=True, exist_ok=True)
+
+    info = DATASET_INFO["PAD-UFES-20"]
+
+    print(f"\n{'='*60}")
+    print(f"Downloading: PAD-UFES-20 from Mendeley Data")
+    print(f"DOI: {info['mendeley_doi']}")
+    print(f"Expected images: ~{info['approx_images']:,}")
+    print(f"{'='*60}")
+
+    # Check if already downloaded
+    if not force_redownload:
+        total_images = 0
+        for part in ["imgs_part_1", "imgs_part_2", "imgs_part_3"]:
+            part_dir = dataset_path / part
+            if part_dir.exists():
+                total_images += len(list(part_dir.glob("*.png")))
+        if total_images >= info["approx_images"] * 0.95:
+            print(f"Dataset appears complete ({total_images:,} images found)")
+            return True
+
+    try:
+        # Setup session with retry
+        session = requests.Session()
+        retry_strategy = Retry(
+            total=5,
+            backoff_factor=1.0,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+
+        # Download URL - Mendeley public API
+        download_url = "https://data.mendeley.com/public-api/datasets/zr7vgbcyr2/files/download"
+
+        print("\nStep 1: Downloading dataset ZIP from Mendeley...")
+        print("  (This may take a few minutes for ~1.2GB)")
+
+        # Create temp file for download
+        temp_dir = data_root / "raw"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        zip_path = temp_dir / "padufes20.zip"
+
+        # Download with progress bar
+        response = session.get(download_url, stream=True, timeout=300)
+        response.raise_for_status()
+
+        total_size = int(response.headers.get('content-length', 0))
+        block_size = 8192
+
+        with open(zip_path, 'wb') as f:
+            with tqdm(total=total_size, unit='iB', unit_scale=True, desc="  Downloading") as pbar:
+                for data in response.iter_content(block_size):
+                    size = f.write(data)
+                    pbar.update(size)
+
+        print("  Download completed!")
+
+        print("\nStep 2: Extracting archive...")
+        # Extract ZIP
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            # List contents to find the structure
+            namelist = zip_ref.namelist()
+
+            # PAD-UFES-20 ZIP structure may have a top-level folder
+            # Find the actual data location
+            has_top_folder = any(n.startswith("zr7vgbcyr2") or n.startswith("PAD-UFES-20") for n in namelist[:10])
+
+            zip_ref.extractall(temp_dir)
+
+        # Find and organize the extracted files
+        print("\nStep 3: Organizing files...")
+
+        # Look for the extracted content
+        extracted_dir = None
+        for candidate in [
+            temp_dir / "zr7vgbcyr2-1",
+            temp_dir / "zr7vgbcyr2",
+            temp_dir / "PAD-UFES-20",
+            temp_dir,
+        ]:
+            if candidate.exists() and (candidate / "metadata.csv").exists():
+                extracted_dir = candidate
+                break
+            # Also check for nested structure
+            for subdir in candidate.iterdir() if candidate.exists() else []:
+                if subdir.is_dir() and (subdir / "metadata.csv").exists():
+                    extracted_dir = subdir
+                    break
+            if extracted_dir:
+                break
+
+        if extracted_dir is None:
+            # Try to find metadata.csv anywhere in temp_dir
+            for p in temp_dir.rglob("metadata.csv"):
+                extracted_dir = p.parent
+                break
+
+        if extracted_dir is None:
+            print("ERROR: Could not find extracted PAD-UFES-20 data")
+            return False
+
+        # Copy metadata.csv
+        src_csv = extracted_dir / "metadata.csv"
+        if src_csv.exists():
+            shutil.copy2(src_csv, dataset_path / "metadata.csv")
+            print("  Copied metadata.csv")
+
+        # Copy image directories
+        for part in ["imgs_part_1", "imgs_part_2", "imgs_part_3"]:
+            src_dir = extracted_dir / part
+            if src_dir.exists():
+                dst_dir = dataset_path / part
+                if dst_dir.exists():
+                    shutil.rmtree(dst_dir)
+                shutil.copytree(src_dir, dst_dir)
+                img_count = len(list(dst_dir.glob("*.png")))
+                print(f"  Copied {part}/ ({img_count:,} images)")
+
+        # Cleanup
+        print("\nStep 4: Cleaning up...")
+        zip_path.unlink(missing_ok=True)
+        # Clean up extracted folder if different from temp_dir
+        if extracted_dir != temp_dir and extracted_dir.exists():
+            shutil.rmtree(extracted_dir, ignore_errors=True)
+
+        # Verify
+        total_images = 0
+        for part in ["imgs_part_1", "imgs_part_2", "imgs_part_3"]:
+            part_dir = dataset_path / part
+            if part_dir.exists():
+                total_images += len(list(part_dir.glob("*.png")))
+
+        print(f"\n{'='*60}")
+        print(f"PAD-UFES-20 Download Summary:")
+        print(f"  Total images: {total_images:,}")
+        print(f"  Location: {dataset_path}")
+        print(f"{'='*60}")
+
+        return total_images >= info["approx_images"] * 0.9
+
+    except Exception as e:
+        logger.error(f"Error downloading PAD-UFES-20 from Mendeley: {e}")
+        print(f"Download failed: {e}")
+        return False
+
+
+# =============================================================================
+# Unified Download Function
+# =============================================================================
+
+def download_dataset(
+    dataset_name: str,
+    data_root: Optional[Path] = None,
+    max_workers: int = 8,
+    force_redownload: bool = False,
+    prefer_source: Optional[str] = None
+) -> bool:
+    """
+    Download a dataset using the appropriate source.
+
+    Automatically selects the best download source:
+    - HAM10000: Kaggle (faster, standard format)
+    - ISIC2018/2019/2020: ISIC Archive API
+    - PAD-UFES-20: Mendeley Data (direct download)
+
+    Args:
+        dataset_name: Name of dataset
+        data_root: Root directory for datasets
+        max_workers: Number of parallel download workers (for ISIC)
+        force_redownload: If True, redownload even if files exist
+        prefer_source: Override source selection ('kaggle', 'isic', 'mendeley')
+
+    Returns:
+        True if successful
+    """
+    if dataset_name not in DATASET_INFO:
+        print(f"Unknown dataset: {dataset_name}")
+        print(f"Available: {', '.join(DATASET_INFO.keys())}")
+        return False
+
+    info = DATASET_INFO[dataset_name]
+    source = prefer_source or info.get("source", "isic")
+
+    if dataset_name == "HAM10000" and source in ("kaggle", None):
+        # Try Kaggle first, fall back to ISIC
+        if check_kaggle_available():
+            return download_ham10000_kaggle(data_root, force_redownload)
+        else:
+            print("Kaggle not available, falling back to ISIC Archive API...")
+            return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
+
+    elif dataset_name == "PAD-UFES-20":
+        return download_padufes20_mendeley(data_root, force_redownload)
+
+    else:
+        # ISIC datasets
+        return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
+
+
+
 
 class ISICArchiveClient:
     """
@@ -622,15 +1020,22 @@ def download_dataset_isic(
 def download_all_datasets(
     data_root: Optional[Path] = None,
     datasets: Optional[List[str]] = None,
-    max_workers: int = 8
+    max_workers: int = 8,
+    force_redownload: bool = False
 ) -> Dict[str, bool]:
     """
-    Download all (or specified) datasets from ISIC Archive.
+    Download all (or specified) datasets using the appropriate source.
+
+    Uses:
+    - Kaggle for HAM10000 (if available)
+    - ISIC Archive API for ISIC2018/2019/2020
+    - Mendeley Data for PAD-UFES-20
 
     Args:
         data_root: Root directory for datasets
         datasets: List of datasets to download (None = all)
-        max_workers: Number of parallel workers
+        max_workers: Number of parallel workers (for ISIC)
+        force_redownload: If True, redownload even if files exist
 
     Returns:
         Dictionary mapping dataset names to success status
@@ -641,17 +1046,23 @@ def download_all_datasets(
     results = {}
 
     print("\n" + "=" * 70)
-    print("ISIC ARCHIVE DATASET DOWNLOADER")
+    print("DERMOSCOPY DATASET DOWNLOADER")
     print("=" * 70)
     print(f"Datasets to download: {', '.join(datasets)}")
-    print(f"Total estimated images: ~{sum(DATASET_INFO[d]['approx_images'] for d in datasets):,}")
+    print(f"Total estimated images: ~{sum(DATASET_INFO[d]['approx_images'] for d in datasets if d in DATASET_INFO):,}")
+    print("\nSources:")
+    for d in datasets:
+        if d in DATASET_INFO:
+            source = DATASET_INFO[d].get("source", "isic")
+            print(f"  - {d}: {source}")
     print("=" * 70)
 
     for dataset_name in datasets:
-        results[dataset_name] = download_dataset_isic(
+        results[dataset_name] = download_dataset(
             dataset_name,
             data_root=data_root,
-            max_workers=max_workers
+            max_workers=max_workers,
+            force_redownload=force_redownload
         )
 
     # Print final summary
@@ -704,7 +1115,8 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
         "missing_files": [],
         "image_count": 0,
         "csv_found": False,
-        "completeness": 0.0
+        "completeness": 0.0,
+        "source": info.get("source", "unknown")
     }
 
     # Check expected files
@@ -717,15 +1129,47 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
         else:
             result["missing_files"].append(expected)
 
-    # Count images
-    images_dir = dataset_path / "images"
-    if images_dir.exists():
-        for ext in ["*.jpg", "*.jpeg", "*.png", "*.JPG", "*.JPEG", "*.PNG"]:
-            result["image_count"] += len(list(images_dir.glob(ext)))
+    # Count images based on dataset structure
+    if dataset_name == "HAM10000":
+        # HAM10000 has images in part_1 and part_2 folders
+        for part in ["HAM10000_images_part_1", "HAM10000_images_part_2"]:
+            part_dir = dataset_path / part
+            if part_dir.exists():
+                result["image_count"] += len(list(part_dir.glob("*.jpg")))
+        # Also check images/ subfolder (ISIC structure)
+        images_dir = dataset_path / "images"
+        if images_dir.exists():
+            result["image_count"] += len(list(images_dir.glob("*.jpg")))
 
-    # Also check root directory for images (backward compatibility)
-    for ext in ["*.jpg", "*.jpeg", "*.png"]:
-        result["image_count"] += len(list(dataset_path.glob(ext)))
+    elif dataset_name == "PAD-UFES-20":
+        # PAD-UFES-20 has images in imgs_part_1/2/3 folders
+        for part in ["imgs_part_1", "imgs_part_2", "imgs_part_3"]:
+            part_dir = dataset_path / part
+            if part_dir.exists():
+                result["image_count"] += len(list(part_dir.glob("*.png")))
+
+    elif dataset_name in ["ISIC2018", "ISIC2019", "ISIC2020"]:
+        # ISIC datasets have images in specific subdirectories
+        image_subdirs = {
+            "ISIC2018": ["ISIC2018_Task3_Training_Input", "images"],
+            "ISIC2019": ["ISIC_2019_Training_Input", "images"],
+            "ISIC2020": ["ISIC_2020_Training_JPEG", "train", "images"],
+        }
+        for subdir in image_subdirs.get(dataset_name, ["images"]):
+            images_dir = dataset_path / subdir
+            if images_dir.exists():
+                for ext in ["*.jpg", "*.jpeg", "*.png"]:
+                    result["image_count"] += len(list(images_dir.glob(ext)))
+
+    else:
+        # Generic: check images/ subfolder and root
+        images_dir = dataset_path / "images"
+        if images_dir.exists():
+            for ext in ["*.jpg", "*.jpeg", "*.png"]:
+                result["image_count"] += len(list(images_dir.glob(ext)))
+        # Also check root directory
+        for ext in ["*.jpg", "*.jpeg", "*.png"]:
+            result["image_count"] += len(list(dataset_path.glob(ext)))
 
     # Calculate completeness
     expected_images = info["approx_images"]
@@ -786,52 +1230,84 @@ def print_download_instructions() -> None:
     """Print instructions for downloading datasets."""
     instructions = """
 ================================================================================
-DATASET DOWNLOAD OPTIONS
+DERMOSCOPY DATASET DOWNLOAD OPTIONS
 ================================================================================
 
-OPTION 1: Automatic Download via ISIC Archive API (Recommended)
+AUTOMATIC DOWNLOAD (Recommended)
 --------------------------------------------------------------------------------
-No API key required. Downloads directly from the official ISIC Archive.
+Downloads from the best source for each dataset:
 
-    # Download all datasets (~80,000 images, may take several hours)
+    # Download all 5 datasets (~81,000 images, may take several hours)
     python run_download.py --download-all
 
     # Download specific dataset
-    python run_download.py --download HAM10000
-    python run_download.py --download ISIC2018
-    python run_download.py --download ISIC2019
-    python run_download.py --download ISIC2020
+    python run_download.py --download HAM10000      # From Kaggle
+    python run_download.py --download ISIC2018      # From ISIC Archive
+    python run_download.py --download ISIC2019      # From ISIC Archive
+    python run_download.py --download ISIC2020      # From ISIC Archive
+    python run_download.py --download PAD-UFES-20   # From Mendeley Data
 
-    # Adjust parallel workers (default: 8)
+    # Adjust parallel workers for ISIC (default: 8)
     python run_download.py --download-all --workers 16
 
-OPTION 2: Manual Download from ISIC Archive Website
+DOWNLOAD SOURCES
 --------------------------------------------------------------------------------
-Visit the ISIC Archive and download datasets manually:
+Each dataset is downloaded from its optimal source:
 
-    HAM10000:  https://isic-archive.com/ → Search "HAM10000"
-    ISIC 2018: https://challenge.isic-archive.com/data/#2018
-    ISIC 2019: https://challenge.isic-archive.com/data/#2019
-    ISIC 2020: https://challenge.isic-archive.com/data/#2020
+    HAM10000:     Kaggle (requires kaggle API credentials)
+                  https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000
 
-After downloading, organize files as:
+    ISIC 2018:    ISIC Archive API (no credentials required)
+                  https://challenge.isic-archive.com/data/#2018
+
+    ISIC 2019:    ISIC Archive API (no credentials required)
+                  https://challenge.isic-archive.com/data/#2019
+
+    ISIC 2020:    ISIC Archive API (no credentials required)
+                  https://challenge.isic-archive.com/data/#2020
+
+    PAD-UFES-20:  Mendeley Data (no credentials required)
+                  https://data.mendeley.com/datasets/zr7vgbcyr2/1
+
+KAGGLE SETUP (for HAM10000)
+--------------------------------------------------------------------------------
+1. Install kaggle: pip install kaggle
+2. Get API token from https://www.kaggle.com/account
+3. Save to ~/.kaggle/kaggle.json (Linux/Mac)
+   or %USERPROFILE%\\.kaggle\\kaggle.json (Windows)
+
+If Kaggle is not configured, HAM10000 will fall back to ISIC Archive API.
+
+MANUAL DOWNLOAD
+--------------------------------------------------------------------------------
+If automatic download fails, download manually from the URLs above
+and organize files as:
+
     data/
     ├── HAM10000/
-    │   ├── metadata.csv
-    │   └── images/
+    │   ├── HAM10000_metadata.csv
+    │   ├── HAM10000_images_part_1/
+    │   │   └── *.jpg
+    │   └── HAM10000_images_part_2/
     │       └── *.jpg
     ├── ISIC2018/
-    │   ├── metadata.csv
-    │   └── images/
+    │   ├── ISIC2018_Task3_Training_GroundTruth.csv
+    │   └── ISIC2018_Task3_Training_Input/
     │       └── *.jpg
     ├── ISIC2019/
-    │   ├── metadata.csv
-    │   └── images/
+    │   ├── ISIC_2019_Training_GroundTruth.csv
+    │   └── ISIC_2019_Training_Input/
     │       └── *.jpg
-    └── ISIC2020/
+    ├── ISIC2020/
+    │   ├── ISIC_2020_Training_GroundTruth.csv (or train.csv)
+    │   └── ISIC_2020_Training_JPEG/
+    │       └── *.jpg
+    └── PAD-UFES-20/
         ├── metadata.csv
-        └── images/
-            └── *.jpg
+        ├── imgs_part_1/
+        ├── imgs_part_2/
+        └── imgs_part_3/
+            └── *.png
 
 VERIFICATION
 --------------------------------------------------------------------------------
@@ -843,14 +1319,15 @@ After downloading, verify your datasets:
 DATASET INFORMATION
 ================================================================================
 
-| Dataset   | Client | Images  | Classes | Description                    |
-|-----------|--------|---------|---------|--------------------------------|
-| HAM10000  | 1      | ~10,015 | 7       | Human Against Machine dataset  |
-| ISIC 2018 | 2      | ~10,015 | 7       | ISIC 2018 Challenge Task 3     |
-| ISIC 2019 | 3      | ~25,331 | 8       | ISIC 2019 Challenge            |
-| ISIC 2020 | 4      | ~33,126 | 2       | SIIM-ISIC Melanoma Challenge   |
+| Dataset     | Client | Images  | Classes | Source        |
+|-------------|--------|---------|---------|---------------|
+| HAM10000    | 1      | ~10,015 | 7       | Kaggle        |
+| ISIC 2018   | 2      | ~10,015 | 7       | ISIC Archive  |
+| ISIC 2019   | 3      | ~25,331 | 8       | ISIC Archive  |
+| ISIC 2020   | 4      | ~33,126 | 2       | ISIC Archive  |
+| PAD-UFES-20 | 5      | ~2,298  | 6       | Mendeley Data |
 
-Total: ~78,487 dermoscopy images
+Total: ~80,785 dermoscopy images
 
 ================================================================================
 """
@@ -925,6 +1402,7 @@ Examples:
   python run_download.py --verify
   python run_download.py --download-all
   python run_download.py --download HAM10000
+  python run_download.py --download PAD-UFES-20
   python run_download.py --setup
         """
     )
@@ -947,19 +1425,23 @@ Examples:
     parser.add_argument(
         "--download", type=str, metavar="DATASET",
         choices=list(DATASET_INFO.keys()),
-        help="Download a specific dataset from ISIC Archive"
+        help="Download a specific dataset (auto-selects best source)"
     )
     parser.add_argument(
         "--download-all", action="store_true",
-        help="Download all datasets from ISIC Archive"
+        help="Download all datasets"
     )
     parser.add_argument(
         "--workers", type=int, default=8,
-        help="Number of parallel download workers (default: 8)"
+        help="Number of parallel download workers for ISIC (default: 8)"
     )
     parser.add_argument(
         "--force", action="store_true",
         help="Force redownload even if files exist"
+    )
+    parser.add_argument(
+        "--source", type=str, choices=["kaggle", "isic", "mendeley"],
+        help="Override automatic source selection for download"
     )
 
     args = parser.parse_args()
@@ -968,18 +1450,20 @@ Examples:
     data_root = Path(args.data_root) if args.data_root else None
 
     if args.download:
-        # Download specific dataset
-        download_dataset_isic(
+        # Download specific dataset using unified download function
+        download_dataset(
             args.download,
             data_root=data_root,
             max_workers=args.workers,
-            force_redownload=args.force
+            force_redownload=args.force,
+            prefer_source=args.source
         )
     elif args.download_all:
         # Download all datasets
         download_all_datasets(
             data_root=data_root,
-            max_workers=args.workers
+            max_workers=args.workers,
+            force_redownload=args.force
         )
     elif args.verify:
         results = verify_all_datasets(data_root)
