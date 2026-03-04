@@ -1,23 +1,24 @@
 # =============================================================================
-# DSCATNet Federated Learning Configuration - PAD-UFES-20
+# DSCATNet Centralized Training Configuration - PAD-UFES-20
 # =============================================================================
 #
 # Usage:
-#   python run_experiment.py --mode federated --config configs/dscatnet_federated_padufes20.yaml
+#   python run_experiment.py --mode centralized --config configs/dscatnet_centralized_padufes20.yaml
 #
 # Description:
-#   Federated learning experiment on PAD-UFES-20 dataset (Brazilian clinical
-#   skin lesion images). Uses natural non-IID with IID data partitioning.
+#   Centralized (non-federated) training baseline on PAD-UFES-20 for direct
+#   PAD-UFES-20 contains Brazilian clinical skin lesion images (~2.3k images).
+#   Serves as the upper-bound performance baseline with pooled data.
 #
 # =============================================================================
 
-federated:
+centralized:
   # ---------------------------------------------------------------------------
   # Experiment Identification
   # ---------------------------------------------------------------------------
   experiment:
-    name: dscatnet_federated_padufes20
-    description: "FL benchmark on PAD-UFES-20 with FedAvg"
+    name: dscatnet_centralized_padufes20
+    description: "Centralized baseline training on PAD-UFES-20"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
@@ -44,26 +45,10 @@ federated:
     batch_size: 4
     lr: 0.001
     weight_decay: 0.01
-    local_epochs: 4
-    num_rounds: 100
-    train_val_split: 0.15
-
-  # ---------------------------------------------------------------------------
-  # Federation Configuration
-  # ---------------------------------------------------------------------------
-  federation:
-    num_clients: 4
-    aggregation: FedAvg
-    participation: 1.0
-    
-    # Client Selection (alternative to participation)
-    # client_selection_fraction: 0.75  # Randomly select 75% of clients per round
-    
-    # Parallel client training (for multi-GPU or fast CPUs)
-    # parallel_clients: 2  # Number of clients to train in parallel
-    
-    noniid_type: dirichlet
-    dirichlet_alpha: 0.5
+    epochs: 100
+    warmup_epochs: 0
+    scheduler: cosine
+    min_lr: 0.000001
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration
@@ -73,8 +58,16 @@ federated:
     use_dermoscopy_norm: false
 
   # ---------------------------------------------------------------------------
+  # Data Splits
+  # ---------------------------------------------------------------------------
+  splits:
+    val_split: 0.15
+    test_split: 0.15
+
+  # ---------------------------------------------------------------------------
   # Evaluation & Checkpointing
   # ---------------------------------------------------------------------------
   evaluation:
-    checkpoint_interval: 1
-    early_stopping_patience: 10
+    checkpoint_interval: 5
+    early_stopping_patience: 15
+    use_class_weights: true

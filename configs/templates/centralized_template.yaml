@@ -1,0 +1,83 @@
+# =============================================================================
+# Centralized Training Configuration Template
+# =============================================================================
+#
+# Description:
+#   Template for creating centralized (non-federated) training configurations.
+#   Copy this file, rename it, and modify values as needed.
+#
+# Usage:
+#   python run_experiment.py --mode centralized --config configs/my_centralized_config.yaml
+#
+# Validation:
+#   python src/utils/config_schema.py configs/my_centralized_config.yaml --type centralized
+#
+# =============================================================================
+
+centralized:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
+  experiment:
+    name: my_centralized_experiment   # Unique experiment name (no spaces)
+    description: "Centralized baseline training"
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
+  data_root: ./data               # Path to data directory
+  output_dir: ./outputs           # Path to output directory
+
+  # Datasets to use (will be combined for centralized training)
+  # Options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20
+  datasets:
+    - HAM10000
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
+  model:
+    name: DSCATNet
+    variant: small                # Options: tiny (~5M), small (~15M), base (~20M)
+    image_size: 224               # Input image size (32-512)
+    num_classes: 7                # 7: standard, 8: ISIC2019 with SCC, 2: binary
+    pretrained: true              # Use pretrained weights if available
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
+  training:
+    batch_size: 8                 # Batch size (1-256)
+    lr: 0.001                     # Learning rate (>0, <=1.0)
+    weight_decay: 0.01            # L2 regularization (>=0, <=1.0)
+    epochs: 100                   # Training epochs (1-1000)
+    warmup_epochs: 5              # Warmup epochs (0-50)
+    scheduler: cosine             # Options: cosine, plateau
+    min_lr: 0.000001              # Minimum learning rate for scheduler
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
+  augmentation:
+    # Options: none, light, medium, heavy
+    #   none:   Only resize + normalize (matches original DSCATNet paper)
+    #   light:  Horizontal/vertical flip
+    #   medium: Flips + rotation + color jitter
+    #   heavy:  Medium + random erasing + affine transforms
+    level: medium
+    use_dermoscopy_norm: false    # false=ImageNet normalization, true=dermoscopy
+
+  # ---------------------------------------------------------------------------
+  # Data Splits
+  # ---------------------------------------------------------------------------
+  splits:
+    val_split: 0.15               # Fraction for validation (0.0-0.5)
+    test_split: 0.15              # Fraction for testing (0.0-0.5)
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
+  evaluation:
+    checkpoint_interval: 10       # Save checkpoint every N epochs (1-100)
+    early_stopping_patience: 15   # Stop if no improvement for N epochs (1-100)
+    use_class_weights: true       # Use class weights in loss for imbalance
