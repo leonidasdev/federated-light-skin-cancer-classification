@@ -852,11 +852,11 @@ Examples:
         print("\n" + "=" * 60)
         print("Available Datasets")
         print("=" * 60)
-        for name, info in DATASET_REGISTRY.items():
+        for name, config in DATASET_REGISTRY.items():
             print(f"\n[*] {name}")
-            print(f"    Directory: {info.get('dir_name', 'N/A')}")
-            print(f"    CSV File:  {info.get('csv_file', 'N/A')}")
-            print(f"    Classes:   {info.get('num_classes', 'N/A')}")
+            print(f"    CSV File:    {config.csv_filename}")
+            print(f"    Image Subdir: {config.image_subdir or '(root)'}")
+            print(f"    Class:       {config.dataset_class.__name__}")
         print("\n" + "=" * 60)
         return 0
 

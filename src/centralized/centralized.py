@@ -59,6 +59,7 @@ class CentralizedConfig:
 
     # Scheduler configuration
     scheduler_type: str = "none"  # none, cosine, plateau
+    warmup_epochs: int = 0
     min_lr: float = 1e-6
 
     # Data configuration
