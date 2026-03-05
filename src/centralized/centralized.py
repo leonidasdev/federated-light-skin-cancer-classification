@@ -22,7 +22,6 @@ from dataclasses import dataclass, asdict
 
 import torch
 import torch.nn as nn
-# Use torch.amp GradScaler when available; we'll import legacy scaler only as fallback where needed
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from tqdm import tqdm
@@ -32,7 +31,7 @@ from ..data.datasets import (
     DatasetSubset,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
-from ..utils.helpers import autocast
+from ..utils.helpers import autocast, count_parameters
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +54,6 @@ class CentralizedConfig:
     batch_size: int = 8
     learning_rate: float = 1e-3
     weight_decay: float = 0.0
-    warmup_epochs: int = 0
     optimizer_type: str = "adam"  # adam, adamw
     gradient_accumulation_steps: int = 1  # Accumulate gradients for effective larger batch
 
@@ -69,7 +67,6 @@ class CentralizedConfig:
     augmentation_level: str = "medium"
     use_dermoscopy_norm: bool = False
     val_split: float = 0.15
-    test_split: float = 0.15
 
     # Classification mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
     classification_mode: str = "multiclass"
@@ -159,7 +156,6 @@ class CentralizedTrainer:
         # Data loaders (to be setup)
         self.train_loader: Optional[DataLoader] = None
         self.val_loader: Optional[DataLoader] = None
-        self.test_loader: Optional[DataLoader] = None
 
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = config.use_amp and self.device.type == "cuda"
@@ -177,7 +173,7 @@ class CentralizedTrainer:
                     # Some versions may expect different signature; fall back to default construction
                     self.scaler = scaler_cls()
             else:
-                # Fallback to legacy scaler for older PyTorch
+                # Fallback for PyTorch without torch.amp.GradScaler
                 from torch.cuda.amp import GradScaler as _GradScaler
                 self.scaler = _GradScaler()
         else:
@@ -186,7 +182,7 @@ class CentralizedTrainer:
         logger.info(f"Initialized CentralizedTrainer: {config.experiment_name}")
         logger.info(f"Device: {self.device}")
         logger.info(f"AMP enabled: {self.use_amp}")
-        logger.info(f"Model parameters: {sum(p.numel() for p in self.model.parameters()):,}")
+        logger.info(f"Model parameters: {count_parameters(self.model, trainable_only=False):,}")
 
     def _get_transforms(self) -> Tuple[Any, Any]:
         """
@@ -501,7 +497,14 @@ class CentralizedTrainer:
 
         return avg_loss, accuracy, per_class
 
-    def save_checkpoint(self, epoch: int, optimizer, scheduler, metrics: Dict, is_best: bool = False) -> str:
+    def save_checkpoint(
+        self,
+        epoch: int,
+        optimizer: torch.optim.Optimizer,
+        scheduler: Optional[torch.optim.lr_scheduler.LRScheduler],
+        metrics: Dict[str, Any],
+        is_best: bool = False,
+    ) -> str:
         """Save training checkpoint with all state needed for resumption.
 
         Args:
@@ -543,7 +546,12 @@ class CentralizedTrainer:
         logger.debug(f"Saved checkpoint: {path}")
         return str(path)
 
-    def load_checkpoint(self, checkpoint_path: str, optimizer=None, scheduler=None) -> int:
+    def load_checkpoint(
+        self,
+        checkpoint_path: str,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        scheduler: Optional[torch.optim.lr_scheduler.LRScheduler] = None,
+    ) -> int:
         """Load checkpoint and restore training state.
 
         Args:
@@ -581,7 +589,6 @@ class CentralizedTrainer:
         epoch = checkpoint.get("epoch", 0)
         logger.info(f"Resumed from epoch {epoch}, best accuracy: {self.best_val_accuracy:.4f}")
         return epoch
-
 
     def run(self) -> Dict[str, Any]:
         """
@@ -628,6 +635,8 @@ class CentralizedTrainer:
             )
         # scheduler_type == "none": no scheduler
 
+        # Training criterion uses class weights; validation uses unweighted CE
+        # to avoid data-dependent bias in the evaluation metric.
         criterion = nn.CrossEntropyLoss(weight=self.class_weights)
 
         # Log effective batch size

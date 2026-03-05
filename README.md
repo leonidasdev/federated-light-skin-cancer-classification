@@ -132,9 +132,9 @@ federated-light-skin-cancer-classification/
 │   └── test_splits.py                # Data splitting tests
 │
 ├── docs/                             # Documentation
-│   ├── ARCHITECTURE.md               # System architecture
+│   ├── architecture.md               # System architecture
 │   ├── CLAUDE.md                     # AI assistant context
-│   └── CONFIG-OPTIONS-GUIDE.md       # Configuration reference
+│   └── config-options-guide.md       # Configuration reference
 │
 ├── run_experiment.py                 # Main entry point
 ├── run_download.py                   # Dataset downloader
@@ -939,8 +939,8 @@ Additional documentation is available in the `docs/` directory:
 | Document | Description |
 |----------|-------------|
 | [docs/README.md](docs/README.md) | Documentation index and navigation |
-| [docs/CONFIG-OPTIONS-GUIDE.md](docs/CONFIG-OPTIONS-GUIDE.md) | Complete configuration reference |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and module documentation |
+| [docs/config-options-guide.md](docs/config-options-guide.md) | Complete configuration reference |
+| [docs/architecture.md](docs/architecture.md) | System architecture and module documentation |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contributing guidelines and code style |
 
 For AI assistants (Claude, GPT, etc.), see [docs/CLAUDE.md](docs/CLAUDE.md) for comprehensive codebase context.

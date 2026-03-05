@@ -7,8 +7,8 @@
 | Document | Description |
 |----------|-------------|
 | [README.md](../README.md) | User-facing documentation, installation, usage |
-| [CONFIG-OPTIONS-GUIDE.md](CONFIG-OPTIONS-GUIDE.md) | Complete YAML configuration reference |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and key classes |
+| [config-options-guide.md](config-options-guide.md) | Complete YAML configuration reference |
+| [architecture.md](architecture.md) | System architecture and key classes |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Code style and contribution guidelines |
 
 ---

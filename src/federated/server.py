@@ -109,7 +109,7 @@ def start_server(
         **kwargs
     )
 
-    # Start server (uses Flower's start_server; deprecated in newer Flower)
+    # Start server
     history = fl_start_server(
         server_address=server_address,
         config=config,
@@ -159,7 +159,7 @@ class FederatedServer:
 
         # Training state
         self.current_round = 0
-        self.history: Dict[str, List] = {
+        self.history: Dict[str, List[Any]] = {
             'round': [],
             'loss': [],
             'accuracy': [],

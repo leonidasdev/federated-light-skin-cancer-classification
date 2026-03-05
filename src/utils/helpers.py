@@ -62,7 +62,7 @@ def get_device(device: Optional[str] = None) -> torch.device:
 # AMP Compatibility
 # =============================================================================
 # Use ``torch.amp.autocast`` if available (PyTorch >= 2.0),
-# otherwise fall back to the deprecated ``torch.cuda.amp.autocast``.
+# otherwise fall back to ``torch.cuda.amp.autocast``.
 
 try:
     _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")

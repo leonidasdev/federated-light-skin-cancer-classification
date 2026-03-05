@@ -4,11 +4,8 @@
 """
 Flower FL Client for Skin Cancer Classification.
 
-Each client represents a hospital/institution with its own dermoscopy dataset:
-- Client 1: HAM10000
-- Client 2: ISIC 2018
-- Client 3: ISIC 2019
-- Client 4: ISIC 2020
+Each client represents a hospital/institution with its own dermoscopy dataset.
+Dataset-to-client mapping is configured at runtime via the experiment config.
 """
 
 # =============================================================================
@@ -19,7 +16,6 @@ from typing import Dict, List, Tuple, Sized, cast, Optional
 
 import torch
 import torch.nn as nn
-# Use torch.amp GradScaler when available; fallback to legacy scaler if necessary
 from torch.utils.data import DataLoader
 from flwr.client import NumPyClient
 from flwr.common import NDArrays, Scalar
@@ -285,7 +281,7 @@ class SkinCancerClient(NumPyClient):
             total_loss += epoch_loss
 
         avg_loss = total_loss / (len(self.train_loader) * epochs)
-        accuracy = 100.0 * correct / total
+        accuracy = correct / total if total > 0 else 0.0
 
         return avg_loss, accuracy
 
@@ -335,7 +331,7 @@ class SkinCancerClient(NumPyClient):
                         class_correct[label] += 1
 
         avg_loss = total_loss / len(self.val_loader)
-        accuracy = 100.0 * correct / total
+        accuracy = correct / total if total > 0 else 0.0
 
         # Compute detailed metrics
         metrics = {
@@ -347,7 +343,7 @@ class SkinCancerClient(NumPyClient):
         # Add per-class accuracy
         for cls in class_total:
             metrics[f"class_{cls}_accuracy"] = (
-                100.0 * class_correct[cls] / class_total[cls]
+                class_correct[cls] / class_total[cls]
                 if class_total[cls] > 0 else 0.0
             )
 

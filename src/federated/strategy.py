@@ -21,9 +21,12 @@ from flwr.common import (
     parameters_to_ndarrays
 )
 from flwr.server.client_proxy import ClientProxy
-from typing import Dict, List, Tuple, Optional, Callable, Union
+from typing import Any, Dict, List, Tuple, Optional, Callable, Union
+import logging
 import numpy as np
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Custom FedAvg Strategy
@@ -72,7 +75,7 @@ class DSCATNetFedAvg(FedAvg):
         self.should_stop = False
 
         # History for analysis
-        self.metrics_history: Dict[str, List] = {
+        self.metrics_history: Dict[str, List[Any]] = {
             'round': [],
             'train_loss': [],
             'train_accuracy': [],
@@ -180,8 +183,10 @@ class DSCATNetFedAvg(FedAvg):
         if self.save_path and server_round % self.save_every == 0:
             self._save_checkpoint(aggregated_params, server_round)
 
-        print(f"\n[Round {server_round}] Training - "
-              f"Loss: {avg_train_loss:.4f}, Accuracy: {avg_train_acc:.2f}%")
+        logger.info(
+            f"[Round {server_round}] Training - "
+            f"Loss: {avg_train_loss:.4f}, Accuracy: {avg_train_acc:.2f}%"
+        )
 
         return aggregated_params, metrics
 
@@ -231,9 +236,8 @@ class DSCATNetFedAvg(FedAvg):
 
             # Save best model
             if self.save_path:
-                # Some Flower versions store current parameters on the strategy;
-                # use getattr to avoid static-analysis errors if the attribute
-                # isn't present in the environment.
+                # Access current parameters via getattr for compatibility
+                # across different Flower versions.
                 params_to_save = getattr(self, "parameters", None)
                 self._save_checkpoint(
                     params_to_save,
@@ -244,15 +248,17 @@ class DSCATNetFedAvg(FedAvg):
             self.patience_counter += 1
             if self.patience_counter >= self.early_stopping_patience:
                 self.should_stop = True
-                print(f"\nEarly stopping triggered at round {server_round}")
+                logger.info(f"Early stopping triggered at round {server_round}")
 
         metrics['avg_val_accuracy'] = avg_accuracy
         metrics['best_accuracy'] = self.best_accuracy
         metrics['patience_counter'] = self.patience_counter
 
-        print(f"[Round {server_round}] Evaluation - "
-              f"Loss: {aggregated_loss:.4f}, Accuracy: {avg_accuracy:.2f}% "
-              f"(Best: {self.best_accuracy:.2f}%)")
+        logger.info(
+            f"[Round {server_round}] Evaluation - "
+            f"Loss: {aggregated_loss:.4f}, Accuracy: {avg_accuracy:.2f}% "
+            f"(Best: {self.best_accuracy:.2f}%)"
+        )
 
         return aggregated_loss, metrics
 

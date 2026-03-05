@@ -18,13 +18,14 @@ import json
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Sized, cast
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass, asdict
 
+from PIL import Image
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from flwr.common import Scalar
@@ -86,7 +87,6 @@ class DirichletSubset(torch.utils.data.Dataset):
             # Re-load the raw image and apply our transform
             # This handles the case where we need val transforms
             if hasattr(dataset, 'img_paths'):
-                from PIL import Image
                 img_path = dataset.img_paths[original_idx]
                 image = Image.open(img_path).convert('RGB')
                 image = self.transform(image)
@@ -236,7 +236,6 @@ class FLSimulator:
             "train_accuracy": [],
             "val_loss": [],
             "val_accuracy": [],
-            "client_metrics": [],
             "communication_cost": [],
         }
 
@@ -343,8 +342,8 @@ class FLSimulator:
                 logger.warning(f"Dataset {dataset_name} contains 0 samples")
                 continue
 
-            # Compute split sizes
-            val_n = int(n * 0.2)
+            # Compute split sizes using configured train/val ratio
+            val_n = int(n * (1.0 - self.config.train_val_split))
             train_n = n - val_n
 
             gen = torch.Generator()
@@ -388,83 +387,6 @@ class FLSimulator:
             )
 
             logger.info(f"Client {client_id} ({dataset_name}): {len(train_dataset)} train, {len(val_dataset)} val samples")
-
-    def setup_synthetic_noniid(self, combined_dataset: torch.utils.data.Dataset) -> None:
-        """
-        Setup synthetic non-IID using Dirichlet distribution.
-
-        Args:
-            combined_dataset: Combined dataset from all sources.
-        """
-        logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
-
-        # Determine dataset length in a type-safe way for Pylance
-        try:
-            ds_len = len(cast(Sized, combined_dataset))
-        except TypeError:
-            # Fallback: iterate to count (may be expensive for large datasets)
-            ds_len = sum(1 for _ in combined_dataset)
-
-        # Get all labels
-        labels = np.array([combined_dataset[i][1] for i in range(ds_len)])
-
-        # Convert labels to a plain Python list of ints for the split function
-        labels_list: List[int] = [int(x) for x in labels]
-
-        # Create non-IID split
-        client_indices = create_noniid_split(
-            labels=labels_list,
-            num_clients=self.config.num_clients,
-            alpha=self.config.dirichlet_alpha,
-        )
-
-        train_transform, val_transform = self._get_transforms()
-
-        # `create_noniid_split` returns a dict; enumerate over its values
-        # so `indices` is a list of indices (not the dict key int).
-        for client_id, indices in enumerate(client_indices.values()):
-            # Split into train/val using configurable ratio
-            np.random.shuffle(indices)
-            split_idx = int(len(indices) * self.config.train_val_split)
-            train_indices = indices[:split_idx]
-            val_indices = indices[split_idx:]
-
-            train_subset = Subset(combined_dataset, train_indices)
-            val_subset = Subset(combined_dataset, val_indices)
-
-            # Create loaders
-            train_loader = DataLoader(
-                train_subset,
-                batch_size=self.config.batch_size,
-                shuffle=True,
-                num_workers=self.config.num_workers,
-                pin_memory=(self.device.type == "cuda"),
-            )
-            val_loader = DataLoader(
-                val_subset,
-                batch_size=self.config.batch_size,
-                shuffle=False,
-                num_workers=self.config.num_workers,
-                pin_memory=(self.device.type == "cuda"),
-            )
-
-            # Class distribution
-            class_dist = {}
-            for idx in train_indices:
-                label = labels[idx]
-                class_dist[int(label)] = class_dist.get(int(label), 0) + 1
-
-            self.client_data[client_id] = ClientData(
-                client_id=client_id,
-                train_loader=train_loader,
-                val_loader=val_loader,
-                num_train_samples=len(train_indices),
-                num_val_samples=len(val_indices),
-                class_distribution=class_dist,
-                dataset_name="combined",
-            )
-
-            logger.info(f"Client {client_id}: {len(train_indices)} train, {len(val_indices)} val samples")
 
     def setup_clients(self) -> None:
         """Setup client data based on configuration."""
@@ -911,13 +833,20 @@ class FLSimulator:
             eval_results.append((loss, num_samples, metrics))
             client_val_metrics.append(metrics)
 
-        # Aggregate metrics
+        # Aggregate metrics (sample-weighted for FedAvg consistency)
+        total_train_samples = sum(r[1] for r in fit_results)
         total_val_samples = sum(r[1] for r in eval_results)
 
-        avg_train_loss = np.mean([m["train_loss"] for m in client_train_metrics])
-        avg_train_acc = np.mean([m["train_accuracy"] for m in client_train_metrics])
+        avg_train_loss = sum(
+            m["train_loss"] * r[1] for m, r in zip(client_train_metrics, fit_results)
+        ) / total_train_samples
+        avg_train_acc = sum(
+            m["train_accuracy"] * r[1] for m, r in zip(client_train_metrics, fit_results)
+        ) / total_train_samples
         avg_val_loss = sum(r[0] * r[1] for r in eval_results) / total_val_samples
-        avg_val_acc = np.mean([m["val_accuracy"] for m in client_val_metrics])
+        avg_val_acc = sum(
+            m["val_accuracy"] * r[1] for m, r in zip(client_val_metrics, eval_results)
+        ) / total_val_samples
 
         round_time = time.time() - start_time
 
@@ -989,13 +918,12 @@ class FLSimulator:
         # Load model weights
         self.global_model.load_state_dict(checkpoint["model_state_dict"])
 
-        # Restore training state (handle both old and new checkpoint formats)
+        # Restore training state
         if "history" in checkpoint:
             self.history = checkpoint["history"]
         if "best_val_accuracy" in checkpoint:
             self.best_val_accuracy = checkpoint["best_val_accuracy"]
         elif "metrics" in checkpoint and "val_accuracy" in checkpoint["metrics"]:
-            # Old format: extract from metrics
             self.best_val_accuracy = checkpoint["metrics"]["val_accuracy"]
         if "best_round" in checkpoint:
             self.best_round = checkpoint["best_round"]

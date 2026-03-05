@@ -170,7 +170,7 @@ CLASS_NAMES_8 = CLASS_NAMES_7 + ['Squamous Cell Carcinoma']  # 7
 # Class names for binary
 CLASS_NAMES_BINARY = ['Benign', 'Malignant']
 
-# Legacy aliases for backward compatibility
+# Aliases for the default (7-class) constants
 UNIFIED_CLASSES = UNIFIED_CLASSES_7
 CLASS_NAMES = CLASS_NAMES_7
 
@@ -192,7 +192,7 @@ class BaseDermoscopyDataset(Dataset):
         target_transform: Optional transform to apply to labels
         classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
         filter_unknown: Whether to filter out unknown/UNK labels
-        use_unified_classes: Legacy parameter (ignored, use classification_mode)
+        use_unified_classes: Retained for API compatibility (ignored, use classification_mode)
     """
 
     def __init__(
@@ -203,7 +203,7 @@ class BaseDermoscopyDataset(Dataset):
         target_transform: Optional[Callable] = None,
         classification_mode: ClassificationMode = 'multiclass',
         filter_unknown: bool = True,
-        use_unified_classes: bool = True  # Legacy, ignored
+        use_unified_classes: bool = True  # Retained for API compatibility, ignored
     ):
         self.root_dir = Path(root_dir)
         self.csv_path = Path(csv_path)

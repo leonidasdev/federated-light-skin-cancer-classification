@@ -7,6 +7,9 @@
     "reportMissingModuleSource": "none",
     "exclude": [
         "**/__pycache__",
+        "**/node_modules",
+        "**/.venv",
+        "**/.*",
         ".venv",
         "outputs",
         "data"

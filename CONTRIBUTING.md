@@ -246,7 +246,7 @@ class TestClassName:
 
 - Update `README.md` for user-facing changes
 - Update `docs/CLAUDE.md` for AI agent context
-- Update `docs/CONFIG-OPTIONS-GUIDE.md` for config changes
+- Update `docs/config-options-guide.md` for config changes
 - Add new files to appropriate docs folder
 
 ---
