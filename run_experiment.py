@@ -294,6 +294,12 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
                 flat_config["scheduler_type"] = train["scheduler"]
             if "min_lr" in train:
                 flat_config["min_lr"] = train["min_lr"]
+            if "optimizer" in train:
+                flat_config["optimizer_type"] = train["optimizer"]
+            if "gradient_accumulation_steps" in train:
+                flat_config["gradient_accumulation_steps"] = train["gradient_accumulation_steps"]
+            if "use_amp" in train:
+                flat_config["use_amp"] = train["use_amp"]
 
         # Splits section
         if "splits" in cent_config:
@@ -444,6 +450,15 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
                 flat_config["num_rounds"] = train["num_rounds"]
             if "rounds" in train:
                 flat_config["num_rounds"] = train["rounds"]
+            if "weight_decay" in train:
+                flat_config["weight_decay"] = train["weight_decay"]
+            if "optimizer" in train:
+                flat_config["optimizer_type"] = train["optimizer"]
+            if "gradient_accumulation_steps" in train:
+                flat_config["gradient_accumulation_steps"] = train["gradient_accumulation_steps"]
+            # train_val_split: fraction used for training (rest for validation)
+            if "train_val_split" in train:
+                flat_config["train_val_split"] = train["train_val_split"]
 
         # Federation section
         if "federation" in fed_config:

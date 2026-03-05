@@ -47,13 +47,16 @@ centralized:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 8                 # Batch size (1-256)
+    batch_size: 8                 # Physical batch size (1-256)
+    gradient_accumulation_steps: 4  # Effective BS = batch_size * steps (1-32)
+    optimizer: adam               # Options: adam, adamw
     lr: 0.001                     # Learning rate (>0, <=1.0)
-    weight_decay: 0.01            # L2 regularization (>=0, <=1.0)
-    epochs: 100                   # Training epochs (1-1000)
-    warmup_epochs: 5              # Warmup epochs (0-50)
-    scheduler: cosine             # Options: cosine, plateau
+    weight_decay: 0.0             # L2 regularization (>=0, <=1.0)
+    epochs: 200                   # Training epochs (1-1000)
+    warmup_epochs: 0              # Warmup epochs (0-50)
+    scheduler: none               # Options: none, cosine, plateau
     min_lr: 0.000001              # Minimum learning rate for scheduler
+    use_amp: false                # Mixed precision training (true/false)
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration

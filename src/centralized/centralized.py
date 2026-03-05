@@ -71,12 +71,14 @@ class CentralizedConfig:
     # Training configuration
     num_epochs: int = 100
     batch_size: int = 8
-    learning_rate: float = 1e-4
-    weight_decay: float = 0.01
-    warmup_epochs: int = 5
+    learning_rate: float = 1e-3
+    weight_decay: float = 0.0
+    warmup_epochs: int = 0
+    optimizer_type: str = "adam"  # adam, adamw
+    gradient_accumulation_steps: int = 1  # Accumulate gradients for effective larger batch
 
     # Scheduler configuration
-    scheduler_type: str = "cosine"  # cosine, plateau
+    scheduler_type: str = "none"  # none, cosine, plateau
     min_lr: float = 1e-6
 
     # Data configuration
@@ -110,7 +112,7 @@ class CentralizedConfig:
     num_workers: int = 4
 
     # Mixed precision (AMP) for faster training on compatible GPUs
-    use_amp: bool = True
+    use_amp: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -364,7 +366,11 @@ class CentralizedTrainer:
         criterion: nn.Module,
     ) -> Tuple[float, float]:
         """
-        Train for one epoch.
+        Train for one epoch with optional gradient accumulation.
+
+        Supports gradient accumulation to simulate larger batch sizes
+        when GPU memory is limited. Effective batch size =
+        batch_size * gradient_accumulation_steps.
 
         Returns:
             Tuple of (average loss, accuracy).
@@ -381,6 +387,7 @@ class CentralizedTrainer:
             raise RuntimeError("train_loader is not initialized. Call setup_data() before training.")
 
         loader = self.train_loader
+        accum_steps = self.config.gradient_accumulation_steps
 
         # Progress bar for batches
         pbar = tqdm(
@@ -392,31 +399,42 @@ class CentralizedTrainer:
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
         )
 
+        optimizer.zero_grad()
+
         for batch_idx, (images, labels) in pbar:
             images, labels = images.to(self.device), labels.to(self.device)
-
-            optimizer.zero_grad()
 
             # Use AMP for faster training on compatible GPUs
             if self.use_amp and self.scaler is not None:
                 with _autocast():
                     outputs = self.model(images)
                     loss = criterion(outputs, labels)
+                    # Scale loss by accumulation steps for correct gradient magnitude
+                    loss = loss / accum_steps
                 self.scaler.scale(loss).backward()
-                # Gradient clipping with AMP
-                self.scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                self.scaler.step(optimizer)
-                self.scaler.update()
+
+                if (batch_idx + 1) % accum_steps == 0 or (batch_idx + 1) == len(loader):
+                    # Gradient clipping with AMP
+                    self.scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    self.scaler.step(optimizer)
+                    self.scaler.update()
+                    optimizer.zero_grad()
             else:
                 outputs = self.model(images)
                 loss = criterion(outputs, labels)
-                loss.backward()
-                # Gradient clipping
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-                optimizer.step()
+                # Scale loss by accumulation steps for correct gradient magnitude
+                scaled_loss = loss / accum_steps
+                scaled_loss.backward()
 
-            total_loss += loss.item()
+                if (batch_idx + 1) % accum_steps == 0 or (batch_idx + 1) == len(loader):
+                    # Gradient clipping
+                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+            # Track unscaled loss for logging
+            total_loss += loss.item() * accum_steps if (self.use_amp and self.scaler) else loss.item()
             _, predicted = outputs.max(1)
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
@@ -596,20 +614,29 @@ class CentralizedTrainer:
         self.setup_data()
 
         # Setup optimizer
-        optimizer = torch.optim.AdamW(
-            self.model.parameters(),
-            lr=self.config.learning_rate,
-            weight_decay=self.config.weight_decay,
-        )
+        if self.config.optimizer_type == "adamw":
+            optimizer = torch.optim.AdamW(
+                self.model.parameters(),
+                lr=self.config.learning_rate,
+                weight_decay=self.config.weight_decay,
+            )
+        else:
+            # Default: Adam (matches DSCATNet paper)
+            optimizer = torch.optim.Adam(
+                self.model.parameters(),
+                lr=self.config.learning_rate,
+                weight_decay=self.config.weight_decay,
+            )
 
         # Setup scheduler
+        scheduler = None
         if self.config.scheduler_type == "cosine":
             scheduler = CosineAnnealingLR(
                 optimizer,
                 T_max=self.config.num_epochs,
                 eta_min=self.config.min_lr,
             )
-        else:
+        elif self.config.scheduler_type == "plateau":
             scheduler = ReduceLROnPlateau(
                 optimizer,
                 mode="max",
@@ -617,8 +644,21 @@ class CentralizedTrainer:
                 patience=5,
                 min_lr=self.config.min_lr,
             )
+        # scheduler_type == "none": no scheduler
 
         criterion = nn.CrossEntropyLoss(weight=self.class_weights)
+
+        # Log effective batch size
+        effective_bs = self.config.batch_size * self.config.gradient_accumulation_steps
+        logger.info(
+            f"Optimizer: {self.config.optimizer_type}, LR: {self.config.learning_rate}, "
+            f"Weight Decay: {self.config.weight_decay}"
+        )
+        logger.info(
+            f"Batch size: {self.config.batch_size}, Gradient accumulation: "
+            f"{self.config.gradient_accumulation_steps}, Effective batch size: {effective_bs}"
+        )
+        logger.info(f"Scheduler: {self.config.scheduler_type}, AMP: {self.use_amp}")
 
         # Resume from checkpoint if specified
         start_epoch = 1
@@ -661,10 +701,11 @@ class CentralizedTrainer:
             current_lr = optimizer.param_groups[0]["lr"]
 
             # Update scheduler (call with metric only for ReduceLROnPlateau)
-            if isinstance(scheduler, ReduceLROnPlateau):
-                scheduler.step(val_acc)
-            else:
-                scheduler.step()
+            if scheduler is not None:
+                if isinstance(scheduler, ReduceLROnPlateau):
+                    scheduler.step(val_acc)
+                else:
+                    scheduler.step()
 
             epoch_time = time.time() - epoch_start
 

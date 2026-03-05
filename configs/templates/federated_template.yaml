@@ -54,16 +54,17 @@ federated:
   # ---------------------------------------------------------------------------
   # Local Training
   # ---------------------------------------------------------------------------
-  local_epochs: 3                 # Local epochs per round (1-50)
+  local_epochs: 1                 # Local epochs per round (1-50)
   local_batch_size: 8             # Local batch size (1-256)
-  train_val_split: 0.15           # Local validation split (0-0.5)
+  gradient_accumulation_steps: 4  # Effective BS = batch_size * steps (1-32)
+  train_val_split: 0.85           # Fraction for training (rest for validation)
   
   # ---------------------------------------------------------------------------
   # Optimizer Configuration
   # ---------------------------------------------------------------------------
-  optimizer: Adam                 # Options: Adam, AdamW, SGD
+  optimizer: adam                 # Options: adam, adamw, SGD
   learning_rate: 0.001            # Learning rate (>0, <=1.0)
-  weight_decay: 0.0001            # L2 regularization (>=0, <=1.0)
+  weight_decay: 0.0               # L2 regularization (>=0, <=1.0)
   
   # ---------------------------------------------------------------------------
   # Learning Rate Schedule

@@ -134,8 +134,10 @@ class SimulationConfig:
     # Training configuration
     local_epochs: int = 1
     batch_size: int = 8
-    learning_rate: float = 1e-4
-    weight_decay: float = 0.01
+    learning_rate: float = 1e-3
+    weight_decay: float = 0.0
+    optimizer_type: str = "adam"  # adam, adamw
+    gradient_accumulation_steps: int = 1  # Accumulate gradients for effective larger batch
 
     # Data configuration
     data_root: str = "./data"
@@ -634,12 +636,21 @@ class FLSimulator:
         set_model_parameters(local_model, model_parameters)
 
         # Setup optimizer
-        optimizer = torch.optim.AdamW(
-            local_model.parameters(),
-            lr=self.config.learning_rate,
-            weight_decay=self.config.weight_decay,
-        )
+        if self.config.optimizer_type == "adamw":
+            optimizer = torch.optim.AdamW(
+                local_model.parameters(),
+                lr=self.config.learning_rate,
+                weight_decay=self.config.weight_decay,
+            )
+        else:
+            # Default: Adam (matches DSCATNet paper)
+            optimizer = torch.optim.Adam(
+                local_model.parameters(),
+                lr=self.config.learning_rate,
+                weight_decay=self.config.weight_decay,
+            )
         criterion = nn.CrossEntropyLoss()
+        accum_steps = self.config.gradient_accumulation_steps
 
         # Training
         local_model.train()
@@ -648,14 +659,21 @@ class FLSimulator:
         total = 0
 
         for epoch in range(self.config.local_epochs):
+            optimizer.zero_grad()
             for batch_idx, (images, labels) in enumerate(client.train_loader):
                 images, labels = images.to(self.device), labels.to(self.device)
 
-                optimizer.zero_grad()
                 outputs = local_model(images)
                 loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
+                # Scale loss by accumulation steps for correct gradient magnitude
+                scaled_loss = loss / accum_steps
+                scaled_loss.backward()
+
+                if (batch_idx + 1) % accum_steps == 0 or (batch_idx + 1) == len(client.train_loader):
+                    # Gradient clipping for training stability
+                    torch.nn.utils.clip_grad_norm_(local_model.parameters(), max_norm=1.0)
+                    optimizer.step()
+                    optimizer.zero_grad()
 
                 total_loss += loss.item()
                 _, predicted = outputs.max(1)

@@ -99,10 +99,14 @@ Used by `run_experiment.py` for running centralized vs federated comparisons.
 
 | Option | Type | Default | Range | Description |
 |--------|------|---------|-------|-------------|
-| `epochs` | int | 100 | 1-1000 | Training epochs |
-| `batch_size` | int | 8 | 1-256 | Batch size |
+| `epochs` | int | 200 | 1-1000 | Training epochs |
+| `batch_size` | int | 8 | 1-256 | Physical batch size |
+| `gradient_accumulation_steps` | int | 1 | 1-32 | Gradient accumulation steps (effective BS = batch_size × steps) |
+| `optimizer` | string | "adam" | adam, adamw | Optimizer type |
 | `learning_rate` | float | 0.001 | >0, ≤1.0 | Learning rate |
-| `weight_decay` | float | 0.0001 | 0-1.0 | L2 regularization |
+| `weight_decay` | float | 0.0 | 0-1.0 | L2 regularization |
+| `scheduler` | string | "none" | none, cosine, plateau | LR scheduler |
+| `use_amp` | bool | false | - | Enable automatic mixed precision |
 | `early_stopping_patience` | int | 15 | 1-100 | Early stopping patience |
 | `pooled_data` | bool | true | - | Combine all datasets |
 
@@ -216,17 +220,18 @@ Both achieve partial client participation but through different mechanisms. Use 
 
 | Option | Type | Default | Range | Description |
 |--------|------|---------|-------|-------------|
-| `local_epochs` | int | 3 | 1-50 | Local epochs per round |
+| `local_epochs` | int | 1 | 1-50 | Local epochs per round |
 | `local_batch_size` | int | 8 | 1-256 | Local batch size |
-| `train_val_split` | float | 0.15 | 0-0.5 | Local validation split |
+| `gradient_accumulation_steps` | int | 1 | 1-32 | Gradient accumulation steps (effective BS = batch_size × steps) |
+| `train_val_split` | float | 0.85 | 0.5-1.0 | Fraction of data for training (rest for validation) |
 
 #### Optimizer Configuration
 
 | Option | Type | Default | Range | Description |
 |--------|------|---------|-------|-------------|
-| `optimizer` | string | "Adam" | Adam, AdamW, SGD | Optimizer type |
+| `optimizer` | string | "adam" | adam, adamw | Optimizer type |
 | `learning_rate` | float | 0.001 | >0, ≤1.0 | Learning rate |
-| `weight_decay` | float | 0.0001 | 0-1.0 | L2 regularization |
+| `weight_decay` | float | 0.0 | 0-1.0 | L2 regularization |
 
 #### Learning Rate Schedule
 

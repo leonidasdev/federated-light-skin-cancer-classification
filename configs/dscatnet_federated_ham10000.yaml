@@ -50,12 +50,14 @@ federated:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 4       # Reduced for GPU memory efficiency (originally was 32)
-    lr: 0.001        # Learning rate for Adam optimizer original
-    weight_decay: 0.01
-    local_epochs: 4     # Local epochs per FL round
-    num_rounds: 100      # Total federated learning rounds
-    train_val_split: 0.15  # Fraction for validation set (default: 0.15)
+    batch_size: 8       # Physical batch size (fits 4GB VRAM)
+    gradient_accumulation_steps: 4  # Effective batch size = 8 * 4 = 32 (matches paper)
+    optimizer: adam      # Adam optimizer (matches DSCATNet paper)
+    lr: 0.001           # Learning rate (matches DSCATNet paper)
+    weight_decay: 0.0   # No weight decay (matches DSCATNet paper's Adam)
+    local_epochs: 1     # Local epochs per FL round (1 reduces client drift)
+    num_rounds: 100     # Total federated learning rounds
+    train_val_split: 0.85  # 85% for training, 15% for validation
 
   # ---------------------------------------------------------------------------
   # Federation Configuration

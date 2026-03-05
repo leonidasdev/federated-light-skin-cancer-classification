@@ -41,13 +41,16 @@ centralized:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 4
-    lr: 0.001
-    weight_decay: 0.01
-    epochs: 100
+    batch_size: 8       # Physical batch size (fits 4GB VRAM)
+    gradient_accumulation_steps: 4  # Effective batch size = 8 * 4 = 32 (matches paper)
+    optimizer: adam      # Adam optimizer (matches DSCATNet paper)
+    lr: 0.001           # Learning rate (matches DSCATNet paper)
+    weight_decay: 0.0   # No weight decay (matches DSCATNet paper's Adam)
+    epochs: 200         # Max epochs (paper trains ~200 epochs)
     warmup_epochs: 0
-    scheduler: cosine
+    scheduler: none     # No scheduler (matches DSCATNet paper)
     min_lr: 0.000001
+    use_amp: false      # AMP disabled to avoid NaN instability
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration
