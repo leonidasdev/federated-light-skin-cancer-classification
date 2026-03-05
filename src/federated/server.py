@@ -129,16 +129,15 @@ class FederatedServer:
     High-level wrapper for managing FL server with DSCATNet.
 
     Provides convenient methods for:
-    - Starting/stopping server
+    - Configuring FL strategy and aggregation
     - Saving/loading checkpoints
-    - Tracking metrics
-    - Visualization
+    - Tracking and aggregating metrics
 
     Args:
-        model: DSCATNet model
-        num_rounds: Number of FL rounds
-        checkpoint_dir: Directory for saving checkpoints
-        log_dir: Directory for TensorBoard logs
+        model: DSCATNet model.
+        num_rounds: Number of FL rounds.
+        checkpoint_dir: Directory for saving checkpoints.
+        log_dir: Directory for experiment logs.
     """
 
     def __init__(

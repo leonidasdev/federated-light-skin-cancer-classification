@@ -5,12 +5,13 @@
 Dataset Classes for Dermoscopy Image Classification.
 
 Implements dataset loaders for:
-- Client 1: HAM10000 (7 classes)
-- Client 2: ISIC 2018 (7 classes)
-- Client 3: ISIC 2019 (8 classes + UNK)
-- Client 4: ISIC 2020 (binary: benign/malignant, with diagnosis info)
+- HAM10000 (7 classes)
+- ISIC 2018 (7 classes)
+- ISIC 2019 (8 classes + UNK)
+- ISIC 2020 (binary: benign/malignant, with diagnosis info)
+- PAD-UFES-20 (6 clinical lesion types)
 
-Each dataset is assigned to a different FL client to create
+Each dataset can be assigned to a different FL client to create
 a realistic non-IID federated learning scenario.
 
 Classification Modes:
@@ -66,7 +67,7 @@ ISIC2019_CLASSES = {
     'BKL': 2,    # Benign keratosis
     'DF': 3,     # Dermatofibroma
     'VASC': 6,   # Vascular lesion
-    'SCC': 7,    # Squamous cell carcinoma (NEW in 2019)
+    'SCC': 7,    # Squamous cell carcinoma (added in ISIC 2019)
     'UNK': -1,   # Unknown (to be filtered or handled specially)
 }
 
@@ -251,6 +252,7 @@ class BaseDermoscopyDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        """Load and return (image, label) for the given index."""
         # Load image
         img_path = self.image_paths[idx]
         image = Image.open(img_path).convert('RGB')
@@ -409,7 +411,7 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
     - BKL: Benign keratosis
     - DF: Dermatofibroma
     - VASC: Vascular lesion
-    - SCC: Squamous cell carcinoma (NEW in 2019)
+    - SCC: Squamous cell carcinoma (added in ISIC 2019)
     - UNK: Unknown (none in training set, but supported)
     """
 
@@ -585,7 +587,7 @@ def get_client_dataloader(
     Get train and validation DataLoaders for a specific FL client.
 
     Args:
-        client_id: Client identifier (1-4)
+        client_id: Client identifier (0-indexed, one per dataset)
         data_root: Root directory for all datasets
         batch_size: Batch size for DataLoader
         train_transform: Transform for training data
@@ -739,6 +741,7 @@ class DatasetSubset(Dataset):
         return len(self.indices)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+        """Load and return (image, label) for the given index."""
         # Get original item
         real_idx = self.indices[idx]
 

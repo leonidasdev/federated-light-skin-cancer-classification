@@ -186,7 +186,7 @@ pytest -m "not slow" -v
 1. Place tests in `tests/` directory
 2. Name test files `test_*.py`
 3. Name test functions `test_*`
-4. Use pytest fixtures from `test_configuration.py`
+4. Use pytest fixtures from `conftest.py`
 5. Add appropriate markers:
    - `@pytest.mark.slow` - Long-running tests
    - `@pytest.mark.integration` - Integration tests

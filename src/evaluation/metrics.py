@@ -48,7 +48,22 @@ DEFAULT_CLASS_NAMES = list(DATASET_CLASS_NAMES)
 
 @dataclass
 class EvaluationResults:
-    """Container for evaluation results."""
+    """Container for evaluation results.
+
+    Attributes:
+        accuracy: Overall classification accuracy.
+        balanced_accuracy: Class-balanced accuracy (macro-averaged recall).
+        precision_macro: Macro-averaged precision.
+        recall_macro: Macro-averaged recall (sensitivity).
+        f1_macro: Macro-averaged F1 score.
+        f1_weighted: Weighted F1 score (by class support).
+        auc_macro: Macro-averaged AUC-ROC, or None if unavailable.
+        confusion_matrix: Confusion matrix of shape (num_classes, num_classes).
+        per_class_metrics: Dict mapping class name to per-class metric dict.
+        predictions: Array of predicted class indices.
+        labels: Array of ground-truth class indices.
+        probabilities: Predicted class probabilities, or None.
+    """
 
     accuracy: float
     balanced_accuracy: float
@@ -243,7 +258,11 @@ class ModelEvaluator:
         )
 
     def print_report(self, results: EvaluationResults) -> None:
-        """Print formatted evaluation report."""
+        """Print formatted evaluation report.
+
+        Args:
+            results: Evaluation results to display.
+        """
         print("\n" + "=" * 60)
         print("EVALUATION REPORT")
         print("=" * 60)
@@ -385,7 +404,12 @@ def compare_results(
 
 
 def print_comparison(comparison: Dict[str, Dict[str, float]]) -> None:
-    """Print formatted comparison between centralized and federated."""
+    """Print formatted comparison between centralized and federated.
+
+    Args:
+        comparison: Dict mapping metric names to dicts with 'centralized',
+            'federated', 'absolute_diff', and 'relative_diff_pct' keys.
+    """
     print("\n" + "=" * 80)
     print("CENTRALIZED vs FEDERATED COMPARISON")
     print("=" * 80)

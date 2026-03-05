@@ -122,12 +122,21 @@ federated-light-skin-cancer-classification/
 │   └── 03_fl_vs_centralized_comparison.ipynb  # FL vs centralized comparison
 │
 ├── tests/                            # Unit tests
+│   ├── conftest.py               # Shared fixtures and markers
 │   ├── test_centralized.py           # Centralized training tests
+│   ├── test_checkpoints.py           # Checkpoint save/load tests
 │   ├── test_cli.py                   # CLI argument parsing tests
 │   ├── test_config_loading.py        # Config loading/validation tests
 │   ├── test_datasets.py              # Dataset registry tests
+│   ├── test_download.py              # Download functionality tests
 │   ├── test_evaluation.py            # Evaluation metrics tests
+│   ├── test_helpers.py               # Helper utility tests
+│   ├── test_model_evaluator.py       # Model evaluator tests
+│   ├── test_models.py                # DSCATNet architecture tests
 │   ├── test_preprocessing.py         # Preprocessing pipeline tests
+│   ├── test_simulation.py            # FL simulation tests
+│   ├── test_splits.py                # Data splitting tests
+│   └── test_strategy.py              # FedAvg strategy tests
 │   ├── test_simulation.py            # FL simulation tests
 │   └── test_splits.py                # Data splitting tests
 │
@@ -191,7 +200,7 @@ Input Image (224×224×3)
 |---------|-----------|-------|-------|------------|----------|
 | `tiny`  | 192       | 4     | 3     | ~5M        | Resource-constrained FL clients |
 | `small` | 384       | 6     | 6     | ~29.4M     | **Default** - balanced performance |
-| `base`  | 384       | 8     | 6     | ~20M       | Maximum accuracy |
+| `base`  | 384       | 8     | 6     | ~39M       | Maximum accuracy |
 
 ---
 
@@ -383,7 +392,7 @@ federated:
 
   # Federation
   federation:
-    num_clients: 4
+    num_clients: 4  # Adjust based on number of datasets used
     noniid_type: dirichlet    # natural, dirichlet, label_skew
     dirichlet_alpha: 0.5      # Lower = more non-IID
 
@@ -849,13 +858,19 @@ The project includes comprehensive unit tests for all major components.
 | Module | Description |
 |--------|-------------|
 | `test_centralized.py` | Tests for centralized training configuration and trainer |
+| `test_checkpoints.py` | Tests for checkpoint saving, loading, and management |
 | `test_cli.py` | Tests for CLI argument parsing and validation |
 | `test_config_loading.py` | Tests for YAML config loading and schema validation |
 | `test_datasets.py` | Tests for dataset registry and loading functions |
+| `test_download.py` | Tests for download functionality |
 | `test_evaluation.py` | Tests for evaluation metrics and visualization functions |
+| `test_helpers.py` | Tests for seed, device, formatting, and other utilities |
+| `test_model_evaluator.py` | Tests for ModelEvaluator integration |
+| `test_models.py` | Tests for DSCATNet model architecture |
 | `test_preprocessing.py` | Tests for image transforms, augmentation levels, and normalization |
 | `test_simulation.py` | Tests for FL simulation, FedAvg aggregation, and client management |
 | `test_splits.py` | Tests for IID/Non-IID data splitting utilities |
+| `test_strategy.py` | Tests for DSCATNetFedAvg custom strategy |
 
 ### Running Tests
 
@@ -885,18 +900,24 @@ Expected output:
 
 ```
 ======================== test session starts ========================
-collected 104 items / 2 deselected / 102 selected
+collected 216 items / 2 deselected / 214 selected
 
-tests/test_centralized.py ........                             [  7%]
-tests/test_cli.py ..........................                   [ 33%]
-tests/test_config_loading.py ..........                        [ 43%]
-tests/test_datasets.py .....................                   [ 63%]
-tests/test_evaluation.py .......                               [ 70%]
-tests/test_preprocessing.py ......                             [ 76%]
-tests/test_simulation.py ................                      [ 92%]
-tests/test_splits.py ........                                  [100%]
+tests/test_centralized.py ........                             [  3%]
+tests/test_checkpoints.py ................                     [ 11%]
+tests/test_cli.py .......................                      [ 21%]
+tests/test_config_loading.py ..........                        [ 26%]
+tests/test_datasets.py .....................                   [ 36%]
+tests/test_download.py ...............................         [ 50%]
+tests/test_evaluation.py .......                               [ 54%]
+tests/test_helpers.py ......................                   [ 64%]
+tests/test_model_evaluator.py .............                    [ 70%]
+tests/test_models.py ..................                        [ 78%]
+tests/test_preprocessing.py ......                             [ 81%]
+tests/test_simulation.py ................                      [ 89%]
+tests/test_splits.py ........                                  [ 92%]
+tests/test_strategy.py ...............                         [100%]
 
-================= 102 passed, 2 deselected in 28s ===================
+================= 214 passed, 2 deselected in 18s ===================
 ```
 
 > **Note**: Two integration tests are deselected by default (marked `@pytest.mark.slow`). Run them with `pytest -m slow`.

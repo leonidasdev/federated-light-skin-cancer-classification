@@ -39,16 +39,15 @@ class DSCATNetFedAvg(FedAvg):
 
     - Checkpoint saving
     - Detailed metrics logging
-    - Client-specific weighting
     - Early stopping support
 
     Args:
-        save_path: Directory to save model checkpoints
-        save_every: Save checkpoint every N rounds
-        early_stopping_patience: Rounds without improvement before stopping
-        min_delta: Minimum improvement to reset patience
-        total_rounds: Total number of FL rounds (for client config)
-        **kwargs: Arguments passed to FedAvg
+        save_path: Directory to save model checkpoints.
+        save_every: Save checkpoint every N rounds.
+        early_stopping_patience: Rounds without improvement before stopping.
+        min_delta: Minimum improvement to reset patience.
+        total_rounds: Total number of FL rounds (for client config).
+        **kwargs: Arguments passed to FedAvg.
     """
 
     def __init__(
@@ -296,7 +295,7 @@ class DSCATNetFedAvg(FedAvg):
             val_accuracy=self.metrics_history['val_accuracy']
         )
 
-    def get_history(self) -> Dict[str, List]:
+    def get_history(self) -> Dict[str, List[Any]]:
         """Return training history."""
         return self.metrics_history
 

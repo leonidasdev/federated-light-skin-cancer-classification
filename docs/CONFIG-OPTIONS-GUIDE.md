@@ -144,7 +144,7 @@ List of federated experiment configurations:
 |--------|------|---------|-------------|
 | `log_dir` | string | "./logs" | Log directory |
 | `checkpoint_dir` | string | "./checkpoints" | Checkpoint directory |
-| `tensorboard` | bool | true | Enable TensorBoard |
+| `tensorboard` | bool | true | Enable TensorBoard (logger exists but not wired into training loops) |
 | `wandb.enabled` | bool | false | Enable W&B |
 | `wandb.project` | string | "dscatnet-fl" | W&B project name |
 | `wandb.entity` | string | null | W&B entity |
@@ -201,9 +201,9 @@ Each client in `clients` list:
 | `client_selection_fraction` | float | 1.0 | >0, ≤1.0 | SimulationConfig: random client selection |
 | `fraction_fit` | float | 1.0 | >0, ≤1.0 | Flower internal: fraction for training |
 | `fraction_evaluate` | float | 1.0 | >0, ≤1.0 | Flower internal: fraction for evaluation |
-| `min_fit_clients` | int | 4 | ≥1 | Min clients for training |
-| `min_evaluate_clients` | int | 4 | ≥1 | Min clients for evaluation |
-| `min_available_clients` | int | 4 | ≥1 | Min available clients |
+| `min_fit_clients` | int | 2 | ≥1 | Min clients for training |
+| `min_evaluate_clients` | int | 2 | ≥1 | Min clients for evaluation |
+| `min_available_clients` | int | 2 | ≥1 | Min available clients |
 
 **Participation vs Client Selection:**
 
@@ -335,8 +335,8 @@ Pre-defined model variants:
 | Variant | embed_dim | depth | num_heads | mlp_ratio | ~Params |
 |---------|-----------|-------|-----------|-----------|---------|
 | `tiny` | 192 | 4 | 3 | 3.0 | ~5M |
-| `small` | 384 | 6 | 6 | 4.0 | ~15M |
-| `base` | 384 | 8 | 6 | 4.0 | ~20M |
+| `small` | 384 | 6 | 6 | 4.0 | ~29.4M |
+| `base` | 384 | 8 | 6 | 4.0 | ~39M |
 
 ---
 

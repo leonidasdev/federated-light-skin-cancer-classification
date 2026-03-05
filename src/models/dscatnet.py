@@ -5,10 +5,10 @@
 DSCATNet: Dual-Scale Cross-Attention Vision Transformer for Skin Cancer Classification.
 
 This is the main model architecture that combines:
-1. Dual-scale patch embeddings (8×8 and 16×16)
+1. Dual-scale patch embeddings (8x8 and 16x16)
 2. Cross-attention between scales
 3. Lightweight transformer encoder
-4. Global average pooling
+4. CLS token extraction and fusion
 5. Softmax classifier
 
 Reference: Adapted for Federated Learning based on the original DSCATNet paper (PLOS ONE 2024)

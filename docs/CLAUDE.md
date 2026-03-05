@@ -168,7 +168,7 @@ federated:
     scheduler: none
     use_amp: false
   federation:
-    num_clients: 4
+    num_clients: 4  # Adjust based on number of datasets used
     noniid_type: dirichlet
 ```
 
@@ -293,15 +293,19 @@ val_ds = DatasetSubset(full_dataset, val_indices, val_transform)
 tests/
 ├── conftest.py            # Shared pytest fixtures
 ├── test_centralized.py    # CentralizedConfig, CentralizedTrainer
+├── test_checkpoints.py    # Checkpoint saving/loading
 ├── test_cli.py            # CLI argument parsing and validation
 ├── test_config_loading.py # YAML config loading and schema validation
-├── test_configuration.py  # Additional configuration tests
 ├── test_datasets.py       # Dataset registry and loading functions
 ├── test_download.py       # Download functionality tests
 ├── test_evaluation.py     # EvaluationResults, metrics computation
+├── test_helpers.py        # Helpers (set_seed, get_device, etc.)
+├── test_model_evaluator.py# ModelEvaluator integration tests
+├── test_models.py         # DSCATNet model architecture tests
 ├── test_preprocessing.py  # Transforms, augmentation levels
 ├── test_simulation.py     # SimulationConfig, FLSimulator, FedAvg
-└── test_splits.py         # IID/Non-IID splitting utilities
+├── test_splits.py         # IID/Non-IID splitting utilities
+└── test_strategy.py       # DSCATNetFedAvg strategy tests
 ```
 
 ### Running Tests
@@ -324,7 +328,7 @@ pytest -m slow tests/ -v
 
 - Unit tests use mocked data (no real datasets required)
 - Integration tests marked with `@pytest.mark.slow` (deselected by default)
-- Fixtures in `conftest.py` and `test_configuration.py` for common setup
+- Fixtures in `conftest.py` for common setup
 - Assert both return values and side effects (file creation, etc.)
 
 ---

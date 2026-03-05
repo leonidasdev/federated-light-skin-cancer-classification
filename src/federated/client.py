@@ -38,7 +38,7 @@ class SkinCancerClient(NumPyClient):
     dermoscopy dataset in the federated learning setup.
 
     Args:
-        client_id: Unique identifier for this client (1-4).
+        client_id: Unique identifier for this client (0-indexed, one per dataset).
         model: DSCATNet model instance.
         train_loader: DataLoader for training data.
         val_loader: DataLoader for validation data.
@@ -219,8 +219,11 @@ class SkinCancerClient(NumPyClient):
         """
         Train for specified number of epochs.
 
+        Args:
+            epochs: Number of local training epochs.
+
         Returns:
-            Tuple of (average_loss, accuracy)
+            Tuple of (average_loss, accuracy).
         """
         self.model.train()
         total_loss = 0.0
@@ -366,7 +369,7 @@ def create_client(
     Factory function to create a Flower client.
 
     Args:
-        client_id: Client identifier (1-4 for each dataset)
+        client_id: Client identifier (0-indexed, one per dataset)
         model: DSCATNet model
         train_loader: Training data loader
         val_loader: Validation data loader

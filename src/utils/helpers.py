@@ -70,7 +70,7 @@ except Exception:
     _HAS_TORCH_AMP_AUTOCAST = False
 
 
-def autocast() -> torch.amp.autocast:
+def autocast() -> "torch.autocast":
     """Return the appropriate autocast context manager for the current PyTorch version.
 
     Returns:
@@ -78,7 +78,7 @@ def autocast() -> torch.amp.autocast:
     """
     if _HAS_TORCH_AMP_AUTOCAST:
         return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
-    return torch.cuda.amp.autocast()
+    return torch.cuda.amp.autocast()  # type: ignore[attr-defined]
 
 # =============================================================================
 # Model Utilities

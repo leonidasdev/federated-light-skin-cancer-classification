@@ -186,7 +186,6 @@ def save_model_for_inference(
     model: nn.Module,
     save_path: Path,
     config: Optional[Dict[str, Any]] = None,
-    include_optimizer: bool = False,
 ) -> None:
     """
     Save model in a format suitable for inference.
@@ -195,7 +194,6 @@ def save_model_for_inference(
         model: Trained model.
         save_path: Path to save.
         config: Optional model configuration.
-        include_optimizer: Whether to include optimizer (usually False for inference).
     """
     save_dict = {
         "model_state_dict": model.state_dict(),

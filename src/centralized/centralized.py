@@ -94,10 +94,12 @@ class CentralizedConfig:
     use_amp: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to a serializable dictionary."""
         return asdict(self)
 
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "CentralizedConfig":
+        """Create a CentralizedConfig from a dictionary, ignoring unknown keys."""
         return cls(**{k: v for k, v in config_dict.items() if k in cls.__dataclass_fields__})
 
 
@@ -314,7 +316,11 @@ class CentralizedTrainer:
         logger.info(f"Combined dataset: {len(combined_train)} train, {len(combined_val)} val")
 
     def _compute_class_weights(self, dataset: ConcatDataset) -> None:
-        """Compute class weights for handling class imbalance."""
+        """Compute class weights for handling class imbalance.
+
+        Args:
+            dataset: Concatenated training dataset to compute weights from.
+        """
         # Count labels across all sub-datasets
         all_labels: List[int] = []
         for sub_ds in dataset.datasets:
@@ -349,6 +355,10 @@ class CentralizedTrainer:
         Supports gradient accumulation to simulate larger batch sizes
         when GPU memory is limited. Effective batch size =
         batch_size * gradient_accumulation_steps.
+
+        Args:
+            optimizer: Optimizer for parameter updates.
+            criterion: Loss function (e.g., CrossEntropyLoss).
 
         Returns:
             Tuple of (average loss, accuracy).

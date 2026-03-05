@@ -4,8 +4,8 @@
 """
 Standardized Preprocessing Pipeline for Dermoscopy Datasets.
 
-Ensures consistent preprocessing across all four datasets:
-- HAM10000, ISIC 2018, ISIC 2019, ISIC 2020
+Ensures consistent preprocessing across all five datasets:
+- HAM10000, ISIC 2018, ISIC 2019, ISIC 2020, PAD-UFES-20
 
 Key preprocessing steps:
 1. Resize to 224×224 (DSCATNet input size)

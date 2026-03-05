@@ -344,7 +344,7 @@ class DatasetVerifier:
                 valid_datasets += 1
 
         print("\n" + "=" * 80)
-        print(f"SUMMARY: {valid_datasets}/4 datasets valid")
+        print(f"SUMMARY: {valid_datasets}/{len(self.results)} datasets valid")
         print(f"Total images across all datasets: {total_images:,}")
         print("=" * 80)
 
@@ -354,7 +354,7 @@ class DatasetVerifier:
             self.verify_all(verbose=False)
 
         return {
-            "total_datasets": 4,
+            "total_datasets": len(self.results),
             "valid_datasets": sum(1 for r in self.results.values() if r["valid"]),
             "total_images": sum(r["total_images"] for r in self.results.values()),
             "images_per_dataset": {

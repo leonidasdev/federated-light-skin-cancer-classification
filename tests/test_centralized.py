@@ -104,7 +104,7 @@ class TestCentralizedTrainer:
         assert "learning_rate" in trainer.history
 
     def test_load_checkpoint_missing_file(self, tmp_path):
-        """Test loading checkpoint from non-existent file."""
+        """Test loading checkpoint from non-existent file raises FileNotFoundError."""
         from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
@@ -115,21 +115,13 @@ class TestCentralizedTrainer:
 
         trainer = CentralizedTrainer(config)
 
-        # Try to load non-existent checkpoint
         missing_path = str(tmp_path / "nonexistent_checkpoint.pt")
 
-        # The load_checkpoint method returns epoch number or raises error
-        # depending on implementation. We test it handles gracefully.
-        try:
-            result = trainer.load_checkpoint(missing_path)
-            # If it doesn't raise, it should return 0 or handle gracefully
-            assert result == 0 or result is None
-        except FileNotFoundError:
-            # This is also acceptable behavior
-            pass
+        with pytest.raises(FileNotFoundError):
+            trainer.load_checkpoint(missing_path)
 
     def test_load_checkpoint_corrupted_file(self, tmp_path):
-        """Test loading checkpoint from corrupted file."""
+        """Test loading checkpoint from corrupted file raises an error."""
         from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
@@ -145,14 +137,8 @@ class TestCentralizedTrainer:
         with open(corrupt_path, 'w') as f:
             f.write("This is not a valid PyTorch checkpoint")
 
-        # Try to load corrupted checkpoint
-        try:
+        with pytest.raises(Exception):
             trainer.load_checkpoint(str(corrupt_path))
-            # If no error, something is wrong
-            assert False, "Should have raised an error for corrupted file"
-        except Exception:
-            # Expected - corrupted file should raise error
-            pass
 
     def test_save_and_load_checkpoint_roundtrip(self, tmp_path):
         """Test saving and loading checkpoint preserves state."""

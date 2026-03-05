@@ -60,12 +60,13 @@ class PatchEmbedding(nn.Module):
         self.norm = nn.LayerNorm(embed_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
+        """Project input image into patch embeddings.
+
         Args:
-            x: Input tensor of shape (B, C, H, W)
+            x: Input tensor of shape (B, C, H, W).
 
         Returns:
-            Patch embeddings of shape (B, num_patches, embed_dim)
+            Patch embeddings of shape (B, num_patches, embed_dim).
         """
         # (B, C, H, W) -> (B, embed_dim, H/P, W/P)
         x = self.projection(x)

@@ -160,8 +160,12 @@ class MetricsTracker:
         if self.csv_file:
             self.csv_file.flush()
 
-    def _read_existing_csv(self) -> List[Dict]:
-        """Read existing CSV data."""
+    def _read_existing_csv(self) -> List[Dict[str, str]]:
+        """Read existing CSV data.
+
+        Returns:
+            List of row dictionaries from the CSV file.
+        """
         data = []
         try:
             with open(self.csv_path, "r") as f:
@@ -233,10 +237,10 @@ class MetricsTracker:
         if self.csv_file:
             self.csv_file.close()
 
-    def __enter__(self):
+    def __enter__(self) -> "MetricsTracker":
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         self.save()
 
 
@@ -366,7 +370,7 @@ class TensorBoardLogger:
         if self.enabled and self.writer:
             self.writer.add_scalars(main_tag, tag_scalar_dict, step)
 
-    def log_histogram(self, tag: str, values, step: int) -> None:
+    def log_histogram(self, tag: str, values: Any, step: int) -> None:
         """Log histogram."""
         if self.enabled and self.writer:
             self.writer.add_histogram(tag, values, step)

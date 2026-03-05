@@ -6,10 +6,11 @@ Dataset Download and Setup Scripts for Dermoscopy Datasets.
 
 This module provides utilities to download and organize dermoscopy datasets
 from the ISIC Archive API for federated learning experiments:
-- HAM10000 (Client 1)
-- ISIC 2018 Task 3 (Client 2)
-- ISIC 2019 (Client 3)
-- ISIC 2020 / SIIM-ISIC (Client 4)
+- HAM10000
+- ISIC 2018 Task 3
+- ISIC 2019
+- ISIC 2020 / SIIM-ISIC
+- PAD-UFES-20
 
 Download Methods:
 1. ISIC Archive API (recommended) - No API key required

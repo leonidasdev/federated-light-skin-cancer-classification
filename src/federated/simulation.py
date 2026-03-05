@@ -185,7 +185,17 @@ class SimulationConfig:
 
 @dataclass
 class ClientData:
-    """Data container for a single FL client."""
+    """Data container for a single FL client.
+
+    Attributes:
+        client_id: Integer identifier for this client.
+        train_loader: DataLoader for training data.
+        val_loader: DataLoader for validation data.
+        num_train_samples: Number of training samples.
+        num_val_samples: Number of validation samples.
+        class_distribution: Mapping of class index to sample count.
+        dataset_name: Name of the source dataset.
+    """
 
     client_id: int
     train_loader: DataLoader
@@ -873,7 +883,12 @@ class FLSimulator:
         return metrics
 
     def save_checkpoint(self, round_num: int, metrics: Dict[str, float]) -> None:
-        """Save model checkpoint with full state for resumption."""
+        """Save model checkpoint with full state for resumption.
+
+        Args:
+            round_num: Current FL round number.
+            metrics: Metrics dict for this round.
+        """
         checkpoint = {
             "round": round_num,
             "model_state_dict": self.global_model.state_dict(),
@@ -890,7 +905,11 @@ class FLSimulator:
         logger.debug(f"Saved checkpoint: {path}")
 
     def save_best_model(self, round_num: int) -> None:
-        """Save the best model."""
+        """Save the best model so far.
+
+        Args:
+            round_num: Round number at which the best accuracy was achieved.
+        """
         path = self.checkpoint_dir / "best_model.pt"
         torch.save({
             "round": round_num,
