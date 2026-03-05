@@ -63,7 +63,7 @@ class TestDatasetInfo:
 
     def test_each_entry_has_required_fields(self):
         """Each entry should have required fields."""
-        required_fields = ['description', 'source', 'download_url', 'classes', 
+        required_fields = ['description', 'source', 'download_url', 'classes',
                           'approx_images', 'expected_files', 'client_id']
         for name, info in DATASET_INFO.items():
             for field in required_fields:
@@ -108,7 +108,7 @@ class TestDirectoryStructure:
     def test_creates_all_dataset_directories(self, tmp_path):
         """Should create directories for all datasets."""
         paths = create_directory_structure(tmp_path)
-        
+
         assert len(paths) == len(DATASET_INFO)
         for name in DATASET_INFO:
             assert name in paths
@@ -117,7 +117,7 @@ class TestDirectoryStructure:
     def test_creates_raw_and_processed_dirs(self, tmp_path):
         """Should create raw and processed subdirectories."""
         create_directory_structure(tmp_path)
-        
+
         assert (tmp_path / "raw").exists()
         assert (tmp_path / "processed").exists()
 
@@ -153,7 +153,7 @@ class TestKaggleAvailability:
     def test_returns_true_when_fully_configured(self, mock_which):
         """Should return True when kaggle is installed and configured."""
         mock_which.return_value = "/usr/bin/kaggle"
-        
+
         with patch('pathlib.Path.exists') as mock_exists:
             mock_exists.return_value = True
             assert check_kaggle_available() is True
@@ -190,16 +190,16 @@ class TestVerifyDataset:
         """HAM10000 verification should check part_1 and part_2 folders."""
         dataset_dir = tmp_path / "HAM10000"
         dataset_dir.mkdir()
-        
+
         # Create metadata
         (dataset_dir / "HAM10000_metadata.csv").touch()
-        
+
         # Create image folders
         part1 = dataset_dir / "HAM10000_images_part_1"
         part1.mkdir()
         (part1 / "test1.jpg").touch()
         (part1 / "test2.jpg").touch()
-        
+
         result = verify_dataset("HAM10000", tmp_path)
         assert result["image_count"] == 2
         assert result["csv_found"] is True
@@ -208,16 +208,16 @@ class TestVerifyDataset:
         """PAD-UFES-20 verification should check imgs_part folders."""
         dataset_dir = tmp_path / "PAD-UFES-20"
         dataset_dir.mkdir()
-        
+
         # Create metadata
         (dataset_dir / "metadata.csv").touch()
-        
+
         # Create image folders
         for part in ["imgs_part_1", "imgs_part_2", "imgs_part_3"]:
             part_dir = dataset_dir / part
             part_dir.mkdir()
             (part_dir / "test.png").touch()
-        
+
         result = verify_dataset("PAD-UFES-20", tmp_path)
         assert result["image_count"] == 3
         assert result["csv_found"] is True
@@ -226,13 +226,13 @@ class TestVerifyDataset:
         """Completeness should be calculated correctly."""
         dataset_dir = tmp_path / "PAD-UFES-20"
         dataset_dir.mkdir()
-        
+
         # Create some images (PAD-UFES-20 expects ~2298)
         imgs = dataset_dir / "imgs_part_1"
         imgs.mkdir()
         for i in range(100):
             (imgs / f"img_{i}.png").touch()
-        
+
         result = verify_dataset("PAD-UFES-20", tmp_path)
         expected_completeness = (100 / 2298) * 100
         assert abs(result["completeness"] - expected_completeness) < 0.1
@@ -244,7 +244,7 @@ class TestVerifyAllDatasets:
     def test_returns_dict_for_all_datasets(self, tmp_path):
         """Should return results for all datasets."""
         results = verify_all_datasets(tmp_path)
-        
+
         assert len(results) == len(DATASET_INFO)
         for name in DATASET_INFO:
             assert name in results
@@ -269,9 +269,9 @@ class TestDownloadDataset:
         """HAM10000 should use Kaggle when available."""
         mock_check.return_value = True
         mock_download.return_value = True
-        
+
         result = download_dataset("HAM10000", tmp_path)
-        
+
         mock_download.assert_called_once()
         assert result is True
 
@@ -281,9 +281,9 @@ class TestDownloadDataset:
         """HAM10000 should fall back to ISIC when Kaggle unavailable."""
         mock_check.return_value = False
         mock_isic.return_value = True
-        
+
         result = download_dataset("HAM10000", tmp_path)
-        
+
         mock_isic.assert_called_once()
         assert result is True
 
@@ -291,9 +291,9 @@ class TestDownloadDataset:
     def test_padufes20_uses_mendeley(self, mock_download, tmp_path):
         """PAD-UFES-20 should use Mendeley download."""
         mock_download.return_value = True
-        
+
         result = download_dataset("PAD-UFES-20", tmp_path)
-        
+
         mock_download.assert_called_once()
         assert result is True
 
@@ -301,10 +301,10 @@ class TestDownloadDataset:
     def test_isic_datasets_use_isic(self, mock_download, tmp_path):
         """ISIC datasets should use ISIC Archive."""
         mock_download.return_value = True
-        
+
         for name in ['ISIC2018', 'ISIC2019', 'ISIC2020']:
             mock_download.reset_mock()
-            result = download_dataset(name, tmp_path)
+            download_dataset(name, tmp_path)
             mock_download.assert_called_once()
 
 
@@ -340,10 +340,10 @@ class TestISICArchiveClient:
         mock_response.json.return_value = {"results": []}
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
-        
+
         client = ISICArchiveClient()
         result = client.get_image_list(collection="HAM10000", limit=10)
-        
+
         assert result == []
         mock_get.assert_called_once()
 

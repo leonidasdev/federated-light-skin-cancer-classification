@@ -44,6 +44,7 @@ class DSCATNetFedAvg(FedAvg):
         save_every: Save checkpoint every N rounds
         early_stopping_patience: Rounds without improvement before stopping
         min_delta: Minimum improvement to reset patience
+        total_rounds: Total number of FL rounds (for client config)
         **kwargs: Arguments passed to FedAvg
     """
 
@@ -53,6 +54,7 @@ class DSCATNetFedAvg(FedAvg):
         save_every: int = 10,
         early_stopping_patience: int = 20,
         min_delta: float = 0.001,
+        total_rounds: int = 100,
         **kwargs
     ):
         super().__init__(**kwargs)
@@ -61,6 +63,7 @@ class DSCATNetFedAvg(FedAvg):
         self.save_every = save_every
         self.early_stopping_patience = early_stopping_patience
         self.min_delta = min_delta
+        self.total_rounds = total_rounds
 
         # Training tracking
         self.current_round = 0
@@ -100,7 +103,7 @@ class DSCATNetFedAvg(FedAvg):
             updated_config = []
             for client, fit_ins in config:
                 fit_ins.config["current_round"] = server_round
-                fit_ins.config["total_rounds"] = 100  # Update based on actual
+                fit_ins.config["total_rounds"] = self.total_rounds
                 updated_config.append((client, fit_ins))
             return updated_config
 

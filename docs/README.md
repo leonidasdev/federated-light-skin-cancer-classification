@@ -7,13 +7,13 @@ Welcome to the DSCATNet Federated Learning documentation!
 | Document | Description |
 |----------|-------------|
 | [Main README](../README.md) | Project overview, installation, and quick start guide |
-| [Configuration Options](CONFIG_OPTIONS.md) | Comprehensive YAML configuration reference |
-| [Contributing Guide](CONTRIBUTING.md) | Code style, testing, and PR process |
+| [Configuration Guide](CONFIG-OPTIONS-GUIDE.md) | Comprehensive YAML configuration reference |
+| [Contributing Guide](../CONTRIBUTING.md) | Code style, testing, and PR process |
 | [Architecture Overview](ARCHITECTURE.md) | System design and module documentation |
 
 ## For AI Assistants
 
-If you're an AI assistant (Claude, GPT, etc.), please read [CLAUDE.md](../CLAUDE.md) in the project root for comprehensive context about this codebase.
+If you're an AI assistant (Claude, GPT, etc.), please read [CLAUDE.md](CLAUDE.md) in this directory for comprehensive context about this codebase.
 
 ## Getting Started
 
@@ -25,13 +25,13 @@ If you're an AI assistant (Claude, GPT, etc.), please read [CLAUDE.md](../CLAUDE
 
 All experiments use YAML configuration files in `configs/`:
 
-- **Full Reference**: [CONFIG_OPTIONS.md](CONFIG_OPTIONS.md)
+- **Full Reference**: [CONFIG-OPTIONS-GUIDE.md](CONFIG-OPTIONS-GUIDE.md)
 - **Templates**: Available in `configs/templates/`
 - **Validation**: `python src/utils/config_schema.py <config.yaml>`
 
 ## Development
 
-- **Code Style**: [CONTRIBUTING.md](CONTRIBUTING.md)
+- **Code Style**: [CONTRIBUTING.md](../CONTRIBUTING.md)
 - **Testing**: `pytest tests/ -v` or `python run_tests.py`
 - **Architecture**: [ARCHITECTURE.md](ARCHITECTURE.md)
 

@@ -35,6 +35,7 @@ from .checkpoints import (
 from .helpers import (
     set_seed,
     get_device,
+    autocast,
     count_parameters,
     format_time,
     format_size,
@@ -71,6 +72,7 @@ __all__ = [
     # Helpers
     "set_seed",
     "get_device",
+    "autocast",
     "count_parameters",
     "format_time",
     "format_size",

@@ -697,9 +697,9 @@ Examples:
         """,
     )
 
-    # ==========================================================================
+    # =============================================================================
     # Mode Selection
-    # ==========================================================================
+    # =============================================================================
     parser.add_argument(
         "--version",
         action="version",
@@ -713,18 +713,18 @@ Examples:
         help="Experiment mode: centralized, federated, comparison, or evaluate",
     )
 
-    # ==========================================================================
+    # =============================================================================
     # Config File
-    # ==========================================================================
+    # =============================================================================
     parser.add_argument(
         "--config",
         type=str,
         help="Path to YAML configuration file (overrides can still be applied via CLI)",
     )
 
-    # ==========================================================================
+    # =============================================================================
     # Common Arguments (shared by all modes)
-    # ==========================================================================
+    # =============================================================================
     common_group = parser.add_argument_group("Common Options")
     common_group.add_argument("--data-root", type=str, help="Root directory for datasets (default: ./data)")
     common_group.add_argument("--output-dir", type=str, help="Output directory for results (default: ./outputs)")
@@ -754,9 +754,9 @@ Examples:
         help="Validate config file and check for errors, then exit"
     )
 
-    # ==========================================================================
+    # =============================================================================
     # Model Configuration
-    # ==========================================================================
+    # =============================================================================
     model_group = parser.add_argument_group("Model Configuration")
     model_group.add_argument(
         "--model-variant",
@@ -767,9 +767,9 @@ Examples:
     model_group.add_argument("--num-classes", type=int, help="Number of output classes (default: 7)")
     model_group.add_argument("--image-size", type=int, help="Input image size (default: 224)")
 
-    # ==========================================================================
+    # =============================================================================
     # Training Hyperparameters
-    # ==========================================================================
+    # =============================================================================
     train_group = parser.add_argument_group("Training Hyperparameters")
     train_group.add_argument("--weight-decay", type=float, help="Weight decay for optimizer (default: 0.01)")
     train_group.add_argument(
@@ -782,9 +782,9 @@ Examples:
     train_group.add_argument("--checkpoint-interval", type=int, help="Save checkpoint every N epochs/rounds")
     train_group.add_argument("--num-workers", type=int, help="Number of data loader workers")
 
-    # ==========================================================================
+    # =============================================================================
     # Centralized-Specific Arguments
-    # ==========================================================================
+    # =============================================================================
     cent_group = parser.add_argument_group("Centralized Training Options")
     cent_group.add_argument("--epochs", type=int, help="Number of training epochs")
     cent_group.add_argument("--warmup-epochs", type=int, help="Number of warmup epochs for LR scheduler")
@@ -797,9 +797,9 @@ Examples:
     cent_group.add_argument("--val-split", type=float, help="Validation split ratio (default: 0.15)")
     cent_group.add_argument("--no-amp", action="store_true", help="Disable automatic mixed precision (AMP)")
 
-    # ==========================================================================
+    # =============================================================================
     # Federated-Specific Arguments
-    # ==========================================================================
+    # =============================================================================
     fed_group = parser.add_argument_group("Federated Learning Options")
     fed_group.add_argument("--rounds", type=int, help="Number of FL communication rounds")
     fed_group.add_argument("--clients", type=int, help="Number of FL clients")
@@ -828,9 +828,9 @@ Examples:
         help="Validation set fraction (e.g., 0.15 = 15%% for validation, 85%% for training)"
     )
 
-    # ==========================================================================
+    # =============================================================================
     # Resume / Checkpoint Arguments
-    # ==========================================================================
+    # =============================================================================
     resume_group = parser.add_argument_group("Checkpoint & Resume Options")
     resume_group.add_argument(
         "--resume",

@@ -17,7 +17,7 @@ from flwr.server import start_server as fl_start_server
 from flwr.server.strategy import Strategy
 from flwr.server.history import History
 from flwr.common import Scalar
-from typing import Dict, Optional, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import torch
 from pathlib import Path
 
@@ -225,14 +225,26 @@ class FederatedServer:
         return str(checkpoint_path)
 
     def load_checkpoint(self, checkpoint_path: str) -> int:
-        """Load model checkpoint and return the round number."""
-        checkpoint = torch.load(checkpoint_path)
+        """Load model checkpoint and return the round number.
+
+        Args:
+            checkpoint_path: Path to the checkpoint file.
+
+        Returns:
+            The round number from the checkpoint.
+        """
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         self.history = checkpoint.get('history', self.history)
         return checkpoint['round']
 
-    def get_summary(self) -> Dict:
-        """Get summary of FL training."""
+    def get_summary(self) -> Dict[str, Any]:
+        """Get summary of FL training.
+
+        Returns:
+            Dictionary with training summary including total rounds,
+            final accuracy, best accuracy, and final loss.
+        """
         return {
             'total_rounds': len(self.history['round']),
             'final_accuracy': self.history['accuracy'][-1] if self.history['accuracy'] else None,

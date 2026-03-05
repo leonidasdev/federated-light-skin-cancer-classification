@@ -29,8 +29,8 @@ class TestCentralizedConfig:
 
         assert config.num_epochs == 100
         assert config.batch_size == 8  # Updated to match reduced batch size for memory efficiency
-        assert config.learning_rate == 1e-4
-        assert config.scheduler_type == "cosine"
+        assert config.learning_rate == 1e-3  # Paper-aligned (Yadav et al.)
+        assert config.scheduler_type == "none"  # Paper-aligned: no LR scheduler
 
     def test_config_serialization(self):
         """Test config to/from dict."""

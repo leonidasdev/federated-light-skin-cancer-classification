@@ -34,7 +34,8 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 │   └─ patch_embedding │   ├─ server.py       │       - setup_data()          │
 │                      │   └─ strategy.py     │       - train_epoch()         │
 │   DSCATNet Model     │   FLSimulator        │       - evaluate()            │
-│   ~15M parameters    │   FedAvg aggregation │       - save/load_checkpoint()│
+│   ~29.4M params      │   FedAvg aggregation │       - save/load_checkpoint()│
+│   (small variant)    │                      │                               │
 └──────────────────────┴──────────────────────┴───────────────────────────────┘
                                     │
                                     ▼
@@ -44,7 +45,7 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 │  src/data/datasets.py      HAM10000, ISIC2018/2019/2020, PADUFES20 classes  │
 │  src/data/preprocessing.py  Transforms: get_train_transforms, get_val_...   │
 │  src/data/splits.py         IID/Non-IID splitting (Dirichlet, label_skew)   │
-│  src/data/download.py       ISIC API downloader                             │
+│  src/data/download.py       ISIC API / Kaggle / Mendeley downloader         │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -72,7 +73,7 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 | Method | Description |
 |--------|-------------|
 | `setup_data()` | Loads datasets, creates DataLoaders |
-| `train_epoch()` | Single epoch training with AMP support |
+| `train_epoch()` | Single epoch training with gradient accumulation and optional AMP |
 | `evaluate()` | Validation with per-class metrics |
 | `save_checkpoint()` | Full state persistence |
 | `load_checkpoint()` | Restore training state |
@@ -102,7 +103,7 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 | `setup_clients()` | Routes to natural or Dirichlet non-IID setup |
 | `setup_natural_noniid()` | Each dataset = one client |
 | `setup_dirichlet_noniid()` | Split combined data via Dirichlet distribution |
-| `train_client()` | Local training on single client |
+| `train_client()` | Local training with gradient accumulation and clipping |
 | `aggregate_parameters()` | FedAvg weighted averaging |
 | `run_round()` | Single FL round (train → aggregate → evaluate) |
 | `run()` | Main FL loop with resume support |
@@ -142,8 +143,8 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 | Variant | embed_dim | depth | heads | ~Parameters |
 |---------|-----------|-------|-------|-------------|
 | `tiny` | 192 | 4 | 3 | ~5M |
-| `small` | 384 | 6 | 6 | ~15M (default) |
-| `base` | 384 | 8 | 6 | ~20M |
+| `small` | 384 | 6 | 6 | ~29.4M (default) |
+| `base` | 384 | 8 | 6 | ~39M |
 
 ---
 
@@ -189,7 +190,7 @@ All configurable components use `@dataclass` with:
 class SimulationConfig:
     num_rounds: int = 50
     batch_size: int = 8
-    learning_rate: float = 1e-4
+    learning_rate: float = 1e-3
     
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -252,12 +253,13 @@ else:
 
 ### Memory Management
 
-- `batch_size=8` default (fits 8GB VRAM with small variant)
+- `batch_size=8` default (fits 4GB VRAM with small variant)
+- Gradient accumulation (`gradient_accumulation_steps=4`) for effective BS=32
 - `num_workers=4` for data loading (Windows: may need `num_workers=0`)
-- AMP enabled by default for ~2x speedup
+- AMP disabled by default for training stability
 
 ### Bottlenecks
 
 1. **Data Loading**: Large datasets → use SSD
-2. **FL Communication**: ~60MB model params per round
+2. **FL Communication**: ~112MB model params per round (small variant, fp32)
 3. **Evaluation**: Full dataset inference → batch processing

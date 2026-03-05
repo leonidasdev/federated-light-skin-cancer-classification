@@ -6,10 +6,10 @@
 
 | Document | Description |
 |----------|-------------|
-| [README.md](README.md) | User-facing documentation, installation, usage |
-| [docs/CONFIG_OPTIONS.md](docs/CONFIG_OPTIONS.md) | Complete YAML configuration reference |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and key classes |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Code style and contribution guidelines |
+| [README.md](../README.md) | User-facing documentation, installation, usage |
+| [CONFIG-OPTIONS-GUIDE.md](CONFIG-OPTIONS-GUIDE.md) | Complete YAML configuration reference |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and key classes |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Code style and contribution guidelines |
 
 ---
 
@@ -18,12 +18,19 @@
 **Name**: Federated Learning for Skin Cancer Classification with DSCATNet  
 **Type**: Master's Thesis Research Project  
 **Domain**: Medical Image Classification, Federated Learning, Vision Transformers  
-**Language**: Python 3.9+  
-**Framework Stack**: PyTorch 2.0+, Flower (FL), scikit-learn, PIL/Pillow
+**Language**: Python 3.10+  
+**Framework Stack**: PyTorch 2.7+, Flower 1.25+ (FL), scikit-learn, PIL/Pillow
 
 ### Core Objective
 
 Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classification accuracy when trained in a **federated learning** setting with **non-IID data** across simulated hospital clients, compared to centralized training baselines.
+
+### Reference Papers
+
+| Paper | Authors | Published | Key Contribution |
+|-------|---------|-----------|------------------|
+| DSCATNet | Yadav et al. | PLOS ONE, Dec 2024 | Dual-Scale Cross-Attention ViT for skin cancer |
+| FL Evaluation | Khullar et al. | Scientific Reports, Jan 2025 | FL benchmark with EfficientNetV2S on ISIC 2019 |
 
 ---
 
@@ -59,7 +66,8 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 │   └─ patch_embedding │   ├─ server.py       │       - setup_data()          │
 │                      │   └─ strategy.py     │       - train_epoch()         │
 │   DSCATNet Model     │   FLSimulator        │       - evaluate()            │
-│   ~15M parameters    │   FedAvg aggregation │       - save/load_checkpoint()│
+│   ~29.4M params      │   FedAvg aggregation │       - save/load_checkpoint()│
+│   (small variant)    │                      │                               │
 └──────────────────────┴──────────────────────┴───────────────────────────────┘
                                     │
                                     ▼
@@ -69,7 +77,7 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 │  src/data/datasets.py      HAM10000, ISIC2018/2019/2020, PADUFES20 classes  │
 │  src/data/preprocessing.py  Transforms: get_train_transforms, get_val_...   │
 │  src/data/splits.py         IID/Non-IID splitting (Dirichlet, label_skew)   │
-│  src/data/download.py       ISIC API downloader                             │
+│  src/data/download.py       ISIC API / Kaggle / Mendeley downloader         │
 └─────────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -90,7 +98,8 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 
 ### Python Style
 
-- **Formatting**: PEP 8 compliant, 100-character line limit
+- **Formatting**: PEP 8 compliant, 120-character line limit (configured in `pyproject.toml`)
+- **Linter**: Ruff (rules: E, F, W, I)
 - **Type Hints**: All function signatures include type hints
 - **Docstrings**: Google-style docstrings for all public functions/classes
 - **Imports**: Grouped (stdlib → third-party → local), absolute imports preferred
@@ -104,11 +113,11 @@ def train_epoch(
 ) -> Tuple[float, float]:
     """
     Train for one epoch.
-    
+
     Args:
         optimizer: PyTorch optimizer instance.
         criterion: Loss function module.
-        
+
     Returns:
         Tuple of (average loss, accuracy).
     """
@@ -126,12 +135,14 @@ All configurable components use `@dataclass` with:
 class SimulationConfig:
     num_rounds: int = 50
     batch_size: int = 8
-    learning_rate: float = 1e-4
-    # ... more fields
-    
+    learning_rate: float = 1e-3
+    optimizer_type: str = "adam"           # adam, adamw
+    weight_decay: float = 0.0
+    gradient_accumulation_steps: int = 1  # Effective BS = batch_size × steps
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "SimulationConfig":
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
@@ -150,7 +161,12 @@ federated:
     image_size: 224
   training:
     batch_size: 8
-    lr: 0.0001
+    lr: 0.001
+    optimizer: adam
+    weight_decay: 0.0
+    gradient_accumulation_steps: 4
+    scheduler: none
+    use_amp: false
   federation:
     num_clients: 4
     noniid_type: dirichlet
@@ -166,10 +182,16 @@ federated:
 
 **Key Methods**:
 - `setup_data()`: Loads datasets, creates DataLoaders
-- `train_epoch()`: Single epoch training with AMP support
+- `train_epoch()`: Single epoch training with gradient accumulation and optional AMP
 - `evaluate()`: Validation with per-class metrics
 - `save_checkpoint()` / `load_checkpoint()`: Full state persistence
 - `run()`: Main training loop with early stopping
+
+**Training Features**:
+- Gradient accumulation (effective BS = `batch_size × gradient_accumulation_steps`)
+- Configurable optimizer (`adam` or `adamw`)
+- Configurable scheduler (`none`, `cosine`, `plateau`)
+- Optional AMP (disabled by default for stability)
 
 **Checkpoint Contents**: model_state_dict, optimizer_state_dict, scheduler_state_dict, scaler_state_dict, history, best_val_accuracy
 
@@ -181,7 +203,7 @@ federated:
 - `setup_clients()`: Routes to natural or Dirichlet non-IID setup
 - `setup_natural_noniid()`: Each dataset = one client
 - `setup_dirichlet_noniid()`: Split combined data via Dirichlet distribution
-- `train_client()`: Local training on single client
+- `train_client()`: Local training with gradient accumulation and clipping
 - `evaluate_client()`: Evaluate on client's validation data
 - `aggregate_parameters()`: FedAvg weighted averaging
 - `run_round()`: Single FL round (train all → aggregate → evaluate)
@@ -204,8 +226,26 @@ federated:
 
 **Variants**:
 - `tiny`: embed_dim=192, depth=4, heads=3 (~5M params)
-- `small`: embed_dim=384, depth=6, heads=6 (~15M params) **[DEFAULT]**
-- `base`: embed_dim=384, depth=8, heads=6 (~20M params)
+- `small`: embed_dim=384, depth=6, heads=6 (~29.4M params) **[DEFAULT]**
+- `base`: embed_dim=384, depth=8, heads=6 (~39M params)
+
+---
+
+## Paper-Aligned Hyperparameters
+
+The training configuration is aligned with the DSCATNet paper (Yadav et al., PLOS ONE, 2024):
+
+| Parameter | Paper Value | Config Value | Notes |
+|-----------|-------------|--------------|-------|
+| Optimizer | Adam | `optimizer: adam` | Not AdamW |
+| Learning Rate | 0.001 | `lr: 0.001` | Fixed LR throughout training |
+| Weight Decay | 0.0 | `weight_decay: 0.0` | Paper uses Adam without L2 penalty |
+| Effective Batch Size | 32 | `batch_size: 8` × `gradient_accumulation_steps: 4` | Fits 4GB VRAM |
+| LR Scheduler | None | `scheduler: none` | Paper uses fixed LR |
+| Epochs | 200 | `epochs: 200` | Full training run |
+| AMP | Not used | `use_amp: false` | Disabled for stability |
+| Image Size | 224 | `image_size: 224` | Standard ViT input |
+| Augmentation | None | `augmentation: none` (HAM10000) | Paper reports no augmentation |
 
 ---
 
@@ -214,6 +254,7 @@ federated:
 ### Unified 7-Class Schema
 
 All datasets map to:
+
 | Index | Abbreviation | Full Name |
 |-------|--------------|-----------|
 | 0 | AK/AKIEC | Actinic Keratosis |
@@ -236,6 +277,7 @@ Each inherits from `torch.utils.data.Dataset`:
 ### DatasetSubset (src/data/datasets.py)
 
 Wrapper for applying different transforms to train/val splits:
+
 ```python
 train_ds = DatasetSubset(full_dataset, train_indices, train_transform)
 val_ds = DatasetSubset(full_dataset, val_indices, val_transform)
@@ -249,15 +291,17 @@ val_ds = DatasetSubset(full_dataset, val_indices, val_transform)
 
 ```
 tests/
+├── conftest.py            # Shared pytest fixtures
 ├── test_centralized.py    # CentralizedConfig, CentralizedTrainer
 ├── test_cli.py            # CLI argument parsing and validation
 ├── test_config_loading.py # YAML config loading and schema validation
+├── test_configuration.py  # Additional configuration tests
 ├── test_datasets.py       # Dataset registry and loading functions
+├── test_download.py       # Download functionality tests
 ├── test_evaluation.py     # EvaluationResults, metrics computation
 ├── test_preprocessing.py  # Transforms, augmentation levels
 ├── test_simulation.py     # SimulationConfig, FLSimulator, FedAvg
-├── test_splits.py         # IID/Non-IID splitting utilities
-└── test_configuration.py  # Shared pytest fixtures
+└── test_splits.py         # IID/Non-IID splitting utilities
 ```
 
 ### Running Tests
@@ -267,7 +311,7 @@ tests/
 pytest tests/ -v
 
 # With coverage
-pytest --cov=src tests/
+pytest --cov=src --cov-report=term-missing tests/
 
 # Specific module
 pytest tests/test_simulation.py -v
@@ -280,7 +324,7 @@ pytest -m slow tests/ -v
 
 - Unit tests use mocked data (no real datasets required)
 - Integration tests marked with `@pytest.mark.slow` (deselected by default)
-- Fixtures in `test_configuration.py` for common setup
+- Fixtures in `conftest.py` and `test_configuration.py` for common setup
 - Assert both return values and side effects (file creation, etc.)
 
 ---
@@ -335,7 +379,7 @@ Both `CentralizedTrainer` and `FLSimulator` have:
 # In save_checkpoint:
 checkpoint = {
     "existing_field": ...,
-    "new_field": self.new_state,  # Add
+    "new_field": self.new_state,
 }
 
 # In load_checkpoint:
@@ -395,15 +439,15 @@ else:
 
 ### Memory Management
 
-- `batch_size=8` default (fits 8GB VRAM with small variant)
+- `batch_size=8` default (fits 4GB VRAM with small variant)
+- Gradient accumulation (`gradient_accumulation_steps=4`) for effective BS=32
 - `num_workers=4` for data loading (Windows: may need `num_workers=0`)
-- AMP enabled by default (`use_amp=True`) for ~2x speedup
-- Gradient checkpointing not implemented (model is already lightweight)
+- AMP disabled by default for training stability
 
 ### Bottlenecks
 
-1. **Data Loading**: ISIC datasets are large (25k+ images) → use caching or SSD
-2. **FL Communication**: Model params serialized each round → ~60MB per round
+1. **Data Loading**: Large datasets → use SSD
+2. **FL Communication**: ~112MB model params per round (small variant, fp32)
 3. **Evaluation**: Full dataset inference → batch processing
 
 ---
@@ -412,10 +456,10 @@ else:
 
 Before committing changes, verify:
 
-1. **Tests Pass**: `pytest tests/ -v` (102 pass, 2 deselected expected)
-2. **No Import Errors**: `python -c "from src.federated.simulation import FLSimulator"`
-3. **CLI Help Works**: `python run_experiment.py --help`
-4. **Type Hints Valid**: `mypy src/` (if configured)
+1. **Tests Pass**: `pytest tests/ -v`
+2. **Linter Passes**: `ruff check .`
+3. **No Import Errors**: `python -c "from src.federated.simulation import FLSimulator"`
+4. **CLI Help Works**: `python run_experiment.py --help`
 5. **Config Round-Trip**: Config → dict → Config preserves all values
 
 ---
@@ -429,17 +473,17 @@ Before committing changes, verify:
 # Run tests
 pytest tests/ -v
 
+# Run tests with coverage
+pytest --cov=src --cov-report=term-missing tests/
+
+# Lint
+ruff check .
+
 # Centralized training
-python run_experiment.py --mode centralized --epochs 10 --datasets HAM10000
+python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
 
 # Federated training
-python run_experiment.py --mode federated --rounds 10 --noniid-type dirichlet
-
-# Federated with partial client participation (50%)
-python run_experiment.py --mode federated --rounds 20 --client-selection 0.5
-
-# Federated with parallel training (CPU)
-python run_experiment.py --mode federated --rounds 10 --parallel-clients 4
+python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000.yaml
 
 # Resume training
 python run_experiment.py --mode federated --resume outputs/fed_xxx/checkpoints/checkpoint_round_5.pt --rounds 20
@@ -457,6 +501,7 @@ python run_download.py --verify
 
 1. **No Multi-GPU**: Single GPU training only
 2. **Limited Aggregation**: Only FedAvg implemented (no FedProx, SCAFFOLD, etc.)
+3. **No Differential Privacy**: No DP-SGD or noise mechanisms
 
 ### Client Participation Options
 
@@ -466,18 +511,6 @@ Two different mechanisms for partial client participation:
 |----------|------------|---------|-------------|
 | `--participation` | `participation` | Flower/YAML | Sets `fraction_fit` and `fraction_evaluate` |
 | `--client-selection` | `client_selection_fraction` | FLSimulator | Random selection each round |
-
-**When to use which:**
-- **`--participation`**: Use with Flower-based federation via YAML configs
-- **`--client-selection`**: Use with custom `FLSimulator` for programmatic control
-
-Both achieve partial participation but through different code paths.
-
-### Recent Improvements (v2.0)
-
-- ✅ **Client Selection**: `client_selection_fraction` enables partial participation
-- ✅ **Parallel Training**: `parallel_clients` for concurrent CPU training
-- ✅ **Configurable Splits**: `train_val_split` parameter replaces hardcoded 80/20
 
 ---
 

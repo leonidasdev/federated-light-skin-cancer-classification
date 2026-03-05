@@ -57,6 +57,29 @@ def get_device(device: Optional[str] = None) -> torch.device:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     return torch.device(device)
 
+
+# =============================================================================
+# AMP Compatibility
+# =============================================================================
+# Use ``torch.amp.autocast`` if available (PyTorch >= 2.0),
+# otherwise fall back to the deprecated ``torch.cuda.amp.autocast``.
+
+try:
+    _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
+except Exception:
+    _HAS_TORCH_AMP_AUTOCAST = False
+
+
+def autocast() -> torch.amp.autocast:
+    """Return the appropriate autocast context manager for the current PyTorch version.
+
+    Returns:
+        Context manager for automatic mixed precision.
+    """
+    if _HAS_TORCH_AMP_AUTOCAST:
+        return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
+    return torch.cuda.amp.autocast()
+
 # =============================================================================
 # Model Utilities
 # =============================================================================

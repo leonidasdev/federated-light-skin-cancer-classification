@@ -22,29 +22,11 @@ import torch.nn as nn
 # Use torch.amp GradScaler when available; fallback to legacy scaler if necessary
 from torch.utils.data import DataLoader
 from flwr.client import NumPyClient
-from flwr.client import Client as FLClient
 from flwr.common import NDArrays, Scalar
 from tqdm import tqdm
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
-
-# =============================================================================
-# AMP Compatibility
-# =============================================================================
-# Use `torch.amp.autocast` if available (PyTorch >=2.0),
-# otherwise fall back to the deprecated `torch.cuda.amp.autocast`.
-
-try:
-    _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
-except Exception:
-    _HAS_TORCH_AMP_AUTOCAST = False
-
-
-def _autocast():
-    """Return appropriate autocast context manager based on PyTorch version."""
-    if _HAS_TORCH_AMP_AUTOCAST:
-        return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
-    return torch.cuda.amp.autocast()
+from ..utils.helpers import autocast
 
 
 # =============================================================================
@@ -60,16 +42,18 @@ class SkinCancerClient(NumPyClient):
     dermoscopy dataset in the federated learning setup.
 
     Args:
-        client_id: Unique identifier for this client (1-4)
-        model: DSCATNet model instance
-        train_loader: DataLoader for training data
-        val_loader: DataLoader for validation data
-        device: Device to run training on
-        local_epochs: Number of local training epochs per round
-        learning_rate: Learning rate for optimizer
-        class_weights: Optional class weights for imbalanced data
-        use_amp: Enable Automatic Mixed Precision (AMP) for faster training
-        scheduler_t_max: T_max for CosineAnnealingLR scheduler (typically num_rounds)
+        client_id: Unique identifier for this client (1-4).
+        model: DSCATNet model instance.
+        train_loader: DataLoader for training data.
+        val_loader: DataLoader for validation data.
+        device: Device to run training on.
+        local_epochs: Number of local training epochs per round.
+        learning_rate: Learning rate for optimizer.
+        weight_decay: Weight decay for optimizer (paper-aligned default: 0.0).
+        class_weights: Optional class weights for imbalanced data.
+        use_amp: Enable Automatic Mixed Precision (AMP) for faster training.
+        scheduler_type: LR scheduler type ("none" or "cosine").
+        scheduler_t_max: T_max for CosineAnnealingLR scheduler (typically num_rounds).
     """
 
     def __init__(
@@ -81,8 +65,10 @@ class SkinCancerClient(NumPyClient):
         device: torch.device,
         local_epochs: int = 1,
         learning_rate: float = 1e-3,
+        weight_decay: float = 0.0,
         class_weights: Optional[torch.Tensor] = None,
         use_amp: bool = True,
+        scheduler_type: str = "none",
         scheduler_t_max: int = 100,
     ):
         self.client_id = client_id
@@ -123,19 +109,23 @@ class SkinCancerClient(NumPyClient):
         else:
             self.criterion = nn.CrossEntropyLoss()
 
-        # Optimizer
+        # Optimizer (paper-aligned: Adam with weight_decay=0.0)
         self.optimizer = torch.optim.Adam(
             self.model.parameters(),
             lr=learning_rate,
-            weight_decay=1e-4
+            weight_decay=weight_decay,
         )
 
-        # Scheduler for learning rate decay
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer,
-            T_max=self.scheduler_t_max,
-            eta_min=1e-6
-        )
+        # Scheduler for learning rate decay (paper-aligned: "none")
+        self.scheduler_type = scheduler_type
+        if scheduler_type == "cosine":
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                self.optimizer,
+                T_max=self.scheduler_t_max,
+                eta_min=1e-6,
+            )
+        else:
+            self.scheduler = None
 
         # Training history
         self.history: Dict[str, List[float]] = {
@@ -182,8 +172,9 @@ class SkinCancerClient(NumPyClient):
         self.history['train_loss'].append(train_loss)
         self.history['train_acc'].append(train_acc)
 
-        # Step scheduler
-        self.scheduler.step()
+        # Step scheduler (if configured)
+        if self.scheduler is not None:
+            self.scheduler.step()
 
         # Prepare metrics
         metrics = {
@@ -261,7 +252,7 @@ class SkinCancerClient(NumPyClient):
                 self.optimizer.zero_grad()
 
                 if self.use_amp and self.scaler is not None:
-                    with _autocast():
+                    with autocast():
                         outputs = self.model(images)
                         loss = self.criterion(outputs, labels)
                     # Backward pass with AMP
@@ -396,25 +387,4 @@ def create_client(
         val_loader=val_loader,
         device=device,
         **kwargs
-    )
-
-
-def client_fn(client_id: str, model_config: dict, data_config: dict) -> FLClient:
-    """
-    Client function for Flower's simulation mode.
-
-    This function is called by Flower to create client instances.
-
-    Args:
-        client_id: String client identifier
-        model_config: Model configuration dictionary
-        data_config: Data configuration dictionary
-
-    Returns:
-        Flower Client instance
-    """
-    # This will be implemented when we set up the full simulation
-    # For now, return a placeholder
-    raise NotImplementedError(
-        "client_fn should be implemented with actual data loaders"
     )

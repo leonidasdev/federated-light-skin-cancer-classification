@@ -21,8 +21,9 @@ Reference: Adapted for Federated Learning based on the original DSCATNet paper (
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Any
+from typing import Dict, Any, List
 import logging
+import numpy as np
 
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock
@@ -304,14 +305,34 @@ def create_dscatnet(
     )
 
 
-# Convenience functions for FL
-def get_model_parameters(model: nn.Module) -> list:
-    """Get model parameters as a list of numpy arrays (for Flower)."""
+# =============================================================================
+# FL Utility Functions
+# =============================================================================
+
+
+def get_model_parameters(model: nn.Module) -> List[np.ndarray]:
+    """Get model parameters as a list of numpy arrays.
+
+    Used by Flower FL framework for parameter serialization.
+
+    Args:
+        model: PyTorch model instance.
+
+    Returns:
+        List of numpy arrays, one per state dict entry.
+    """
     return [val.cpu().numpy() for val in model.state_dict().values()]
 
 
-def set_model_parameters(model: nn.Module, parameters: list) -> None:
-    """Set model parameters from a list of numpy arrays (for Flower)."""
+def set_model_parameters(model: nn.Module, parameters: List[np.ndarray]) -> None:
+    """Set model parameters from a list of numpy arrays.
+
+    Used by Flower FL framework for parameter deserialization.
+
+    Args:
+        model: PyTorch model instance.
+        parameters: List of numpy arrays matching the model's state dict.
+    """
     params_dict = zip(model.state_dict().keys(), parameters)
     state_dict = {k: torch.tensor(v) for k, v in params_dict}
     model.load_state_dict(state_dict, strict=True)

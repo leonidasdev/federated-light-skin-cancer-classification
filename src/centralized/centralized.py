@@ -32,25 +32,7 @@ from ..data.datasets import (
     DatasetSubset,
 )
 from ..data.preprocessing import get_train_transforms, get_val_transforms
-
-# =============================================================================
-# AMP Compatibility
-# =============================================================================
-# Use `torch.amp.autocast` if available (PyTorch >=2.0),
-# otherwise fall back to the deprecated `torch.cuda.amp.autocast`.
-
-try:
-    _HAS_TORCH_AMP_AUTOCAST = hasattr(torch, "amp") and hasattr(torch.amp, "autocast")
-except Exception:
-    _HAS_TORCH_AMP_AUTOCAST = False
-
-
-def _autocast():
-    """Return appropriate autocast context manager based on PyTorch version."""
-    if _HAS_TORCH_AMP_AUTOCAST:
-        return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
-    return torch.cuda.amp.autocast()
-
+from ..utils.helpers import autocast
 
 logger = logging.getLogger(__name__)
 
@@ -406,7 +388,7 @@ class CentralizedTrainer:
 
             # Use AMP for faster training on compatible GPUs
             if self.use_amp and self.scaler is not None:
-                with _autocast():
+                with autocast():
                     outputs = self.model(images)
                     loss = criterion(outputs, labels)
                     # Scale loss by accumulation steps for correct gradient magnitude

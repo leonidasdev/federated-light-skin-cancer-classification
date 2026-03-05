@@ -1,8 +1,8 @@
 # Federated Learning for Skin Cancer Classification with DSCATNet
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![PyTorch 2.0+](https://img.shields.io/badge/pytorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![Flower 1.13+](https://img.shields.io/badge/flower-1.13+-green.svg)](https://flower.dev/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch 2.7+](https://img.shields.io/badge/pytorch-2.7+-ee4c2c.svg)](https://pytorch.org/)
+[![Flower 1.25+](https://img.shields.io/badge/flower-1.25+-green.svg)](https://flower.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 ---
@@ -38,7 +38,7 @@ This project evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCA
 
 ### Key Features
 
-- **DSCATNet Implementation**: Lightweight ViT with dual-scale cross-attention (~15M parameters)
+- **DSCATNet Implementation**: Lightweight ViT with dual-scale cross-attention (~29.4M parameters, small variant)
 - **Federated Learning**: Flower-based FL simulation with FedAvg aggregation
 - **Multiple Non-IID Modes**: Natural (dataset-based), Dirichlet, label skew, quantity skew
 - **5 Dermoscopy Datasets**: HAM10000, ISIC 2018/2019/2020, PAD-UFES-20
@@ -133,12 +133,13 @@ federated-light-skin-cancer-classification/
 │
 ├── docs/                             # Documentation
 │   ├── ARCHITECTURE.md               # System architecture
-│   ├── CONFIG_OPTIONS.md             # Configuration reference
-│   └── CONTRIBUTING.md               # Contributing guidelines
+│   ├── CLAUDE.md                     # AI assistant context
+│   └── CONFIG-OPTIONS-GUIDE.md       # Configuration reference
 │
 ├── run_experiment.py                 # Main entry point
 ├── run_download.py                   # Dataset downloader
 ├── run_tests.py                      # Test runner
+├── CONTRIBUTING.md                   # Contribution guidelines
 ├── requirements.txt                  # Python dependencies
 ├── pyproject.toml                    # Project configuration
 └── README.md
@@ -189,7 +190,7 @@ Input Image (224×224×3)
 | Variant | Embed Dim | Depth | Heads | Parameters | Use Case |
 |---------|-----------|-------|-------|------------|----------|
 | `tiny`  | 192       | 4     | 3     | ~5M        | Resource-constrained FL clients |
-| `small` | 384       | 6     | 6     | ~15M       | **Default** - balanced performance |
+| `small` | 384       | 6     | 6     | ~29.4M     | **Default** - balanced performance |
 | `base`  | 384       | 8     | 6     | ~20M       | Maximum accuracy |
 
 ---
@@ -232,7 +233,7 @@ python -c "import torch; import flwr; print(f'PyTorch: {torch.__version__}'); pr
 
 | Resource | Minimum | Recommended |
 |----------|---------|-------------|
-| Python   | 3.9+    | 3.10+       |
+| Python   | 3.10+   | 3.10+       |
 | RAM      | 8GB     | 16GB+       |
 | GPU VRAM | 4GB     | 8GB+        |
 | Disk     | 30GB    | 50GB+       |
@@ -720,7 +721,7 @@ python run_experiment.py --mode <MODE> [OPTIONS]
 
 | Argument | Type | Description |
 |----------|------|-------------|
-| `--model-variant` | string | DSCATNet variant: `tiny` (~5M), `small` (~15M), `base` (~20M) |
+| `--model-variant` | string | DSCATNet variant: `tiny` (~5M), `small` (~29.4M), `base` (~39M) |
 | `--num-classes` | int | Number of output classes (default: 7) |
 | `--image-size` | int | Input image size (default: 224) |
 
@@ -728,7 +729,7 @@ python run_experiment.py --mode <MODE> [OPTIONS]
 
 | Argument | Type | Description |
 |----------|------|-------------|
-| `--weight-decay` | float | Weight decay for optimizer (default: 0.01) |
+| `--weight-decay` | float | Weight decay for optimizer (default: 0.0) |
 | `--augmentation` | string | Data augmentation level: `none`, `light`, `medium`, `heavy` |
 | `--early-stopping` | int | Early stopping patience (epochs/rounds without improvement) |
 | `--checkpoint-interval` | int | Save checkpoint every N epochs/rounds |
@@ -938,11 +939,11 @@ Additional documentation is available in the `docs/` directory:
 | Document | Description |
 |----------|-------------|
 | [docs/README.md](docs/README.md) | Documentation index and navigation |
-| [docs/CONFIG_OPTIONS.md](docs/CONFIG_OPTIONS.md) | Complete configuration reference |
+| [docs/CONFIG-OPTIONS-GUIDE.md](docs/CONFIG-OPTIONS-GUIDE.md) | Complete configuration reference |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System architecture and module documentation |
-| [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | Contributing guidelines and code style |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributing guidelines and code style |
 
-For AI assistants (Claude, GPT, etc.), see [CLAUDE.md](CLAUDE.md) for comprehensive codebase context.
+For AI assistants (Claude, GPT, etc.), see [docs/CLAUDE.md](docs/CLAUDE.md) for comprehensive codebase context.
 
 ---
 

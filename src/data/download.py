@@ -182,7 +182,6 @@ def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Pa
 def check_kaggle_available() -> bool:
     """Check if Kaggle CLI is available and configured."""
     import shutil
-    import subprocess
 
     # Check if kaggle command exists
     if shutil.which("kaggle") is None:
@@ -219,7 +218,6 @@ def download_ham10000_kaggle(
     """
     import subprocess
     import shutil
-    import zipfile
 
     if data_root is None:
         data_root = get_data_root()
@@ -231,7 +229,7 @@ def download_ham10000_kaggle(
     info = DATASET_INFO["HAM10000"]
 
     print(f"\n{'='*60}")
-    print(f"Downloading: HAM10000 from Kaggle")
+    print("Downloading: HAM10000 from Kaggle")
     print(f"Dataset: {info['kaggle_dataset']}")
     print(f"Expected images: ~{info['approx_images']:,}")
     print(f"{'='*60}")
@@ -311,7 +309,7 @@ def download_ham10000_kaggle(
         total_images = len(list(part1_dir.glob("*.jpg"))) + len(list(part2_dir.glob("*.jpg")))
 
         print(f"\n{'='*60}")
-        print(f"HAM10000 Download Summary:")
+        print("HAM10000 Download Summary:")
         print(f"  Total images: {total_images:,}")
         print(f"  Location: {dataset_path}")
         print(f"{'='*60}")
@@ -360,7 +358,7 @@ def download_padufes20_mendeley(
     info = DATASET_INFO["PAD-UFES-20"]
 
     print(f"\n{'='*60}")
-    print(f"Downloading: PAD-UFES-20 from Mendeley Data")
+    print("Downloading: PAD-UFES-20 from Mendeley Data")
     print(f"DOI: {info['mendeley_doi']}")
     print(f"Expected images: ~{info['approx_images']:,}")
     print(f"{'='*60}")
@@ -421,8 +419,7 @@ def download_padufes20_mendeley(
             namelist = zip_ref.namelist()
 
             # PAD-UFES-20 ZIP structure may have a top-level folder
-            # Find the actual data location
-            has_top_folder = any(n.startswith("zr7vgbcyr2") or n.startswith("PAD-UFES-20") for n in namelist[:10])
+            _ = any(n.startswith("zr7vgbcyr2") or n.startswith("PAD-UFES-20") for n in namelist[:10])
 
             zip_ref.extractall(temp_dir)
 
@@ -490,7 +487,7 @@ def download_padufes20_mendeley(
                 total_images += len(list(part_dir.glob("*.png")))
 
         print(f"\n{'='*60}")
-        print(f"PAD-UFES-20 Download Summary:")
+        print("PAD-UFES-20 Download Summary:")
         print(f"  Total images: {total_images:,}")
         print(f"  Location: {dataset_path}")
         print(f"{'='*60}")

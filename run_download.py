@@ -1,9 +1,12 @@
 #!/usr/bin/env python
+# =============================================================================
+# Dataset Download Runner
+# =============================================================================
 """
 Dataset Download Runner.
 
-Wrapper script to download dermoscopy datasets from ISIC Archive.
-This provides a clean entry point from the project root.
+Wrapper script to download dermoscopy datasets from ISIC Archive,
+Kaggle, and Mendeley. Provides a clean entry point from the project root.
 
 Usage:
     python run_download.py --download-all          # Download all datasets
@@ -12,9 +15,17 @@ Usage:
     python run_download.py --help                  # Show all options
 """
 
+# =============================================================================
+# Imports
+# =============================================================================
+
 import sys
 import runpy
 from pathlib import Path
+
+# =============================================================================
+# Main
+# =============================================================================
 
 if __name__ == "__main__":
     # Get path to the download module
