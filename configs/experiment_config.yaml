@@ -36,7 +36,7 @@ data:
   
   # Preprocessing
   normalization: imagenet   # Options: imagenet, dermoscopy
-  augmentation_level: medium  # Options: light, medium, heavy
+  augmentation_level: none    # Options: none, light, medium, heavy
   
   # Classification Mode
   # Options:
@@ -60,7 +60,7 @@ centralized:
   epochs: 100
   batch_size: 8
   learning_rate: 0.001
-  weight_decay: 0.0001
+  weight_decay: 0.0
   early_stopping_patience: 15
   pooled_data: true         # Combine all datasets
 

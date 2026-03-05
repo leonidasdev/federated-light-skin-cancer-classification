@@ -62,14 +62,14 @@ variants:
     depth: 6
     num_heads: 6
     mlp_ratio: 4.0
-    approx_params: "~15M"
+    approx_params: "~29.4M"
     
   base:
     embed_dim: 384
     depth: 8
     num_heads: 6
     mlp_ratio: 4.0
-    approx_params: "~20M"
+    approx_params: "~39M"
 
 # =============================================================================
 # Notes

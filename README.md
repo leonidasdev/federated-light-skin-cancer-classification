@@ -34,7 +34,7 @@
 
 This project evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCATNet)** in a **Federated Learning** setting for dermoscopic skin lesion classification.
 
-**This is a Master's thesis project** investigating whether lightweight Vision Transformers can maintain their classification accuracy under federated learning constraints, specifically with non-IID (non-Independent and Identically Distributed) data across multiple simulated hospitals/institutions.
+**This is a thesis project** investigating whether lightweight Vision Transformers can maintain their classification accuracy under federated learning constraints, specifically with non-IID (non-Independent and Identically Distributed) data across multiple simulated hospitals/institutions.
 
 ### Key Features
 
@@ -137,8 +137,6 @@ federated-light-skin-cancer-classification/
 │   ├── test_simulation.py            # FL simulation tests
 │   ├── test_splits.py                # Data splitting tests
 │   └── test_strategy.py              # FedAvg strategy tests
-│   ├── test_simulation.py            # FL simulation tests
-│   └── test_splits.py                # Data splitting tests
 │
 ├── docs/                             # Documentation
 │   ├── architecture.md               # System architecture

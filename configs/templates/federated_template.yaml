@@ -70,7 +70,7 @@ federated:
   # Learning Rate Schedule
   # ---------------------------------------------------------------------------
   lr_scheduler: cosine            # Options: cosine, step, plateau, none
-  warmup_epochs: 5                # Warmup epochs (0-50)
+  warmup_epochs: 0                # Warmup epochs (0-50)
   min_lr: 0.000001                # Minimum learning rate (>=0, <=1.0)
   
   # ---------------------------------------------------------------------------

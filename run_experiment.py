@@ -93,7 +93,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
 
 
 def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
-    """Evaluate a trained model checkpoint using the DatasetRegistry."""
+    """Evaluate a trained model checkpoint using the DATASET_REGISTRY."""
     from src.models.dscatnet import create_dscatnet
     from src.evaluation.metrics import ModelEvaluator
     from src.data.datasets import (
@@ -762,7 +762,7 @@ Examples:
         "--model-variant",
         type=str,
         choices=["tiny", "small", "base"],
-        help="DSCATNet variant: tiny (~5M params), small (~15M), base (~20M)"
+        help="DSCATNet variant: tiny (~5M params), small (~29.4M), base (~39M)"
     )
     model_group.add_argument("--num-classes", type=int, help="Number of output classes (default: 7)")
     model_group.add_argument("--image-size", type=int, help="Input image size (default: 224)")
@@ -771,7 +771,7 @@ Examples:
     # Training Hyperparameters
     # =============================================================================
     train_group = parser.add_argument_group("Training Hyperparameters")
-    train_group.add_argument("--weight-decay", type=float, help="Weight decay for optimizer (default: 0.01)")
+    train_group.add_argument("--weight-decay", type=float, help="Weight decay for optimizer (default: 0.0)")
     train_group.add_argument(
         "--augmentation",
         type=str,

@@ -92,14 +92,14 @@ variants:
     depth: 6
     num_heads: 6
     mlp_ratio: 4.0
-    approx_params: "~15M"
+    approx_params: "~29.4M"
     
   base:
     embed_dim: 384
     depth: 8
     num_heads: 6
     mlp_ratio: 4.0
-    approx_params: "~20M"
+    approx_params: "~39M"
 
 # =============================================================================
 # Usage Notes
@@ -107,8 +107,8 @@ variants:
 #
 # Resource Requirements (approximate):
 #   - tiny:  5M params, ~2GB GPU RAM, fast training
-#   - small: 15M params, ~4GB GPU RAM, balanced
-#   - base:  20M params, ~6GB GPU RAM, best accuracy
+#   - small: 29.4M params, ~4GB GPU RAM, balanced
+#   - base:  39M params, ~6GB GPU RAM, best accuracy
 #
 # Recommendations:
 #   - Use 'tiny' for quick prototyping or resource-constrained FL clients

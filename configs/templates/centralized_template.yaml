@@ -38,7 +38,7 @@ centralized:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small                # Options: tiny (~5M), small (~15M), base (~20M)
+    variant: small                # Options: tiny (~5M), small (~29.4M), base (~39M)
     image_size: 224               # Input image size (32-512)
     num_classes: 7                # 7: standard, 8: ISIC2019 with SCC, 2: binary
     pretrained: true              # Use pretrained weights if available
@@ -67,7 +67,7 @@ centralized:
     #   light:  Horizontal/vertical flip
     #   medium: Flips + rotation + color jitter
     #   heavy:  Medium + random erasing + affine transforms
-    level: medium
+    level: none
     use_dermoscopy_norm: false    # false=ImageNet normalization, true=dermoscopy
 
   # ---------------------------------------------------------------------------

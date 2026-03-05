@@ -205,7 +205,7 @@ class CentralizedTrainer:
         return train_transform, val_transform
 
     def setup_data(self) -> None:
-        """Setup combined dataset from all sources using the DatasetRegistry."""
+        """Setup combined dataset from all sources using the DATASET_REGISTRY."""
         from ..data.datasets import (
             DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
         )

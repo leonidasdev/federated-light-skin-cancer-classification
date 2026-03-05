@@ -35,7 +35,7 @@ centralized:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small      # tiny (~5M), small (~15M), base (~20M)
+    variant: small      # tiny (~5M), small (~29.4M), base (~39M)
     image_size: 224
     num_classes: 7
     pretrained: true
@@ -50,7 +50,7 @@ centralized:
     lr: 0.001           # Learning rate (matches DSCATNet paper)
     weight_decay: 0.0   # No weight decay (matches DSCATNet paper's Adam)
     epochs: 200         # Max epochs (paper trains ~200 epochs)
-    warmup_epochs: 5
+    warmup_epochs: 0
     scheduler: none     # No scheduler (matches DSCATNet paper)
     min_lr: 0.000001
     use_amp: false      # AMP disabled to avoid NaN instability
@@ -59,7 +59,7 @@ centralized:
   # Augmentation Configuration
   # ---------------------------------------------------------------------------
   augmentation:
-    level: medium       # Options: light, medium, heavy
+    level: none       # No augmentation (matches DSCATNet paper)
     use_dermoscopy_norm: false
 
   # ---------------------------------------------------------------------------
@@ -73,5 +73,6 @@ centralized:
   # Evaluation & Checkpointing
   # ---------------------------------------------------------------------------
   evaluation:
+    checkpoint_interval: 5
     early_stopping_patience: 15
     use_class_weights: true  # Handle class imbalance

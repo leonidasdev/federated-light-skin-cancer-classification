@@ -16,7 +16,7 @@
 ## Project Overview
 
 **Name**: Federated Learning for Skin Cancer Classification with DSCATNet  
-**Type**: Master's Thesis Research Project  
+**Type**: Thesis Research Project  
 **Domain**: Medical Image Classification, Federated Learning, Vision Transformers  
 **Language**: Python 3.10+  
 **Framework Stack**: PyTorch 2.7+, Flower 1.25+ (FL), scikit-learn, PIL/Pillow

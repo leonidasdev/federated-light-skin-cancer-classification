@@ -2,7 +2,7 @@
 # Tests for Dataset Registry and Utilities
 # =============================================================================
 """
-Tests for DatasetRegistry, dataset loading, and utility functions.
+Tests for DATASET_REGISTRY, dataset loading, and utility functions.
 
 Tests:
 1. DATASET_REGISTRY structure and content
@@ -34,7 +34,7 @@ from src.data.datasets import (
 # =============================================================================
 
 
-class TestDatasetRegistry:
+class TestDatasetRegistryDict:
     """Tests for DATASET_REGISTRY structure."""
 
     def test_registry_not_empty(self):

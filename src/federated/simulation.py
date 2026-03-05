@@ -288,7 +288,7 @@ class FLSimulator:
         """
         Setup natural non-IID: each client gets a different dataset.
 
-        Uses the DatasetRegistry for centralized path resolution.
+        Uses the DATASET_REGISTRY for centralized path resolution.
 
         By default:
         - Client 0: HAM10000
@@ -413,7 +413,7 @@ class FLSimulator:
         """
         Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.
 
-        Uses the DatasetRegistry for centralized path resolution.
+        Uses the DATASET_REGISTRY for centralized path resolution.
 
         This creates heterogeneous label distributions across clients.
         Lower alpha = more heterogeneous (more non-IID)

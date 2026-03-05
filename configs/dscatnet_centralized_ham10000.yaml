@@ -35,7 +35,7 @@ centralized:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small      # tiny (~5M), small (~15M), base (~20M)
+    variant: small      # tiny (~5M), small (~29.4M), base (~39M)
     image_size: 224
     num_classes: 7
     pretrained: true
