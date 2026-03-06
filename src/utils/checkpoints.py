@@ -156,11 +156,11 @@ class CheckpointManager:
             if load_best:
                 checkpoint_path = self.checkpoint_dir / "best_model.pt"
             else:
-                # Find latest
-                checkpoints = list(self.checkpoint_dir.glob("checkpoint_*.pt"))
+                # Find latest by name (not mtime, which can be identical in CI)
+                checkpoints = sorted(self.checkpoint_dir.glob("checkpoint_*.pt"))
                 if not checkpoints:
                     raise FileNotFoundError("No checkpoints found")
-                checkpoint_path = max(checkpoints, key=lambda p: p.stat().st_mtime)
+                checkpoint_path = checkpoints[-1]
 
         checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=False)
 
