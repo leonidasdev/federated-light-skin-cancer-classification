@@ -52,7 +52,7 @@ federated:
   min_evaluate_clients: 4
   min_available_clients: 4
   
-  # Client Selection (new features)
+  # Optional client selection
   # client_selection_fraction: 0.75  # Randomly select 75% of clients per round
   # parallel_clients: 2              # Number of clients to train in parallel
   

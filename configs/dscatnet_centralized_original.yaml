@@ -22,14 +22,17 @@ centralized:
   # Data Configuration
   # ---------------------------------------------------------------------------
   data_root: ./data
-  output_dir: ./outputs\n\n  datasets:\n    - PAD-UFES-20
+  output_dir: ./outputs
+  datasets:
+    - PAD-UFES-20
 
   # ---------------------------------------------------------------------------
   # Model Configuration
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small\n    image_size: 224
+    variant: small
+    image_size: 224
     num_classes: 7
     pretrained: true
 
