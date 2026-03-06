@@ -1066,16 +1066,18 @@ class FLSimulator:
         # Training loop with progress bar
         start_time = time.time()
 
+        # Round-level progress bar routed to stdout for proper \r handling
+        total_rounds = self.config.num_rounds - start_round + 1
         pbar = tqdm(
-            range(start_round, self.config.num_rounds + 1),
-            desc="FL Rounds",
+            total=total_rounds,
+            desc=f"Round {start_round}/{self.config.num_rounds}",
             unit="round",
             file=sys.stdout,
             ncols=100,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
         )
 
-        for round_num in pbar:
+        for round_num in range(start_round, self.config.num_rounds + 1):
             pbar.set_description(f"Round {round_num}/{self.config.num_rounds}")
             metrics = self.run_round(round_num, pbar)
 
@@ -1109,9 +1111,10 @@ class FLSimulator:
 
             # Early stopping
             if self.rounds_without_improvement >= self.config.early_stopping_patience:
-                pbar.set_description(f"Early stop at round {round_num}")
                 logger.info(f"Early stopping at round {round_num}")
                 break
+
+            pbar.update(1)
 
         pbar.close()
         total_time = time.time() - start_time

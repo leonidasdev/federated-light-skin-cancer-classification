@@ -664,15 +664,17 @@ class CentralizedTrainer:
         # Training loop
         start_time = time.time()
 
-        # Epoch progress bar (no initial desc to avoid ghost render before loop)
+        # Epoch-level progress bar routed to stdout for proper \r handling
+        total_epochs = self.config.num_epochs - start_epoch + 1
         epoch_pbar = tqdm(
-            range(start_epoch, self.config.num_epochs + 1),
+            total=total_epochs,
+            desc=f"Epoch {start_epoch}/{self.config.num_epochs}",
             file=sys.stdout,
             ncols=100,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
         )
 
-        for epoch in epoch_pbar:
+        for epoch in range(start_epoch, self.config.num_epochs + 1):
             epoch_start = time.time()
 
             epoch_pbar.set_description(f"Epoch {epoch}/{self.config.num_epochs}")
@@ -744,6 +746,9 @@ class CentralizedTrainer:
                 logger.info("Early stopping triggered")
                 break
 
+            epoch_pbar.update(1)
+
+        epoch_pbar.close()
         total_time = time.time() - start_time
 
         # Save final results
