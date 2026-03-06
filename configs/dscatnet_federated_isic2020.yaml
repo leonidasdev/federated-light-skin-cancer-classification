@@ -74,3 +74,4 @@ federated:
   evaluation:
     checkpoint_interval: 1
     early_stopping_patience: 10
+    use_class_weights: true  # Handle class imbalance (matches centralized trainer)

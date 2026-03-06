@@ -490,6 +490,8 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
                 flat_config["checkpoint_interval"] = evl["checkpoint_interval"]
             if "early_stopping_patience" in evl:
                 flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
+            if "use_class_weights" in evl:
+                flat_config["use_class_weights"] = evl["use_class_weights"]
 
         config = SimulationConfig.from_dict(flat_config)
     elif checkpoint_config:

@@ -168,6 +168,9 @@ class SimulationConfig:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     num_workers: int = 2
 
+    # Class weights for handling class imbalance in loss function
+    use_class_weights: bool = True
+
     # Parallelism configuration
     # Number of clients to train in parallel (CPU only, for GPU use 1)
     # Set to 0 for auto-detection based on CPU count
@@ -238,6 +241,9 @@ class FLSimulator:
 
         # Client data
         self.client_data: Dict[int, ClientData] = {}
+
+        # Class weights for handling imbalanced data (computed after setup)
+        self.class_weights: Optional[torch.Tensor] = None
 
         # Training history
         self.history = {
@@ -408,6 +414,40 @@ class FLSimulator:
         else:
             logger.warning(f"Unknown noniid_type: {self.config.noniid_type}, using natural non-IID")
             self.setup_natural_noniid()
+
+        # Compute class weights after client setup
+        if self.config.use_class_weights:
+            self._compute_class_weights()
+        else:
+            self.class_weights = None
+
+    def _compute_class_weights(self) -> None:
+        """Compute global class weights from all clients' class distributions.
+
+        Uses inverse frequency weighting: weight_c = N_total / (C * N_c)
+        where N_total is the total number of training samples, C is the
+        number of classes, and N_c is the number of samples in class c.
+
+        This matches the centralized trainer's class weight computation
+        for a fair benchmark comparison.
+        """
+        from collections import Counter
+
+        global_counts: Counter = Counter()
+        for client in self.client_data.values():
+            for cls, count in client.class_distribution.items():
+                global_counts[int(cls)] += count
+
+        total = sum(global_counts.values())
+        num_classes = self.config.num_classes
+
+        weights = torch.zeros(num_classes)
+        for cls, count in global_counts.items():
+            if 0 <= cls < num_classes:
+                weights[cls] = total / (num_classes * count)
+
+        self.class_weights = weights.to(self.device)
+        logger.info(f"Class weights: {dict(enumerate(weights.tolist()))}")
 
     def setup_dirichlet_noniid(self) -> None:
         """
@@ -581,7 +621,11 @@ class FLSimulator:
                 lr=self.config.learning_rate,
                 weight_decay=self.config.weight_decay,
             )
-        criterion = nn.CrossEntropyLoss()
+        # Use class weights if available (matches centralized trainer)
+        if self.class_weights is not None:
+            criterion = nn.CrossEntropyLoss(weight=self.class_weights.to(self.device))
+        else:
+            criterion = nn.CrossEntropyLoss()
         accum_steps = self.config.gradient_accumulation_steps
 
         # Training

@@ -33,6 +33,7 @@ class TestSimulationConfig:
         assert config.local_epochs == 1
         assert config.batch_size == 8  # Updated to match reduced batch size for memory efficiency
         assert config.noniid_type == "natural"
+        assert config.use_class_weights is True  # Default: handle class imbalance
 
     def test_config_to_dict(self):
         """Test config serialization."""
@@ -408,6 +409,78 @@ class TestClientData:
         assert client.num_train_samples == 100
         assert client.dataset_name == "test_dataset"
         assert sum(client.class_distribution.values()) == 100
+
+
+class TestClassWeights:
+    """Tests for class weight computation in FL simulator."""
+
+    def test_compute_class_weights(self, tmp_path):
+        """Test that class weights are computed correctly from client distributions."""
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="cw_test",
+            pretrained=False,
+            use_class_weights=True,
+            num_classes=3,
+        )
+
+        simulator = FLSimulator(config)
+
+        # Mock client data with imbalanced distributions
+        dummy_data = torch.randn(4, 3, 32, 32)
+        dummy_labels = torch.randint(0, 3, (4,))
+        dummy_loader = DataLoader(TensorDataset(dummy_data, dummy_labels), batch_size=2)
+
+        # Client 0: mostly class 0
+        simulator.client_data[0] = ClientData(
+            client_id=0, train_loader=dummy_loader, val_loader=dummy_loader,
+            num_train_samples=100, num_val_samples=20,
+            class_distribution={0: 80, 1: 10, 2: 10},
+            dataset_name="client_0",
+        )
+        # Client 1: mostly class 1
+        simulator.client_data[1] = ClientData(
+            client_id=1, train_loader=dummy_loader, val_loader=dummy_loader,
+            num_train_samples=100, num_val_samples=20,
+            class_distribution={0: 10, 1: 80, 2: 10},
+            dataset_name="client_1",
+        )
+
+        simulator._compute_class_weights()
+
+        assert simulator.class_weights is not None
+        assert simulator.class_weights.shape == (3,)
+        # Total: 200 samples, class 0: 90, class 1: 90, class 2: 20
+        # weight_0 = 200 / (3 * 90), weight_2 = 200 / (3 * 20) — class 2 should have highest weight
+        assert simulator.class_weights[2] > simulator.class_weights[0]
+        assert simulator.class_weights[2] > simulator.class_weights[1]
+
+    def test_class_weights_disabled(self, tmp_path):
+        """Test that class weights are None when disabled."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="cw_disabled_test",
+            pretrained=False,
+            use_class_weights=False,
+        )
+
+        simulator = FLSimulator(config)
+        assert simulator.class_weights is None
+
+    def test_class_weights_config_roundtrip(self):
+        """Test use_class_weights serialization round-trip."""
+        from src.federated.simulation import SimulationConfig
+
+        config = SimulationConfig(use_class_weights=False)
+        config_dict = config.to_dict()
+        restored = SimulationConfig.from_dict(config_dict)
+        assert restored.use_class_weights is False
 
 
 class TestCommunicationCost:
