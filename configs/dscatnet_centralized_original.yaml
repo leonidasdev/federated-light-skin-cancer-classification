@@ -6,8 +6,7 @@
 #   python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
 #
 # Description:
-#   Centralized (non-federated) training baseline for comparison with FL.
-#   This represents the upper-bound performance achievable with pooled data.
+#   Centralized training on PAD-UFES-20 with pooled data.
 #
 # =============================================================================
 
@@ -17,26 +16,20 @@ centralized:
   # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_centralized_baseline
-    description: "Centralized baseline training on PAD-UFES-20"
+    description: "Centralized training on PAD-UFES-20"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
   # ---------------------------------------------------------------------------
   data_root: ./data
-  output_dir: ./outputs
-  
-  # Datasets to use (will be combined for centralized training)
-  # Options: HAM10000, ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20
-  datasets:
-    - PAD-UFES-20
+  output_dir: ./outputs\n\n  datasets:\n    - PAD-UFES-20
 
   # ---------------------------------------------------------------------------
   # Model Configuration
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small      # tiny (~5M), small (~29.4M), base (~39M)
-    image_size: 224
+    variant: small\n    image_size: 224
     num_classes: 7
     pretrained: true
 
@@ -44,30 +37,30 @@ centralized:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 8       # Physical batch size (fits 4GB VRAM)
-    gradient_accumulation_steps: 4  # Effective batch size = 8 * 4 = 32 (matches paper)
-    optimizer: adam      # Adam optimizer (matches DSCATNet paper)
-    lr: 0.001           # Learning rate (matches DSCATNet paper)
-    weight_decay: 0.0   # No weight decay (matches DSCATNet paper's Adam)
-    epochs: 200         # Max epochs (paper trains ~200 epochs)
+    batch_size: 8
+    gradient_accumulation_steps: 4  # Effective batch = 8 × 4 = 32
+    optimizer: adam
+    lr: 0.001
+    weight_decay: 0.0
+    epochs: 200
     warmup_epochs: 0
-    scheduler: none     # No scheduler (matches DSCATNet paper)
+    scheduler: none
     min_lr: 0.000001
-    use_amp: false      # AMP disabled to avoid NaN instability
+    use_amp: false
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration
   # ---------------------------------------------------------------------------
   augmentation:
-    level: none       # No augmentation (matches DSCATNet paper)
+    level: none
     use_dermoscopy_norm: false
 
   # ---------------------------------------------------------------------------
   # Data Splits
   # ---------------------------------------------------------------------------
   splits:
-    val_split: 0.15     # 15% for validation
-    test_split: 0.15    # 15% for testing
+    val_split: 0.15
+    test_split: 0.15
 
   # ---------------------------------------------------------------------------
   # Evaluation & Checkpointing
@@ -75,4 +68,4 @@ centralized:
   evaluation:
     checkpoint_interval: 5
     early_stopping_patience: 15
-    use_class_weights: true  # Handle class imbalance
+    use_class_weights: true

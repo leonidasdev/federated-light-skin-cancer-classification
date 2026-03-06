@@ -13,6 +13,7 @@ federated experiments with DSCATNet on dermoscopy datasets.
 # =============================================================================
 
 import os
+import sys
 import time
 import json
 import logging
@@ -1069,6 +1070,7 @@ class FLSimulator:
             range(start_round, self.config.num_rounds + 1),
             desc="FL Rounds",
             unit="round",
+            file=sys.stdout,
             ncols=100,
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
         )

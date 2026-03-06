@@ -6,9 +6,8 @@
 #   python run_experiment.py --mode federated --config configs/dscatnet_federated_isic2018.yaml
 #
 # Description:
-#   Federated learning experiment on ISIC2018 dataset with Dirichlet-based
-#   non-IID data distribution. Hyperparameters match the HAM10000 federated
-#   benchmark for cross-dataset comparison.
+#   Federated learning on ISIC2018 (~10,015 dermoscopy images, 7 classes)
+#   with Dirichlet-based non-IID data distribution across 4 clients.
 #
 # =============================================================================
 
@@ -18,7 +17,7 @@ federated:
   # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_federated_isic2018
-    description: "FL benchmark on ISIC2018 with FedAvg"
+    description: "FL training on ISIC2018 with FedAvg"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
@@ -42,14 +41,14 @@ federated:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 8       # Physical batch size (fits 4GB VRAM)
-    gradient_accumulation_steps: 4  # Effective batch size = 8 * 4 = 32 (matches paper)
-    optimizer: adam      # Adam optimizer (matches DSCATNet paper)
-    lr: 0.001           # Learning rate (matches DSCATNet paper)
-    weight_decay: 0.0   # No weight decay (matches DSCATNet paper's Adam)
-    local_epochs: 1     # Local epochs per FL round (1 reduces client drift)
+    batch_size: 8
+    gradient_accumulation_steps: 4  # Effective batch = 8 × 4 = 32
+    optimizer: adam
+    lr: 0.001
+    weight_decay: 0.0
+    local_epochs: 1
     num_rounds: 100
-    train_val_split: 0.85  # 85% for training, 15% for validation
+    train_val_split: 0.85
 
   # ---------------------------------------------------------------------------
   # Federation Configuration
@@ -74,4 +73,4 @@ federated:
   evaluation:
     checkpoint_interval: 1
     early_stopping_patience: 10
-    use_class_weights: true  # Handle class imbalance (matches centralized trainer)
+    use_class_weights: true

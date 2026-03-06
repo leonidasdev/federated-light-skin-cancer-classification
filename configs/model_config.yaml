@@ -4,10 +4,10 @@
 #
 # Description:
 #   Architecture configuration for the Dual-Scale Cross-Attention Vision
-#   Transformer (DSCATNet) designed for dermoscopic image classification.
+#   Transformer (DSCATNet) for dermoscopic image classification.
 #
 # Reference:
-#   Based on DSCATNet architecture from PLOS ONE 2024, adapted for FL.
+#   Based on DSCATNet architecture from Yadav et al. (PLOS ONE, 2024).
 #
 # =============================================================================
 

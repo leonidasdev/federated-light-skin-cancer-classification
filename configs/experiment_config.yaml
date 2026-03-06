@@ -3,8 +3,7 @@
 # =============================================================================
 #
 # Description:
-#   Master configuration for running comparison experiments between
-#   centralized and federated learning approaches.
+#   Configuration for running skin lesion classification experiments.
 #
 # Usage:
 #   python run_experiment.py --mode comparison --config configs/experiment_config.yaml

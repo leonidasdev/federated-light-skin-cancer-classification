@@ -6,9 +6,7 @@
 #   python run_experiment.py --mode centralized --config configs/dscatnet_centralized_isic2020.yaml
 #
 # Description:
-#   Centralized (non-federated) training baseline on ISIC2020 for direct
-#   ISIC2020 is the largest ISIC dataset (~33k images).
-#   Serves as the upper-bound performance baseline with pooled data.
+#   Centralized training on ISIC2020 (~33,126 dermoscopy images, 7 classes).
 #
 # =============================================================================
 
@@ -18,7 +16,7 @@ centralized:
   # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_centralized_isic2020
-    description: "Centralized baseline training on ISIC2020"
+    description: "Centralized training on ISIC2020"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
@@ -42,16 +40,16 @@ centralized:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 8       # Physical batch size (fits 4GB VRAM)
-    gradient_accumulation_steps: 4  # Effective batch size = 8 * 4 = 32 (matches paper)
-    optimizer: adam      # Adam optimizer (matches DSCATNet paper)
-    lr: 0.001           # Learning rate (matches DSCATNet paper)
-    weight_decay: 0.0   # No weight decay (matches DSCATNet paper's Adam)
-    epochs: 200         # Max epochs (paper trains ~200 epochs)
+    batch_size: 8
+    gradient_accumulation_steps: 4  # Effective batch = 8 × 4 = 32
+    optimizer: adam
+    lr: 0.001
+    weight_decay: 0.0
+    epochs: 200
     warmup_epochs: 0
-    scheduler: none     # No scheduler (matches DSCATNet paper)
+    scheduler: none
     min_lr: 0.000001
-    use_amp: false      # AMP disabled to avoid NaN instability
+    use_amp: false
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration

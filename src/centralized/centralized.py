@@ -11,6 +11,7 @@ Provides standard centralized training on pooled data from all datasets.
 # Imports
 # =============================================================================
 
+import sys
 import time
 import json
 import logging
@@ -376,20 +377,12 @@ class CentralizedTrainer:
 
         loader = self.train_loader
         accum_steps = self.config.gradient_accumulation_steps
-
-        # Progress bar for batches
-        pbar = tqdm(
-            enumerate(loader),
-            total=len(loader),
-            desc="Training",
-            leave=False,
-            ncols=100,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
-        )
+        num_batches = len(loader)
+        log_interval = max(1, num_batches // 4)  # Log ~4 times per epoch
 
         optimizer.zero_grad()
 
-        for batch_idx, (images, labels) in pbar:
+        for batch_idx, (images, labels) in enumerate(loader):
             images, labels = images.to(self.device), labels.to(self.device)
 
             # Use AMP for faster training on compatible GPUs
@@ -427,13 +420,14 @@ class CentralizedTrainer:
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Update progress bar with current metrics
-            current_loss = total_loss / (batch_idx + 1)
-            current_acc = correct / total if total > 0 else 0
-            pbar.set_postfix({
-                'loss': f'{current_loss:.4f}',
-                'acc': f'{current_acc:.4f}'
-            })
+            # Periodic batch progress logging
+            if (batch_idx + 1) % log_interval == 0 or (batch_idx + 1) == num_batches:
+                current_loss = total_loss / (batch_idx + 1)
+                current_acc = correct / total if total > 0 else 0
+                logger.info(
+                    f"  Batch {batch_idx + 1}/{num_batches} | "
+                    f"Loss: {current_loss:.4f}, Acc: {current_acc:.4f}"
+                )
 
         avg_loss = total_loss / len(loader) if len(loader) > 0 else 0.0
         accuracy = correct / total if total > 0 else 0.0
@@ -468,16 +462,7 @@ class CentralizedTrainer:
         class_correct = {}
         class_total = {}
 
-        # Progress bar for validation
-        pbar = tqdm(
-            loader,
-            desc="Validating",
-            leave=False,
-            ncols=100,
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
-        )
-
-        for images, labels in pbar:
+        for images, labels in loader:
             images, labels = images.to(self.device), labels.to(self.device)
 
             outputs = self.model(images)
@@ -683,6 +668,7 @@ class CentralizedTrainer:
         epoch_pbar = tqdm(
             range(start_epoch, self.config.num_epochs + 1),
             desc="Epochs",
+            file=sys.stdout,
             ncols=100,
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
         )
