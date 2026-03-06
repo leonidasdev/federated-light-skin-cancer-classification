@@ -664,10 +664,9 @@ class CentralizedTrainer:
         # Training loop
         start_time = time.time()
 
-        # Epoch progress bar
+        # Epoch progress bar (no initial desc to avoid ghost render before loop)
         epoch_pbar = tqdm(
             range(start_epoch, self.config.num_epochs + 1),
-            desc="Epochs",
             file=sys.stdout,
             ncols=100,
             bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]"
