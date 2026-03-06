@@ -1073,8 +1073,8 @@ class FLSimulator:
             desc=f"Round {start_round}/{self.config.num_rounds}",
             unit="round",
             file=sys.stdout,
-            ncols=100,
-            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
+            dynamic_ncols=True,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}",
         )
 
         for round_num in range(start_round, self.config.num_rounds + 1):

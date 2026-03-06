@@ -670,8 +670,8 @@ class CentralizedTrainer:
             total=total_epochs,
             desc=f"Epoch {start_epoch}/{self.config.num_epochs}",
             file=sys.stdout,
-            ncols=100,
-            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
+            dynamic_ncols=True,
+            bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}",
         )
 
         for epoch in range(start_epoch, self.config.num_epochs + 1):
