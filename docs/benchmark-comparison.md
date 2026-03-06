@@ -1,16 +1,16 @@
 # Federated vs Centralized Benchmark Comparison
 
-> **Purpose**: Documents all implementation differences between the centralized and federated training pipelines to ensure a fair benchmark comparison. Any difference listed here is either (a) inherent to the FL paradigm and intentional, or (b) a controlled variable that has been aligned between both pipelines.
+> **Purpose**: Documents all implementation differences between the centralized and federated training pipelines. Any difference listed here is either (a) inherent to the FL paradigm and intentional, or (b) a controlled variable kept consistent across both pipelines.
 
 ---
 
 ## Summary
 
-The goal of this project is to compare **centralized** (pooled data) training against **federated** (distributed, non-IID) training using the same DSCATNet model. For a fair comparison, we align all controllable hyperparameters and note the inherent differences that arise from the FL paradigm itself.
+The goal of this project is to compare **centralized** (pooled data) training against **federated** (distributed, non-IID) training using the same DSCATNet model. All controllable hyperparameters are kept consistent, and the inherent differences that arise from the FL paradigm are documented below.
 
 ---
 
-## Aligned Parameters (Fair Comparison)
+## Consistent Parameters
 
 These settings are identical between centralized and federated training:
 
@@ -145,7 +145,7 @@ The naming convention differs (`val_split` vs `train_val_split`), but both are s
 
 ## Class Weight Implementation
 
-Both pipelines now use the same inverse-frequency class weighting formula:
+Both pipelines use the same inverse-frequency class weighting formula:
 
 ```
 weight_c = N_total / (C × N_c)
@@ -167,7 +167,7 @@ Where:
 
 ### Why This Matters
 
-Without class weights, the FL model on ISIC2018 collapsed to predicting only the majority class (NV, ~67% of samples), producing a degenerate constant accuracy of 0.6702. The centralized trainer had always used class weights, creating an unfair comparison. Both pipelines now use the same weighting scheme.
+Without class weights, models trained on imbalanced datasets (e.g., ISIC2018 where NV is ~67% of samples) tend to collapse to majority-class prediction, producing degenerate constant accuracy. Inverse-frequency weighting prevents this by penalizing majority-class errors less and minority-class errors more.
 
 ---
 

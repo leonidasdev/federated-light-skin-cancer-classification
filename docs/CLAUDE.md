@@ -97,6 +97,12 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 
 ## Code Style & Conventions
 
+### Writing Principles for Comments, Docstrings, and Documentation
+
+- **No time-dependent language**: Avoid words like "now", "previously", "recently", "new", "old", "legacy", "was missing", "had always". Code and documentation should read as-is, not as a changelog.
+- **No cross-module alignment references**: Each module's comments and docstrings must stand on their own. Do not write "matches centralized trainer" in federated code or "aligned with FL" in centralized code. State *what* the code does, not *that it matches something else*.
+- **State facts, not history**: Write "Uses inverse-frequency class weights" instead of "Now uses class weights (previously missing)".
+
 ### Python Style
 
 - **Formatting**: PEP 8 compliant, 120-character line limit (configured in `pyproject.toml`)

@@ -4,8 +4,7 @@
 """
 Centralized Training Baseline.
 
-Provides centralized (non-federated) training for comparison with FL approaches.
-This serves as the upper-bound baseline for model performance.
+Provides standard centralized training on pooled data from all datasets.
 """
 
 # =============================================================================
@@ -113,8 +112,8 @@ class CentralizedTrainer:
     """
     Centralized Training for DSCATNet.
 
-    Trains on combined data from all datasets as a baseline for comparison
-    with federated learning approaches.
+    Trains on combined data from all datasets using standard
+    PyTorch training loops.
     """
 
     def __init__(self, config: CentralizedConfig):

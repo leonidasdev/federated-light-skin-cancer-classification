@@ -427,9 +427,6 @@ class FLSimulator:
         Uses inverse frequency weighting: weight_c = N_total / (C * N_c)
         where N_total is the total number of training samples, C is the
         number of classes, and N_c is the number of samples in class c.
-
-        This matches the centralized trainer's class weight computation
-        for a fair benchmark comparison.
         """
         from collections import Counter
 
@@ -621,7 +618,7 @@ class FLSimulator:
                 lr=self.config.learning_rate,
                 weight_decay=self.config.weight_decay,
             )
-        # Use class weights if available (matches centralized trainer)
+        # Use class weights if available for handling class imbalance
         if self.class_weights is not None:
             criterion = nn.CrossEntropyLoss(weight=self.class_weights.to(self.device))
         else:
