@@ -370,15 +370,13 @@ if "new_flag" in train:
 
 ### Adding a New Dataset
 
-1. Create class in `src/data/datasets.py` inheriting from `Dataset`
-2. Implement `__init__`, `__len__`, `__getitem__`, `labels` property
-3. Add label mapping to unified 7-class schema
-4. Add to `all_dataset_classes` list in:
-   - `CentralizedTrainer.setup_data()`
-   - `FLSimulator.setup_natural_noniid()`
-   - `FLSimulator.setup_dirichlet_noniid()`
-   - `run_evaluate()` in `run_experiment.py`
-5. Add to `--datasets` choices in argparse
+1. Create class in `src/data/datasets.py` inheriting from `BaseDermoscopyDataset`
+2. Implement `_load_metadata()` and `_build_image_list()`
+3. Add label mapping to `UNIFIED_CLASSES_7` (and `UNIFIED_CLASSES_BINARY` if needed)
+4. Register in `_init_dataset_registry()` with a `DatasetConfig` entry
+5. Add canonical name to `normalize_dataset_name()` mapping
+
+Both `CentralizedTrainer.setup_data()` and `FLSimulator` resolve datasets through `DATASET_REGISTRY`, so no changes are needed in training code.
 
 ### Modifying Checkpoint Contents
 
