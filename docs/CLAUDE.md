@@ -9,7 +9,7 @@
 | [README.md](../README.md) | User-facing documentation, installation, usage |
 | [config-options-guide.md](config-options-guide.md) | Complete YAML configuration reference |
 | [architecture.md](architecture.md) | System architecture and key classes |
-| [BENCHMARK_COMPARISON.md](BENCHMARK_COMPARISON.md) | Federated vs centralized benchmark fairness audit |
+| [benchmark-comparison.md](benchmark-comparison.md) | Federated vs centralized benchmark fairness audit |
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Code style and contribution guidelines |
 
 ---

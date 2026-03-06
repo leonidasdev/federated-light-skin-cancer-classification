@@ -22,6 +22,7 @@ The project uses YAML configuration files located in the `configs/` directory:
 | `experiment_config.yaml` | Master configuration for comparison experiments |
 | `fl_config.yaml` | Default federated learning settings |
 | `model_config.yaml` | DSCATNet architecture configuration |
+| `dscatnet_centralized_*.yaml` | Dataset-specific centralized experiment configs |
 | `dscatnet_federated_*.yaml` | Dataset-specific FL experiment configs |
 
 ## Schema Validation
@@ -346,6 +347,7 @@ Configuration templates are available in `configs/templates/`:
 
 | Template | Use Case |
 |----------|----------|
+| `centralized_template.yaml` | Centralized training configurations |
 | `experiment_template.yaml` | New comparison experiments |
 | `federated_template.yaml` | FL-specific configurations |
 | `model_template.yaml` | Model architecture tuning |

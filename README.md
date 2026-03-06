@@ -898,7 +898,7 @@ Expected output:
 
 ```
 ======================== test session starts ========================
-collected 216 items / 2 deselected / 214 selected
+collected 219 items / 2 deselected / 217 selected
 
 tests/test_centralized.py ........                             [  3%]
 tests/test_checkpoints.py ................                     [ 11%]
@@ -915,10 +915,10 @@ tests/test_simulation.py ................                      [ 89%]
 tests/test_splits.py ........                                  [ 92%]
 tests/test_strategy.py ...............                         [100%]
 
-================= 214 passed, 2 deselected in 18s ===================
+================= 217 passed, 2 deselected in 25s ===================
 ```
 
-> **Note**: Two integration tests are deselected by default (marked `@pytest.mark.slow`). Run them with `pytest -m slow`.
+> **Note**: Two integration tests are deselected by default (marked `@pytest.mark.slow`). Run them with `pytest -m slow tests/`.
 
 ---
 
