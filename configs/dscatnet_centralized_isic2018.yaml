@@ -6,7 +6,7 @@
 #   python run_experiment.py --mode centralized --config configs/dscatnet_centralized_isic2018.yaml
 #
 # Description:
-#   Centralized (non-federated) training baseline on ISIC2018 for direct
+#   Centralized training on ISIC2018 dataset.
 #   Serves as the upper-bound performance baseline with pooled data.
 #
 # =============================================================================
