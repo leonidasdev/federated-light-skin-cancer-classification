@@ -25,6 +25,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from ..models.dscatnet import create_dscatnet
 from ..data.datasets import (
@@ -378,11 +379,21 @@ class CentralizedTrainer:
         loader = self.train_loader
         accum_steps = self.config.gradient_accumulation_steps
         num_batches = len(loader)
-        log_interval = max(1, num_batches // 4)  # Log ~4 times per epoch
+
+        # Batch-level progress bar (disappears after epoch completes)
+        batch_pbar = tqdm(
+            enumerate(loader),
+            total=num_batches,
+            desc="  Training",
+            leave=False,
+            file=sys.stdout,
+            dynamic_ncols=True,
+            bar_format="  {desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}",
+        )
 
         optimizer.zero_grad()
 
-        for batch_idx, (images, labels) in enumerate(loader):
+        for batch_idx, (images, labels) in batch_pbar:
             images, labels = images.to(self.device), labels.to(self.device)
 
             # Use AMP for faster training on compatible GPUs
@@ -420,14 +431,13 @@ class CentralizedTrainer:
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
 
-            # Periodic batch progress logging
-            if (batch_idx + 1) % log_interval == 0 or (batch_idx + 1) == num_batches:
+            # Update batch progress bar with running metrics
+            if (batch_idx + 1) % max(1, num_batches // 20) == 0 or (batch_idx + 1) == num_batches:
                 current_loss = total_loss / (batch_idx + 1)
                 current_acc = correct / total if total > 0 else 0
-                logger.info(
-                    f"  Batch {batch_idx + 1}/{num_batches} | "
-                    f"Loss: {current_loss:.4f}, Acc: {current_acc:.4f}"
-                )
+                batch_pbar.set_postfix_str(f"loss={current_loss:.4f}, acc={current_acc:.4f}")
+
+        batch_pbar.close()
 
         avg_loss = total_loss / len(loader) if len(loader) > 0 else 0.0
         accuracy = correct / total if total > 0 else 0.0
@@ -462,7 +472,18 @@ class CentralizedTrainer:
         class_correct = {}
         class_total = {}
 
-        for images, labels in loader:
+        # Validation progress bar (disappears after completion)
+        val_pbar = tqdm(
+            loader,
+            total=len(loader),
+            desc="  Validating",
+            leave=False,
+            file=sys.stdout,
+            dynamic_ncols=True,
+            bar_format="  {desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]",
+        )
+
+        for images, labels in val_pbar:
             images, labels = images.to(self.device), labels.to(self.device)
 
             outputs = self.model(images)
@@ -481,6 +502,8 @@ class CentralizedTrainer:
                 class_total[label] += 1
                 if label == pred:
                     class_correct[label] += 1
+
+        val_pbar.close()
 
         avg_loss = total_loss / total if total > 0 else 0.0
         accuracy = correct / total if total > 0 else 0.0
@@ -664,7 +687,9 @@ class CentralizedTrainer:
         # Training loop
         start_time = time.time()
 
-        # Epoch-level progress bar routed to stdout for proper \r handling
+        # Epoch-level progress bar routed to stdout for proper \r handling.
+        # logging_redirect_tqdm ensures logger output goes through tqdm.write()
+        # so log messages do not break the progress bar rendering.
         total_epochs = self.config.num_epochs - start_epoch + 1
         epoch_pbar = tqdm(
             total=total_epochs,
@@ -674,79 +699,79 @@ class CentralizedTrainer:
             bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}",
         )
 
-        for epoch in range(start_epoch, self.config.num_epochs + 1):
-            epoch_start = time.time()
+        with logging_redirect_tqdm():
+            for epoch in range(start_epoch, self.config.num_epochs + 1):
+                epoch_start = time.time()
 
-            epoch_pbar.set_description(f"Epoch {epoch}/{self.config.num_epochs}")
+                epoch_pbar.set_description(f"Epoch {epoch}/{self.config.num_epochs}")
 
-            # Train
-            train_loss, train_acc = self.train_epoch(optimizer, criterion)
+                # Train
+                train_loss, train_acc = self.train_epoch(optimizer, criterion)
 
-            # Evaluate
-            val_loss, val_acc, per_class = self.evaluate()
+                # Evaluate
+                val_loss, val_acc, per_class = self.evaluate()
 
-            # Get current learning rate
-            current_lr = optimizer.param_groups[0]["lr"]
+                # Get current learning rate
+                current_lr = optimizer.param_groups[0]["lr"]
 
-            # Update scheduler (call with metric only for ReduceLROnPlateau)
-            if scheduler is not None:
-                if isinstance(scheduler, ReduceLROnPlateau):
-                    scheduler.step(val_acc)
+                # Update scheduler (call with metric only for ReduceLROnPlateau)
+                if scheduler is not None:
+                    if isinstance(scheduler, ReduceLROnPlateau):
+                        scheduler.step(val_acc)
+                    else:
+                        scheduler.step()
+
+                epoch_time = time.time() - epoch_start
+
+                # Update history
+                self.history["epochs"].append(epoch)
+                self.history["train_loss"].append(train_loss)
+                self.history["train_accuracy"].append(train_acc)
+                self.history["val_loss"].append(val_loss)
+                self.history["val_accuracy"].append(val_acc)
+                self.history["learning_rate"].append(current_lr)
+
+                # Checkpointing
+                metrics = {
+                    "train_loss": float(train_loss),
+                    "train_accuracy": float(train_acc),
+                    "val_loss": float(val_loss),
+                    "val_accuracy": float(val_acc),
+                }
+
+                if epoch % self.config.checkpoint_interval == 0:
+                    self.save_checkpoint(epoch, optimizer, scheduler, metrics)
+
+                # Best model tracking
+                if val_acc > self.best_val_accuracy:
+                    self.best_val_accuracy = float(val_acc)
+                    self.best_epoch = epoch
+                    self.epochs_without_improvement = 0
+                    # Save best checkpoint (full state for resumption)
+                    self.save_checkpoint(epoch, optimizer, scheduler, metrics, is_best=True)
+                    logger.info(f"Saved best model (epoch {epoch}, acc={self.best_val_accuracy:.4f})")
                 else:
-                    scheduler.step()
+                    self.epochs_without_improvement += 1
 
-            epoch_time = time.time() - epoch_start
+                # Update epoch progress bar AFTER best tracking so 'best' is current
+                epoch_pbar.set_postfix({
+                    'loss': f'{train_loss:.4f}',
+                    'val': f'{val_acc:.4f}',
+                    'best': f'{self.best_val_accuracy:.4f}'
+                })
+                epoch_pbar.update(1)
 
-            # Update history
-            self.history["epochs"].append(epoch)
-            self.history["train_loss"].append(train_loss)
-            self.history["train_accuracy"].append(train_acc)
-            self.history["val_loss"].append(val_loss)
-            self.history["val_accuracy"].append(val_acc)
-            self.history["learning_rate"].append(current_lr)
+                logger.info(
+                    f"Epoch {epoch}/{self.config.num_epochs} | "
+                    f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
+                    f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f} | "
+                    f"Time: {epoch_time:.1f}s"
+                )
 
-            # Update epoch progress bar with metrics
-            epoch_pbar.set_postfix({
-                'train_loss': f'{train_loss:.4f}',
-                'val_acc': f'{val_acc:.4f}',
-                'best': f'{self.best_val_accuracy:.4f}'
-            })
-
-            logger.info(
-                f"Epoch {epoch}/{self.config.num_epochs} | "
-                f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
-                f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f} | "
-                f"Time: {epoch_time:.1f}s"
-            )
-
-            # Checkpointing
-            metrics = {
-                "train_loss": float(train_loss),
-                "train_accuracy": float(train_acc),
-                "val_loss": float(val_loss),
-                "val_accuracy": float(val_acc),
-            }
-
-            if epoch % self.config.checkpoint_interval == 0:
-                self.save_checkpoint(epoch, optimizer, scheduler, metrics)
-
-            # Best model tracking
-            if val_acc > self.best_val_accuracy:
-                self.best_val_accuracy = float(val_acc)
-                self.best_epoch = epoch
-                self.epochs_without_improvement = 0
-                # Save best checkpoint (full state for resumption)
-                self.save_checkpoint(epoch, optimizer, scheduler, metrics, is_best=True)
-                logger.info(f"Saved best model (epoch {epoch}, acc={self.best_val_accuracy:.4f})")
-            else:
-                self.epochs_without_improvement += 1
-
-            # Early stopping
-            if self.epochs_without_improvement >= self.config.early_stopping_patience:
-                logger.info("Early stopping triggered")
-                break
-
-            epoch_pbar.update(1)
+                # Early stopping
+                if self.epochs_without_improvement >= self.config.early_stopping_patience:
+                    logger.info("Early stopping triggered")
+                    break
 
         epoch_pbar.close()
         total_time = time.time() - start_time

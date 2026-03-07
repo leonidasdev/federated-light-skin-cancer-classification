@@ -28,6 +28,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
 from flwr.common import Scalar
 
@@ -531,7 +532,9 @@ class FLSimulator:
                 continue
 
             # Split into train/val using configurable ratio
-            np.random.shuffle(indices)
+            # Seed per-client for reproducibility on checkpoint resume
+            rng = np.random.RandomState(42 + client_id)
+            rng.shuffle(indices)
             split_idx = int(len(indices) * self.config.train_val_split)
             train_indices = indices[:split_idx]
             val_indices = indices[split_idx:]
@@ -916,12 +919,6 @@ class FLSimulator:
             "clients_participated": len(selected_clients),
         }
 
-        logger.info(
-            f"Round {round_num}: train_loss={avg_train_loss:.4f}, train_acc={avg_train_acc:.4f}, "
-            f"val_loss={avg_val_loss:.4f}, val_acc={avg_val_acc:.4f}, "
-            f"clients={len(selected_clients)}, time={round_time:.2f}s"
-        )
-
         return metrics
 
     def save_checkpoint(self, round_num: int, metrics: Dict[str, float]) -> None:
@@ -1077,44 +1074,51 @@ class FLSimulator:
             bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]{postfix}",
         )
 
-        for round_num in range(start_round, self.config.num_rounds + 1):
-            pbar.set_description(f"Round {round_num}/{self.config.num_rounds}")
-            metrics = self.run_round(round_num, pbar)
+        with logging_redirect_tqdm():
+            for round_num in range(start_round, self.config.num_rounds + 1):
+                pbar.set_description(f"Round {round_num}/{self.config.num_rounds}")
+                metrics = self.run_round(round_num, pbar)
 
-            # Update progress bar with metrics
-            pbar.set_postfix({
-                'loss': f'{metrics["val_loss"]:.3f}',
-                'acc': f'{metrics["val_accuracy"]:.1%}',
-                'best': f'{self.best_val_accuracy:.1%}'
-            })
+                # Update history
+                self.history["rounds"].append(round_num)
+                self.history["train_loss"].append(metrics["train_loss"])
+                self.history["train_accuracy"].append(metrics["train_accuracy"])
+                self.history["val_loss"].append(metrics["val_loss"])
+                self.history["val_accuracy"].append(metrics["val_accuracy"])
+                self.history["communication_cost"].append(metrics["communication_cost_mb"])
 
-            # Update history
-            self.history["rounds"].append(round_num)
-            self.history["train_loss"].append(metrics["train_loss"])
-            self.history["train_accuracy"].append(metrics["train_accuracy"])
-            self.history["val_loss"].append(metrics["val_loss"])
-            self.history["val_accuracy"].append(metrics["val_accuracy"])
-            self.history["communication_cost"].append(metrics["communication_cost_mb"])
+                # Check for improvement
+                if metrics["val_accuracy"] > self.best_val_accuracy:
+                    self.best_val_accuracy = metrics["val_accuracy"]
+                    self.best_round = round_num
+                    self.rounds_without_improvement = 0
+                    self.save_best_model(round_num)
+                else:
+                    self.rounds_without_improvement += 1
 
-            # Check for improvement
-            if metrics["val_accuracy"] > self.best_val_accuracy:
-                self.best_val_accuracy = metrics["val_accuracy"]
-                self.best_round = round_num
-                self.rounds_without_improvement = 0
-                self.save_best_model(round_num)
-            else:
-                self.rounds_without_improvement += 1
+                # Save checkpoint
+                if round_num % self.config.checkpoint_interval == 0:
+                    self.save_checkpoint(round_num, metrics)
 
-            # Save checkpoint
-            if round_num % self.config.checkpoint_interval == 0:
-                self.save_checkpoint(round_num, metrics)
+                # Update progress bar AFTER best tracking so 'best' is current
+                pbar.set_postfix({
+                    'loss': f'{metrics["train_loss"]:.4f}',
+                    'val': f'{metrics["val_accuracy"]:.4f}',
+                    'best': f'{self.best_val_accuracy:.4f}'
+                })
+                pbar.update(1)
 
-            # Early stopping
-            if self.rounds_without_improvement >= self.config.early_stopping_patience:
-                logger.info(f"Early stopping at round {round_num}")
-                break
+                logger.info(
+                    f"Round {round_num}/{self.config.num_rounds} | "
+                    f"Train Loss: {metrics['train_loss']:.4f}, Train Acc: {metrics['train_accuracy']:.4f} | "
+                    f"Val Loss: {metrics['val_loss']:.4f}, Val Acc: {metrics['val_accuracy']:.4f} | "
+                    f"Clients: {metrics['clients_participated']}, Time: {metrics['round_time']:.1f}s"
+                )
 
-            pbar.update(1)
+                # Early stopping
+                if self.rounds_without_improvement >= self.config.early_stopping_patience:
+                    logger.info("Early stopping triggered")
+                    break
 
         pbar.close()
         total_time = time.time() - start_time
