@@ -200,7 +200,7 @@ federated:
 - Configurable scheduler (`none`, `cosine`, `plateau`)
 - Optional AMP (disabled by default for stability)
 
-**Checkpoint Contents**: model_state_dict, optimizer_state_dict, scheduler_state_dict, scaler_state_dict, history, best_val_accuracy
+**Checkpoint Contents**: model_state_dict, optimizer_state_dict, scheduler_state_dict, scaler_state_dict, metrics, config, history, best_val_accuracy, best_epoch, epochs_without_improvement
 
 ### `FLSimulator` (src/federated/simulation.py)
 

@@ -944,21 +944,29 @@ class FLSimulator:
         logger.debug(f"Saved checkpoint: {path}")
 
     def save_best_model(self, round_num: int) -> None:
-        """Save the best model so far.
+        """Save the best model so far as both a full checkpoint and model-only file.
 
         Args:
             round_num: Round number at which the best accuracy was achieved.
         """
-        path = self.checkpoint_dir / "best_model.pt"
-        torch.save({
+        # Full checkpoint for resumption
+        best_checkpoint = {
             "round": round_num,
             "model_state_dict": self.global_model.state_dict(),
-            "val_accuracy": self.best_val_accuracy,
+            "metrics": {"val_accuracy": self.best_val_accuracy},
             "config": self.config.to_dict(),
             "history": self.history,
             "best_val_accuracy": self.best_val_accuracy,
             "best_round": self.best_round,
-        }, path)
+            "rounds_without_improvement": self.rounds_without_improvement,
+        }
+        checkpoint_path = self.checkpoint_dir / "best_checkpoint.pt"
+        torch.save(best_checkpoint, checkpoint_path)
+
+        # Model-only file for easy inference loading
+        model_only_path = self.checkpoint_dir / "best_model.pt"
+        torch.save(self.global_model.state_dict(), model_only_path)
+
         logger.info(f"Saved best model (round {round_num}, acc={self.best_val_accuracy:.4f})")
 
     def load_checkpoint(self, checkpoint_path: str) -> int:

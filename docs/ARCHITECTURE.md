@@ -87,8 +87,12 @@ This document provides a technical overview of the DSCATNet Federated Learning s
     "optimizer_state_dict": dict,
     "scheduler_state_dict": dict,
     "scaler_state_dict": dict,  # AMP
+    "metrics": dict,
+    "config": dict,
     "history": dict,
     "best_val_accuracy": float,
+    "best_epoch": int,
+    "epochs_without_improvement": int,
 }
 ```
 
@@ -113,6 +117,7 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 {
     "round": int,
     "model_state_dict": dict,
+    "metrics": dict,
     "config": dict,
     "history": dict,
     "best_val_accuracy": float,
@@ -209,8 +214,8 @@ class SimulationConfig:
 outputs/
 └── {mode}_{timestamp}/
     ├── checkpoints/
-    │   ├── best_model.pt           # Weights only
-    │   ├── best_checkpoint.pt      # Full state (centralized)
+    │   ├── best_model.pt           # Weights only (for inference)
+    │   ├── best_checkpoint.pt      # Full state (for resumption)
     │   └── checkpoint_{epoch/round}_N.pt
     ├── config.json                 # Serialized config
     ├── results.json                # Final metrics
