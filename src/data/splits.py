@@ -150,8 +150,8 @@ def create_noniid_split(
             start = end
 
     # Shuffle each client's data
-    for client_id in client_data:
-        np.random.shuffle(client_data[client_id])
+    for client_id, data in client_data.items():
+        np.random.shuffle(data)
 
     return client_data
 
@@ -219,8 +219,8 @@ def create_label_skew_split(
                 client_data[client_id].extend(split.tolist())
 
     # Shuffle each client's data
-    for client_id in client_data:
-        np.random.shuffle(client_data[client_id])
+    for client_id, data in client_data.items():
+        np.random.shuffle(data)
 
     return client_data
 

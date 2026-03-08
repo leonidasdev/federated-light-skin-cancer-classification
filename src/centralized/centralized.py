@@ -298,8 +298,7 @@ class CentralizedTrainer:
                 for idx in sub_ds.indices:
                     all_labels.append(sub_ds.dataset.labels[idx])
             elif hasattr(sub_ds, 'labels'):
-                labels = getattr(sub_ds, 'labels')
-                all_labels.extend(labels)
+                all_labels.extend(sub_ds.labels)
 
         label_counts = Counter(all_labels)
         self.class_weights = compute_class_weights(

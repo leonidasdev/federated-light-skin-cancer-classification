@@ -134,7 +134,7 @@ class DSCATNetFedAvg(FedAvg):
         total_train_acc = 0.0
         total_samples = 0
 
-        for client_proxy, fit_res in results:
+        for _client_proxy, fit_res in results:
             num_samples = fit_res.num_examples
             client_metric = fit_res.metrics
 
@@ -210,7 +210,7 @@ class DSCATNetFedAvg(FedAvg):
         total_acc = 0.0
         total_samples = 0
 
-        for client_proxy, eval_res in results:
+        for _client_proxy, eval_res in results:
             num_samples = eval_res.num_examples
             # Safely coerce reported accuracy to float to avoid mixing types
             try:

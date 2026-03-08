@@ -77,7 +77,6 @@ class DirichletSubset(torch.utils.data.Dataset):
         self.combined_images = combined_images
         self.indices = indices
         self.transform = transform
-        self._labels = None
 
     def __len__(self) -> int:
         return len(self.indices)
@@ -100,16 +99,6 @@ class DirichletSubset(torch.utils.data.Dataset):
                 image = self.transform(image)
 
         return image, label
-
-    @property
-    def labels(self) -> List[int]:
-        """Get all labels for this subset."""
-        if self._labels is None:
-            self._labels = []
-            for idx in self.indices:
-                dataset, original_idx = self.combined_images[idx]
-                self._labels.append(dataset.labels[original_idx])
-        return self._labels
 
 
 # =============================================================================
@@ -453,7 +442,7 @@ class FLSimulator:
         combined_images = []
         combined_labels = []
 
-        for dataset_name, full_dataset in loaded_datasets:
+        for _dataset_name, full_dataset in loaded_datasets:
             for i in range(len(full_dataset)):
                 combined_images.append((full_dataset, i))
                 combined_labels.append(full_dataset.labels[i])
@@ -582,7 +571,7 @@ class FLSimulator:
         correct = 0
         total = 0
 
-        for epoch in range(self.config.local_epochs):
+        for _epoch in range(self.config.local_epochs):
             optimizer.zero_grad()
             for batch_idx, (images, labels) in enumerate(client.train_loader):
                 images, labels = images.to(self.device), labels.to(self.device)

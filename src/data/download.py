@@ -258,7 +258,7 @@ def download_ham10000_kaggle(
             "-p", str(temp_dir),
             "--unzip"
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
             print(f"Kaggle download failed: {result.stderr}")
             return False

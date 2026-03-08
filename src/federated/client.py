@@ -216,10 +216,10 @@ class SkinCancerClient(NumPyClient):
         correct = 0
         total = 0
 
-        for epoch in range(epochs):
+        for _epoch in range(epochs):
             epoch_loss = 0.0
 
-            for batch_idx, (images, labels) in enumerate(self.train_loader):
+            for _batch_idx, (images, labels) in enumerate(self.train_loader):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
 
@@ -314,10 +314,10 @@ class SkinCancerClient(NumPyClient):
         }
 
         # Add per-class accuracy
-        for cls in class_total:
+        for cls, cls_count in class_total.items():
             metrics[f"class_{cls}_accuracy"] = (
-                class_correct[cls] / class_total[cls]
-                if class_total[cls] > 0 else 0.0
+                class_correct[cls] / cls_count
+                if cls_count > 0 else 0.0
             )
 
         return avg_loss, accuracy, metrics

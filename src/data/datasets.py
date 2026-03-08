@@ -23,14 +23,19 @@ Classification Modes:
 # Imports
 # =============================================================================
 
+import logging
+
 import pandas as pd
 import numpy as np
 from PIL import Image
 from pathlib import Path
+from collections import Counter
 from typing import Optional, Callable, Dict, List, Tuple, Union, Literal
 from dataclasses import dataclass
 from torch.utils.data import Dataset
 import torch
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Class Mappings for Different Datasets
@@ -237,7 +242,6 @@ class BaseDermoscopyDataset(Dataset):
 
     def get_class_distribution(self) -> Dict[int, int]:
         """Get distribution of classes in the dataset."""
-        from collections import Counter
         return dict(Counter(self.labels))
 
     def get_class_weights(self) -> torch.Tensor:
@@ -563,7 +567,6 @@ class DatasetSubset(Dataset):
 
     def get_class_distribution(self) -> Dict[int, int]:
         """Get distribution of classes in this subset."""
-        from collections import Counter
         subset_labels = [self.dataset.labels[i] for i in self.indices]
         return dict(Counter(subset_labels))
 
@@ -727,9 +730,6 @@ def load_dataset(
         >>> if dataset:
         ...     print(f"Loaded {len(dataset)} samples")
     """
-    import logging
-    logger = logging.getLogger(__name__)
-
     canonical_name = normalize_dataset_name(dataset_name)
 
     if canonical_name not in DATASET_REGISTRY:
