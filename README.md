@@ -507,8 +507,8 @@ Checkpoints are saved in `outputs/<experiment_name>/checkpoints/`:
 
 ```
 checkpoints/
-├── best_model.pt             # Best model (highest val accuracy)
-├── best_checkpoint.pt        # Full checkpoint with optimizer state (centralized)
+├── best_model.pt             # Best model weights only (for inference)
+├── best_checkpoint.pt        # Full checkpoint with training state (for resumption)
 ├── checkpoint_epoch_10.pt    # Periodic checkpoint (centralized)
 ├── checkpoint_round_5.pt     # Periodic checkpoint (federated)
 └── checkpoint_round_10.pt

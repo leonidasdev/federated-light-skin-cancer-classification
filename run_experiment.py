@@ -247,6 +247,10 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
 def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
     """Run centralized training experiment."""
     from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
+    from src.utils.helpers import set_seed
+
+    # Ensure reproducibility (seeds random, numpy, torch, cuDNN)
+    set_seed(42)
 
     # Load config if provided
     if args.config:
@@ -397,6 +401,10 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
 def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     """Run federated learning experiment."""
     from src.federated.simulation import SimulationConfig, FLSimulator
+    from src.utils.helpers import set_seed
+
+    # Ensure reproducibility (seeds random, numpy, torch, cuDNN)
+    set_seed(42)
 
     # If resuming, try to load config from checkpoint first
     checkpoint_config = {}
