@@ -25,6 +25,11 @@ from typing import Dict, Any, List
 import logging
 import numpy as np
 
+try:
+    import timm
+except ImportError:
+    timm = None  # type: ignore[assignment]
+
 from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock
 
@@ -226,6 +231,111 @@ class DSCATNet(nn.Module):
         }
 
 
+def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None:
+    """
+    Load pretrained ViT-Small (ImageNet-21k) weights into DSCATNet.
+
+    Maps compatible layers from timm's vit_small_patch16_224 to DSCATNet's
+    dual-stream architecture:
+    - ViT blocks 0..depth-1   → fine-scale self-attention + FFN
+    - ViT blocks depth..2*depth-1 → coarse-scale self-attention + FFN
+    - ViT patch_embed (16×16) → coarse-scale patch embedding
+    - ViT pos_embed / cls_token → coarse-scale positional embedding / CLS token
+
+    Cross-attention layers, fine-scale patch embedding, fusion, and classifier
+    remain randomly initialized.
+
+    Args:
+        model: DSCATNet model instance to load weights into.
+        variant: Model variant. Only 'small' is supported.
+    """
+    logger = logging.getLogger(__name__)
+
+    if variant != 'small':
+        logger.warning(
+            "Pretrained ViT weight loading only supported for 'small' variant, "
+            f"got '{variant}'. Skipping."
+        )
+        return
+
+    if timm is None:
+        logger.warning("timm is not installed. Skipping pretrained weight loading.")
+        return
+
+    logger.info("Loading pretrained ViT-Small (patch16_224) weights from timm...")
+    vit = timm.create_model('vit_small_patch16_224', pretrained=True)
+    vit_sd = vit.state_dict()
+    del vit  # free memory
+
+    depth = model.depth  # 6 for small
+    vit_depth = 12  # ViT-Small has 12 blocks
+    mapped_sd: Dict[str, torch.Tensor] = {}
+
+    for i in range(depth):
+        fine_vit_idx = i
+        coarse_vit_idx = i + depth
+
+        # Fine-scale self-attention ← ViT block fine_vit_idx
+        mapping = {
+            f'blocks.{i}.fine_self_attn.in_proj_weight': f'blocks.{fine_vit_idx}.attn.qkv.weight',
+            f'blocks.{i}.fine_self_attn.in_proj_bias': f'blocks.{fine_vit_idx}.attn.qkv.bias',
+            f'blocks.{i}.fine_self_attn.out_proj.weight': f'blocks.{fine_vit_idx}.attn.proj.weight',
+            f'blocks.{i}.fine_self_attn.out_proj.bias': f'blocks.{fine_vit_idx}.attn.proj.bias',
+            f'blocks.{i}.norm_fine_self.weight': f'blocks.{fine_vit_idx}.norm1.weight',
+            f'blocks.{i}.norm_fine_self.bias': f'blocks.{fine_vit_idx}.norm1.bias',
+            f'blocks.{i}.norm_fine_ffn.weight': f'blocks.{fine_vit_idx}.norm2.weight',
+            f'blocks.{i}.norm_fine_ffn.bias': f'blocks.{fine_vit_idx}.norm2.bias',
+            f'blocks.{i}.fine_ffn.0.weight': f'blocks.{fine_vit_idx}.mlp.fc1.weight',
+            f'blocks.{i}.fine_ffn.0.bias': f'blocks.{fine_vit_idx}.mlp.fc1.bias',
+            f'blocks.{i}.fine_ffn.3.weight': f'blocks.{fine_vit_idx}.mlp.fc2.weight',
+            f'blocks.{i}.fine_ffn.3.bias': f'blocks.{fine_vit_idx}.mlp.fc2.bias',
+        }
+
+        # Coarse-scale self-attention ← ViT block coarse_vit_idx
+        if coarse_vit_idx < vit_depth:
+            mapping.update({
+                f'blocks.{i}.coarse_self_attn.in_proj_weight': f'blocks.{coarse_vit_idx}.attn.qkv.weight',
+                f'blocks.{i}.coarse_self_attn.in_proj_bias': f'blocks.{coarse_vit_idx}.attn.qkv.bias',
+                f'blocks.{i}.coarse_self_attn.out_proj.weight': f'blocks.{coarse_vit_idx}.attn.proj.weight',
+                f'blocks.{i}.coarse_self_attn.out_proj.bias': f'blocks.{coarse_vit_idx}.attn.proj.bias',
+                f'blocks.{i}.norm_coarse_self.weight': f'blocks.{coarse_vit_idx}.norm1.weight',
+                f'blocks.{i}.norm_coarse_self.bias': f'blocks.{coarse_vit_idx}.norm1.bias',
+                f'blocks.{i}.norm_coarse_ffn.weight': f'blocks.{coarse_vit_idx}.norm2.weight',
+                f'blocks.{i}.norm_coarse_ffn.bias': f'blocks.{coarse_vit_idx}.norm2.bias',
+                f'blocks.{i}.coarse_ffn.0.weight': f'blocks.{coarse_vit_idx}.mlp.fc1.weight',
+                f'blocks.{i}.coarse_ffn.0.bias': f'blocks.{coarse_vit_idx}.mlp.fc1.bias',
+                f'blocks.{i}.coarse_ffn.3.weight': f'blocks.{coarse_vit_idx}.mlp.fc2.weight',
+                f'blocks.{i}.coarse_ffn.3.bias': f'blocks.{coarse_vit_idx}.mlp.fc2.bias',
+            })
+
+        for dscatnet_key, vit_key in mapping.items():
+            if vit_key in vit_sd:
+                mapped_sd[dscatnet_key] = vit_sd[vit_key]
+
+    # Transfer coarse-scale patch embedding (16×16 kernel matches ViT)
+    mapped_sd['patch_embed.coarse_embedding.projection.weight'] = vit_sd['patch_embed.proj.weight']
+    mapped_sd['patch_embed.coarse_embedding.projection.bias'] = vit_sd['patch_embed.proj.bias']
+
+    # Transfer coarse positional embedding and CLS token (same sequence length)
+    mapped_sd['patch_embed.coarse_pos_embed'] = vit_sd['pos_embed']
+    mapped_sd['patch_embed.coarse_cls_token'] = vit_sd['cls_token']
+
+    # Transfer ViT final norm → DSCATNet norm_coarse
+    mapped_sd['norm_coarse.weight'] = vit_sd['norm.weight']
+    mapped_sd['norm_coarse.bias'] = vit_sd['norm.bias']
+
+    # Load mapped weights (strict=False leaves unmapped params as-is)
+    missing, unexpected = model.load_state_dict(mapped_sd, strict=False)
+
+    loaded_count = len(mapped_sd)
+    total_count = len(model.state_dict())
+    logger.info(
+        f"Loaded {loaded_count}/{total_count} parameter tensors from ViT-Small. "
+        f"{len(missing)} remaining with random init "
+        f"(cross-attention, fine-scale embeddings, fusion, classifier)."
+    )
+
+
 def create_dscatnet(
     num_classes: int = 7,
     img_size: int = 224,
@@ -274,14 +384,8 @@ def create_dscatnet(
     config = variants[variant]
     config.update(kwargs)
 
-    # Handle `pretrained` flag gracefully: not currently supported but commonly
-    # provided via configs. Pop it to avoid confusing warnings and optionally
-    # inform the user.
-    if 'pretrained' in config:
-        pretrained_flag = bool(config.pop('pretrained'))
-        if pretrained_flag:
-            logger = logging.getLogger(__name__)
-            logger.info("create_dscatnet: 'pretrained' requested but no pretrained weights are available; ignoring.")
+    # Extract pretrained flag before filtering config keys
+    pretrained = bool(config.pop('pretrained', False))
 
     # Filter config to only keys accepted by DSCATNet.__init__
     accepted_keys = {
@@ -292,17 +396,21 @@ def create_dscatnet(
 
     extra_keys = set(config.keys()) - accepted_keys
     if extra_keys:
-        # Log that some provided kwargs will be ignored (less noisy than UserWarning)
         logger = logging.getLogger(__name__)
         logger.debug(f"create_dscatnet: ignoring unknown keys: {sorted(list(extra_keys))}")
 
     filtered_config = {k: v for k, v in config.items() if k in accepted_keys}
 
-    return DSCATNet(
+    model = DSCATNet(
         img_size=img_size,
         num_classes=num_classes,
         **filtered_config
     )
+
+    if pretrained:
+        load_pretrained_vit_weights(model, variant=variant)
+
+    return model
 
 
 # =============================================================================

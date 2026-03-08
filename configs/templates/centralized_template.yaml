@@ -41,7 +41,7 @@ centralized:
     variant: small                # Options: tiny (~5M), small (~29.4M), base (~39M)
     image_size: 224               # Input image size (32-512)
     num_classes: 7                # 7: standard, 8: ISIC2019 with SCC, 2: binary
-    pretrained: true              # Use pretrained weights if available
+    pretrained: true              # Load ViT-Small (ImageNet) weights into compatible layers (small variant only)
 
   # ---------------------------------------------------------------------------
   # Training Configuration
