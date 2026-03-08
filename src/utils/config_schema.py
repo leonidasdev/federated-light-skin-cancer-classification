@@ -500,29 +500,6 @@ def validate_config_dict(
     raise ValueError(f"Unknown config type: {config_type}")
 
 
-def get_default_config(config_type: ConfigType) -> dict[str, Any]:
-    """
-    Get default configuration for a given type.
-
-    Args:
-        config_type: Type of configuration.
-
-    Returns:
-        Dictionary with default configuration values.
-    """
-    if config_type == ConfigType.EXPERIMENT:
-        return ExperimentConfig().model_dump()
-    if config_type == ConfigType.FEDERATED:
-        return FLConfig(
-            federated=FederatedSettings()
-        ).model_dump()
-    if config_type == ConfigType.MODEL:
-        return ModelConfig(
-            model=ModelSettings()
-        ).model_dump()
-    raise ValueError(f"Unknown config type: {config_type}")
-
-
 # =============================================================================
 # CLI for Validation
 # =============================================================================
