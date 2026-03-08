@@ -29,7 +29,11 @@ from tqdm.contrib.logging import logging_redirect_tqdm
 
 from ..models.dscatnet import create_dscatnet
 from ..data.datasets import (
+    DATASET_REGISTRY,
     DatasetSubset,
+    get_available_datasets,
+    get_dataset_paths,
+    normalize_dataset_name,
 )
 from ..data.preprocessing import get_transform_pair
 from ..data.splits import deterministic_train_val_split
@@ -184,10 +188,6 @@ class CentralizedTrainer:
 
     def setup_data(self) -> None:
         """Setup combined dataset from all sources using the DATASET_REGISTRY."""
-        from ..data.datasets import (
-            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
-        )
-
         logger.info("Setting up combined dataset for centralized training")
 
         train_transform, val_transform = self._get_transforms()

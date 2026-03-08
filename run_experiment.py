@@ -195,6 +195,7 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         get_available_datasets, DatasetSubset
     )
     from src.data.preprocessing import get_val_transforms
+    from src.data.splits import deterministic_train_val_split
     from torch.utils.data import DataLoader, ConcatDataset
 
     if not args.checkpoint:
@@ -268,7 +269,6 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
                 transform=val_transform,
             )
             # Use last 20% as test set (same split logic as training)
-            from src.data.splits import deterministic_train_val_split
             _, test_indices = deterministic_train_val_split(len(dataset), val_split=0.2)
             test_ds = DatasetSubset(dataset, test_indices, val_transform)
             test_datasets.append(test_ds)

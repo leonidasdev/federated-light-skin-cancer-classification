@@ -35,10 +35,15 @@ from flwr.common import Scalar
 
 from ..models.dscatnet import create_dscatnet, get_model_parameters, set_model_parameters
 from ..data.datasets import (
+    DATASET_REGISTRY,
     DatasetSubset,
+    get_available_datasets,
+    get_dataset_paths,
+    normalize_dataset_name,
 )
 from ..data.preprocessing import get_transform_pair
 from ..data.splits import create_noniid_split, deterministic_train_val_split
+from ..utils.helpers import compute_class_weights
 
 logger = logging.getLogger(__name__)
 
@@ -291,10 +296,6 @@ class FLSimulator:
         Returns a list of (dataset_name, full_dataset) tuples for every
         dataset that was successfully loaded.
         """
-        from ..data.datasets import (
-            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
-        )
-
         if self.config.datasets:
             dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
             valid_names = get_available_datasets()
@@ -423,8 +424,6 @@ class FLSimulator:
         where N_total is the total number of training samples, C is the
         number of classes, and N_c is the number of samples in class c.
         """
-        from ..utils.helpers import compute_class_weights
-
         global_counts: Counter = Counter()
         for client in self.client_data.values():
             for cls, count in client.class_distribution.items():
