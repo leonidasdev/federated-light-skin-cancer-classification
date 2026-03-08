@@ -381,7 +381,7 @@ if "new_flag" in train:
 1. Create class in `src/data/datasets.py` inheriting from `BaseDermoscopyDataset`
 2. Implement `_load_metadata()` and `_build_image_list()`
 3. Add label mapping to `UNIFIED_CLASSES_7` (and `UNIFIED_CLASSES_BINARY` if needed)
-4. Register in `_init_dataset_registry()` with a `DatasetConfig` entry
+4. Register in `DATASET_REGISTRY` with a `DatasetConfig` entry
 5. Add canonical name to `normalize_dataset_name()` mapping
 
 Both `CentralizedTrainer.setup_data()` and `FLSimulator` resolve datasets through `DATASET_REGISTRY`, so no changes are needed in training code.

@@ -586,45 +586,35 @@ class DatasetConfig:
 
 
 # Forward references for dataset classes (they're defined above)
-DATASET_REGISTRY: Dict[str, DatasetConfig] = {}
-
-
-def _init_dataset_registry():
-    """Initialize the dataset registry after all classes are defined."""
-    global DATASET_REGISTRY
-    DATASET_REGISTRY = {
-        "HAM10000": DatasetConfig(
-            dataset_class=HAM10000Dataset,
-            csv_filename="HAM10000_metadata.csv",
-            image_subdir=None,
-        ),
-        "ISIC2018": DatasetConfig(
-            dataset_class=ISIC2018Dataset,
-            csv_filename="ISIC2018_Task3_Training_GroundTruth.csv",
-            image_subdir="ISIC2018_Task3_Training_Input",
-        ),
-        "ISIC2019": DatasetConfig(
-            dataset_class=ISIC2019Dataset,
-            csv_filename="ISIC_2019_Training_GroundTruth.csv",
-            image_subdir="ISIC_2019_Training_Input",
-        ),
-        "ISIC2020": DatasetConfig(
-            dataset_class=ISIC2020Dataset,
-            csv_filename="ISIC_2020_Training_GroundTruth.csv",
-            image_subdir="ISIC_2020_Training_JPEG/train",
-            alt_csv_filenames=["train.csv"],
-            alt_image_subdirs=["train", "ISIC_2020_Training_JPEG"],
-        ),
-        "PAD-UFES-20": DatasetConfig(
-            dataset_class=PADUFES20Dataset,
-            csv_filename="metadata.csv",
-            image_subdir=None,
-        ),
-    }
-
-
-# Initialize registry
-_init_dataset_registry()
+DATASET_REGISTRY: Dict[str, DatasetConfig] = {
+    "HAM10000": DatasetConfig(
+        dataset_class=HAM10000Dataset,
+        csv_filename="HAM10000_metadata.csv",
+        image_subdir=None,
+    ),
+    "ISIC2018": DatasetConfig(
+        dataset_class=ISIC2018Dataset,
+        csv_filename="ISIC2018_Task3_Training_GroundTruth.csv",
+        image_subdir="ISIC2018_Task3_Training_Input",
+    ),
+    "ISIC2019": DatasetConfig(
+        dataset_class=ISIC2019Dataset,
+        csv_filename="ISIC_2019_Training_GroundTruth.csv",
+        image_subdir="ISIC_2019_Training_Input",
+    ),
+    "ISIC2020": DatasetConfig(
+        dataset_class=ISIC2020Dataset,
+        csv_filename="ISIC_2020_Training_GroundTruth.csv",
+        image_subdir="ISIC_2020_Training_JPEG/train",
+        alt_csv_filenames=["train.csv"],
+        alt_image_subdirs=["train", "ISIC_2020_Training_JPEG"],
+    ),
+    "PAD-UFES-20": DatasetConfig(
+        dataset_class=PADUFES20Dataset,
+        csv_filename="metadata.csv",
+        image_subdir=None,
+    ),
+}
 
 
 def normalize_dataset_name(name: str) -> str:
