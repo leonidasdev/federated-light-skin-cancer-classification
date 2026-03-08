@@ -16,12 +16,40 @@ for federated learning experiments:
 # =============================================================================
 
 import numpy as np
+import torch
 from typing import List, Tuple, Dict, Optional, Any
 from collections import defaultdict
 
 # =============================================================================
 # Basic Split Functions
 # =============================================================================
+
+
+def deterministic_train_val_split(
+    total_size: int,
+    val_split: float = 0.15,
+    seed: int = 42,
+) -> Tuple[List[int], List[int]]:
+    """Split indices into train and val sets using a torch Generator for reproducibility.
+
+    This is the canonical split function used by both centralized and federated
+    training pipelines to ensure identical splits across runs.
+
+    Args:
+        total_size: Total number of samples in the dataset.
+        val_split: Fraction of samples reserved for validation.
+        seed: Random seed for the torch Generator.
+
+    Returns:
+        Tuple of (train_indices, val_indices).
+    """
+    gen = torch.Generator()
+    gen.manual_seed(seed)
+    indices = torch.randperm(total_size, generator=gen).tolist()
+
+    val_n = int(total_size * val_split)
+    train_n = total_size - val_n
+    return indices[:train_n], indices[train_n:]
 
 
 def train_val_split(

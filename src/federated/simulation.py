@@ -36,8 +36,8 @@ from ..models.dscatnet import create_dscatnet, get_model_parameters, set_model_p
 from ..data.datasets import (
     DatasetSubset,
 )
-from ..data.preprocessing import get_train_transforms, get_val_transforms
-from ..data.splits import create_noniid_split
+from ..data.preprocessing import get_transform_pair
+from ..data.splits import create_noniid_split, deterministic_train_val_split
 
 logger = logging.getLogger(__name__)
 
@@ -275,22 +275,12 @@ class FLSimulator:
         logger.info(f"Output directory: {self.output_dir}")
 
     def _get_transforms(self) -> Tuple[Any, Any]:
-        """
-        Get train and validation transforms based on config.
-
-        Returns:
-            Tuple of (train_transform, val_transform)
-        """
-        train_transform = get_train_transforms(
+        """Get train and validation transforms based on config."""
+        return get_transform_pair(
             img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
-        val_transform = get_val_transforms(
-            img_size=self.config.image_size,
-            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
-        )
-        return train_transform, val_transform
 
     def setup_natural_noniid(self) -> None:
         """
@@ -360,16 +350,9 @@ class FLSimulator:
                 logger.warning(f"Dataset {dataset_name} contains 0 samples")
                 continue
 
-            # Compute split sizes using configured train/val ratio
-            val_n = int(n * (1.0 - self.config.train_val_split))
-            train_n = n - val_n
-
-            gen = torch.Generator()
-            gen.manual_seed(42)
-            indices = torch.randperm(n, generator=gen).tolist()
-
-            train_indices = indices[:train_n]
-            val_indices = indices[train_n:]
+            train_indices, val_indices = deterministic_train_val_split(
+                n, val_split=1.0 - self.config.train_val_split
+            )
 
             train_dataset = DatasetSubset(full_dataset, train_indices, train_transform)
             val_dataset = DatasetSubset(full_dataset, val_indices, val_transform)
@@ -431,23 +414,17 @@ class FLSimulator:
         number of classes, and N_c is the number of samples in class c.
         """
         from collections import Counter
+        from ..utils.helpers import compute_class_weights
 
         global_counts: Counter = Counter()
         for client in self.client_data.values():
             for cls, count in client.class_distribution.items():
                 global_counts[int(cls)] += count
 
-        total = sum(global_counts.values())
-        num_classes = self.config.num_classes
-
-        weights = torch.zeros(num_classes)
-        for cls, count in global_counts.items():
-            if 0 <= cls < num_classes:
-                weights[cls] = total / (num_classes * count)
-
-        self.class_weights = weights.to(self.device)
-        logger.info(f"Class weights: {dict(enumerate(weights.tolist()))}")
-
+        self.class_weights = compute_class_weights(
+            dict(global_counts), self.config.num_classes
+        ).to(self.device)
+        logger.info(f"Class weights: {dict(enumerate(self.class_weights.tolist()))}")
     def setup_dirichlet_noniid(self) -> None:
         """
         Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.

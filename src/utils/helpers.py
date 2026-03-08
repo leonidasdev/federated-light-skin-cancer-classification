@@ -12,7 +12,7 @@ Common helper functions used across the project.
 # =============================================================================
 
 import random
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import numpy as np
 import torch
@@ -80,6 +80,25 @@ def autocast() -> "torch.autocast":
         return torch.amp.autocast("cuda")  # type: ignore[attr-defined]
     return torch.cuda.amp.autocast()  # type: ignore[attr-defined]
 
+
+def create_grad_scaler() -> Any:
+    """Create a GradScaler instance, handling PyTorch version differences.
+
+    Returns:
+        A ``torch.amp.GradScaler`` (or legacy ``torch.cuda.amp.GradScaler``).
+    """
+    amp_mod = getattr(torch, "amp", None)
+    scaler_cls = getattr(amp_mod, "GradScaler", None) if amp_mod else None
+
+    if scaler_cls is not None:
+        try:
+            return scaler_cls(device_type="cuda")
+        except TypeError:
+            return scaler_cls()
+
+    from torch.cuda.amp import GradScaler as _GradScaler  # type: ignore[attr-defined]
+    return _GradScaler()
+
 # =============================================================================
 # Model Utilities
 # =============================================================================
@@ -99,6 +118,29 @@ def count_parameters(model: torch.nn.Module, trainable_only: bool = True) -> int
     if trainable_only:
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
     return sum(p.numel() for p in model.parameters())
+
+
+def compute_class_weights(
+    label_counts: Dict[int, int],
+    num_classes: int,
+) -> torch.Tensor:
+    """Compute inverse-frequency class weights for imbalanced datasets.
+
+    Uses the formula: weight_c = N_total / (C * N_c)
+
+    Args:
+        label_counts: Mapping of class index to sample count.
+        num_classes: Total number of classes.
+
+    Returns:
+        Float tensor of shape (num_classes,) with per-class weights.
+    """
+    total = sum(label_counts.values())
+    weights = torch.zeros(num_classes)
+    for cls, count in label_counts.items():
+        if 0 <= cls < num_classes:
+            weights[cls] = total / (num_classes * count)
+    return weights
 
 # =============================================================================
 # Formatting Utilities

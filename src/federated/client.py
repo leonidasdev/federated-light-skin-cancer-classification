@@ -21,7 +21,7 @@ from flwr.client import NumPyClient
 from flwr.common import NDArrays, Scalar
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
-from ..utils.helpers import autocast
+from ..utils.helpers import autocast, create_grad_scaler
 
 
 # =============================================================================
@@ -81,20 +81,7 @@ class SkinCancerClient(NumPyClient):
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = use_amp and device.type == "cuda"
         if self.use_amp:
-            # Guarded access to torch.amp.GradScaler to avoid static analyzer warnings
-            amp_mod = getattr(torch, "amp", None)
-            scaler_cls = None
-            if amp_mod is not None:
-                scaler_cls = getattr(amp_mod, "GradScaler", None)
-
-            if scaler_cls is not None:
-                try:
-                    self.scaler = scaler_cls(device_type="cuda")
-                except TypeError:
-                    self.scaler = scaler_cls()
-            else:
-                from torch.cuda.amp import GradScaler as _GradScaler
-                self.scaler = _GradScaler()
+            self.scaler = create_grad_scaler()
         else:
             self.scaler = None
 

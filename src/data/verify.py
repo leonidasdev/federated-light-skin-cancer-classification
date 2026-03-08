@@ -18,7 +18,6 @@ Provides comprehensive verification of dermoscopy datasets including:
 from pathlib import Path
 from typing import Dict, Any
 import pandas as pd
-from PIL import Image
 
 # =============================================================================
 # Dataset Verifier

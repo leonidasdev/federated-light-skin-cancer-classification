@@ -31,8 +31,9 @@ from ..models.dscatnet import create_dscatnet
 from ..data.datasets import (
     DatasetSubset,
 )
-from ..data.preprocessing import get_train_transforms, get_val_transforms
-from ..utils.helpers import autocast, count_parameters
+from ..data.preprocessing import get_transform_pair
+from ..data.splits import deterministic_train_val_split
+from ..utils.helpers import autocast, compute_class_weights, count_parameters, create_grad_scaler
 
 logger = logging.getLogger(__name__)
 
@@ -164,22 +165,7 @@ class CentralizedTrainer:
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = config.use_amp and self.device.type == "cuda"
         if self.use_amp:
-            # Avoid direct attribute access to torch.amp.GradScaler (not exported in some stubs)
-            amp_mod = getattr(torch, "amp", None)
-            scaler_cls = None
-            if amp_mod is not None:
-                scaler_cls = getattr(amp_mod, "GradScaler", None)
-
-            if scaler_cls is not None:
-                try:
-                    self.scaler = scaler_cls(device_type="cuda")
-                except TypeError:
-                    # Some versions may expect different signature; fall back to default construction
-                    self.scaler = scaler_cls()
-            else:
-                # Fallback for PyTorch without torch.amp.GradScaler
-                from torch.cuda.amp import GradScaler as _GradScaler
-                self.scaler = _GradScaler()
+            self.scaler = create_grad_scaler()
         else:
             self.scaler = None
 
@@ -189,22 +175,12 @@ class CentralizedTrainer:
         logger.info(f"Model parameters: {count_parameters(self.model, trainable_only=False):,}")
 
     def _get_transforms(self) -> Tuple[Any, Any]:
-        """
-        Get train and validation transforms based on config.
-
-        Returns:
-            Tuple of (train_transform, val_transform)
-        """
-        train_transform = get_train_transforms(
+        """Get train and validation transforms based on config."""
+        return get_transform_pair(
             img_size=self.config.image_size,
             augmentation_level=self.config.augmentation_level,
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
-        val_transform = get_val_transforms(
-            img_size=self.config.image_size,
-            use_dermoscopy_norm=self.config.use_dermoscopy_norm,
-        )
-        return train_transform, val_transform
 
     def setup_data(self) -> None:
         """Setup combined dataset from all sources using the DATASET_REGISTRY."""
@@ -266,17 +242,9 @@ class CentralizedTrainer:
                 logger.warning(f"Dataset {name} contains 0 samples")
                 continue
 
-            # Compute split sizes
-            val_n = int(n * self.config.val_split)
-            train_n = n - val_n
-
-            # Reproducible random permutation
-            gen = torch.Generator()
-            gen.manual_seed(42)
-            indices = torch.randperm(n, generator=gen).tolist()
-
-            train_indices = indices[:train_n]
-            val_indices = indices[train_n:]
+            train_indices, val_indices = deterministic_train_val_split(
+                n, val_split=self.config.val_split
+            )
 
             train_ds = DatasetSubset(full_dataset, train_indices, train_transform)
             val_ds = DatasetSubset(full_dataset, val_indices, val_transform)
@@ -334,17 +302,10 @@ class CentralizedTrainer:
                 all_labels.extend(labels)
 
         label_counts = Counter(all_labels)
-        total = sum(label_counts.values())
-        num_classes = self.config.num_classes
-
-        # Compute inverse frequency weights
-        weights = torch.zeros(num_classes)
-        for cls, count in label_counts.items():
-            if 0 <= cls < num_classes:
-                weights[cls] = total / (num_classes * count)
-
-        self.class_weights = weights.to(self.device)
-        logger.info(f"Class weights: {dict(enumerate(weights.tolist()))}")
+        self.class_weights = compute_class_weights(
+            dict(label_counts), self.config.num_classes
+        ).to(self.device)
+        logger.info(f"Class weights: {dict(enumerate(self.class_weights.tolist()))}")
 
     def train_epoch(
         self,

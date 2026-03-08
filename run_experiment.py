@@ -267,11 +267,8 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
                 transform=val_transform,
             )
             # Use last 20% as test set (same split logic as training)
-            n = len(dataset)
-            gen = torch.Generator()
-            gen.manual_seed(42)
-            indices = torch.randperm(n, generator=gen).tolist()
-            test_indices = indices[int(n * 0.8):]
+            from src.data.splits import deterministic_train_val_split
+            _, test_indices = deterministic_train_val_split(len(dataset), val_split=0.2)
             test_ds = DatasetSubset(dataset, test_indices, val_transform)
             test_datasets.append(test_ds)
             logger.info(f"Loaded {name}: {len(test_ds)} test samples")
