@@ -106,8 +106,8 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 ### Python Style
 
 - **Formatting**: PEP 8 compliant, 120-character line limit (configured in `pyproject.toml`)
-- **Linter**: Ruff (rules: E, F, W, I)
-- **Type Hints**: All function signatures include type hints
+- **Linter**: Ruff (rules: E, F, W, B, UP, SIM, PIE, C4, PERF, RUF, PLC, PLE)
+- **Type Hints**: All function signatures use PEP 585/604 style (`list[int]`, `str | None`)
 - **Docstrings**: Google-style docstrings for all public functions/classes
 - **Imports**: Grouped (stdlib → third-party → local), absolute imports preferred
 
@@ -117,7 +117,7 @@ def train_epoch(
     self,
     optimizer: torch.optim.Optimizer,
     criterion: nn.Module,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     """
     Train for one epoch.
 
@@ -147,11 +147,11 @@ class SimulationConfig:
     weight_decay: float = 0.0
     gradient_accumulation_steps: int = 1  # Effective BS = batch_size × steps
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "SimulationConfig":
+    def from_dict(cls, d: dict[str, Any]) -> "SimulationConfig":
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 ```
 
