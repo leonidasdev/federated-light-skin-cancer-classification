@@ -92,6 +92,99 @@ def load_config(config_path: str) -> Dict[str, Any]:
         return yaml.safe_load(f)
 
 
+# Section-to-field mappings shared by centralized and federated config flattening.
+# Each entry: (yaml_section_name, [(yaml_key, config_field_name), ...])
+_COMMON_SECTION_MAPPINGS = [
+    (None, [  # Top-level keys
+        ("data_root", "data_root"),
+        ("output_dir", "output_dir"),
+        ("datasets", "datasets"),
+    ]),
+    ("experiment", [
+        ("name", "experiment_name"),
+    ]),
+    ("model", [
+        ("image_size", "image_size"),
+        ("variant", "model_variant"),
+    ]),
+    ("augmentation", [
+        ("level", "augmentation_level"),
+        ("use_dermoscopy_norm", "use_dermoscopy_norm"),
+    ]),
+    ("evaluation", [
+        ("early_stopping_patience", "early_stopping_patience"),
+        ("use_class_weights", "use_class_weights"),
+        ("checkpoint_interval", "checkpoint_interval"),
+    ]),
+]
+
+
+def _flatten_config(
+    config_dict: Dict[str, Any],
+    extra_mappings: list,
+) -> Dict[str, Any]:
+    """Flatten a nested YAML config dict into a flat dict for dataclass construction.
+
+    Args:
+        config_dict: The nested YAML config dict (e.g. centralized or federated section).
+        extra_mappings: Additional section mappings beyond the common ones.
+
+    Returns:
+        Flat dict suitable for passing to ``Config.from_dict()``.
+    """
+    flat: Dict[str, Any] = {}
+    all_mappings = _COMMON_SECTION_MAPPINGS + extra_mappings
+
+    for section_name, field_pairs in all_mappings:
+        source = config_dict if section_name is None else config_dict.get(section_name, {})
+        for yaml_key, config_key in field_pairs:
+            if yaml_key in source:
+                flat[config_key] = source[yaml_key]
+
+    return flat
+
+
+def _apply_cli_overrides(config: Any, args: argparse.Namespace) -> None:
+    """Apply CLI argument overrides to a config object (centralized or federated).
+
+    Handles all common CLI flags shared between modes. Mode-specific overrides
+    are applied by the caller after this function returns.
+
+    Args:
+        config: A CentralizedConfig or SimulationConfig instance.
+        args: Parsed CLI arguments.
+    """
+    # Common overrides shared by both modes
+    _CLI_COMMON = [
+        ("batch_size", "batch_size"),
+        ("lr", "learning_rate"),
+        ("data_root", "data_root"),
+        ("output_dir", "output_dir"),
+        ("datasets", "datasets"),
+        ("model_variant", "model_variant"),
+        ("image_size", "image_size"),
+        ("num_classes", "num_classes"),
+        ("augmentation", "augmentation_level"),
+        ("num_workers", "num_workers"),
+        ("resume", "resume_from"),
+    ]
+
+    for arg_name, config_field in _CLI_COMMON:
+        val = getattr(args, arg_name, None)
+        if val is not None:
+            setattr(config, config_field, val)
+
+    # weight_decay and other flags that use ``is not None`` checks
+    if args.weight_decay is not None:
+        config.weight_decay = args.weight_decay
+    if args.early_stopping is not None:
+        config.early_stopping_patience = args.early_stopping
+    if args.checkpoint_interval is not None:
+        config.checkpoint_interval = args.checkpoint_interval
+    if args.no_amp and hasattr(config, "use_amp"):
+        config.use_amp = False
+
+
 def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     """Evaluate a trained model checkpoint using the DATASET_REGISTRY."""
     from src.models.dscatnet import create_dscatnet
@@ -252,134 +345,56 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
     # Ensure reproducibility (seeds random, numpy, torch, cuDNN)
     set_seed(42)
 
+    # Centralized-specific config section mappings
+    _CENTRALIZED_SECTIONS = [
+        ("model", [
+            ("num_classes", "num_classes"),
+        ]),
+        ("training", [
+            ("batch_size", "batch_size"),
+            ("lr", "learning_rate"),
+            ("epochs", "num_epochs"),
+            ("weight_decay", "weight_decay"),
+            ("warmup_epochs", "warmup_epochs"),
+            ("scheduler", "scheduler_type"),
+            ("min_lr", "min_lr"),
+            ("optimizer", "optimizer_type"),
+            ("gradient_accumulation_steps", "gradient_accumulation_steps"),
+            ("use_amp", "use_amp"),
+        ]),
+        ("splits", [
+            ("val_split", "val_split"),
+            ("test_split", "test_split"),
+        ]),
+    ]
+
     # Load config if provided
     if args.config:
         config_dict = load_config(args.config)
         cent_config = config_dict.get("centralized", {})
-
-        # Flatten nested config structure for CentralizedConfig
-        flat_config = {}
-
-        # Direct mappings
-        for key in ["data_root", "output_dir", "datasets"]:
-            if key in cent_config:
-                flat_config[key] = cent_config[key]
-
-        # Experiment section
-        if "experiment" in cent_config:
-            exp = cent_config["experiment"]
-            if "name" in exp:
-                flat_config["experiment_name"] = exp["name"]
-
-        # Model section
-        if "model" in cent_config:
-            model = cent_config["model"]
-            if "image_size" in model:
-                flat_config["image_size"] = model["image_size"]
-            if "variant" in model:
-                flat_config["model_variant"] = model["variant"]
-            if "num_classes" in model:
-                flat_config["num_classes"] = model["num_classes"]
-
-        # Training section
-        if "training" in cent_config:
-            train = cent_config["training"]
-            if "batch_size" in train:
-                flat_config["batch_size"] = train["batch_size"]
-            if "lr" in train:
-                flat_config["learning_rate"] = train["lr"]
-            if "epochs" in train:
-                flat_config["num_epochs"] = train["epochs"]
-            if "weight_decay" in train:
-                flat_config["weight_decay"] = train["weight_decay"]
-            if "warmup_epochs" in train:
-                flat_config["warmup_epochs"] = train["warmup_epochs"]
-            if "scheduler" in train:
-                flat_config["scheduler_type"] = train["scheduler"]
-            if "min_lr" in train:
-                flat_config["min_lr"] = train["min_lr"]
-            if "optimizer" in train:
-                flat_config["optimizer_type"] = train["optimizer"]
-            if "gradient_accumulation_steps" in train:
-                flat_config["gradient_accumulation_steps"] = train["gradient_accumulation_steps"]
-            if "use_amp" in train:
-                flat_config["use_amp"] = train["use_amp"]
-
-        # Splits section
-        if "splits" in cent_config:
-            splits = cent_config["splits"]
-            if "val_split" in splits:
-                flat_config["val_split"] = splits["val_split"]
-            if "test_split" in splits:
-                flat_config["test_split"] = splits["test_split"]
-
-        # Augmentation section
-        if "augmentation" in cent_config:
-            aug = cent_config["augmentation"]
-            if "level" in aug:
-                flat_config["augmentation_level"] = aug["level"]
-            if "use_dermoscopy_norm" in aug:
-                flat_config["use_dermoscopy_norm"] = aug["use_dermoscopy_norm"]
-
-        # Evaluation section
-        if "evaluation" in cent_config:
-            evl = cent_config["evaluation"]
-            if "early_stopping_patience" in evl:
-                flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
-            if "use_class_weights" in evl:
-                flat_config["use_class_weights"] = evl["use_class_weights"]
-            if "checkpoint_interval" in evl:
-                flat_config["checkpoint_interval"] = evl["checkpoint_interval"]
-
+        flat_config = _flatten_config(cent_config, _CENTRALIZED_SECTIONS)
         config = CentralizedConfig.from_dict(flat_config)
     else:
         config = CentralizedConfig()
 
-    # Override with command line args (all hyperparameters)
+    # Apply common CLI overrides
+    _apply_cli_overrides(config, args)
+
+    # Centralized-specific CLI overrides
     if args.epochs:
         config.num_epochs = args.epochs
-    if args.batch_size:
-        config.batch_size = args.batch_size
-    if args.lr:
-        config.learning_rate = args.lr
-    if args.data_root:
-        config.data_root = args.data_root
-    if args.output_dir:
-        config.output_dir = args.output_dir
-    if args.datasets:
-        config.datasets = args.datasets
-    if args.resume:
-        config.resume_from = args.resume
-    if args.experiment_name:
-        config.experiment_name = args.experiment_name
-    else:
-        config.experiment_name = f"centralized_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    # Additional hyperparameter overrides
-    if args.model_variant:
-        config.model_variant = args.model_variant
-    if args.weight_decay is not None:
-        config.weight_decay = args.weight_decay
     if args.warmup_epochs is not None:
         config.warmup_epochs = args.warmup_epochs
     if args.scheduler:
         config.scheduler_type = args.scheduler
-    if args.early_stopping is not None:
-        config.early_stopping_patience = args.early_stopping
-    if args.checkpoint_interval is not None:
-        config.checkpoint_interval = args.checkpoint_interval
-    if args.image_size is not None:
-        config.image_size = args.image_size
-    if args.num_classes is not None:
-        config.num_classes = args.num_classes
-    if args.augmentation:
-        config.augmentation_level = args.augmentation
     if args.val_split is not None:
         config.val_split = args.val_split
-    if args.no_amp:
-        config.use_amp = False
-    if args.num_workers is not None:
-        config.num_workers = args.num_workers
+
+    # Experiment name
+    if args.experiment_name:
+        config.experiment_name = args.experiment_name
+    elif not args.config:
+        config.experiment_name = f"centralized_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     # Setup output directory and logging
     output_dir = Path(config.output_dir) / config.experiment_name
@@ -418,88 +433,33 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
                 logger.info(f"Restored config from checkpoint: noniid_type={checkpoint_config.get('noniid_type')}, "
                           f"datasets={checkpoint_config.get('datasets')}")
 
+    # Federated-specific config section mappings
+    _FEDERATED_SECTIONS = [
+        ("training", [
+            ("local_epochs", "local_epochs"),
+            ("num_rounds", "num_rounds"),
+            ("rounds", "num_rounds"),
+            ("train_val_split", "train_val_split"),
+        ]),
+        ("federation", [
+            ("num_clients", "num_clients"),
+            ("num_rounds", "num_rounds"),
+            ("noniid_type", "noniid_type"),
+            ("dirichlet_alpha", "dirichlet_alpha"),
+        ]),
+    ]
+
     # Load config: priority is CLI args > YAML config > checkpoint config > defaults
     if args.config:
         config_dict = load_config(args.config)
         fed_config = config_dict.get("federated", {})
+        flat_config = _flatten_config(fed_config, _FEDERATED_SECTIONS)
 
-        # Flatten nested config structure for SimulationConfig
-        flat_config = {}
-
-        # Direct mappings
-        for key in ["data_root", "output_dir", "datasets"]:
-            if key in fed_config:
-                flat_config[key] = fed_config[key]
-
-        # Experiment section
-        if "experiment" in fed_config:
-            exp = fed_config["experiment"]
-            if "name" in exp:
-                flat_config["experiment_name"] = exp["name"]
-
-        # Model section
-        if "model" in fed_config:
-            model = fed_config["model"]
-            if "image_size" in model:
-                flat_config["image_size"] = model["image_size"]
-            if "variant" in model:
-                flat_config["model_variant"] = model["variant"]
-
-        # Training section
-        if "training" in fed_config:
-            train = fed_config["training"]
-            if "batch_size" in train:
-                flat_config["batch_size"] = train["batch_size"]
-            if "lr" in train:
-                flat_config["learning_rate"] = train["lr"]
-            if "local_epochs" in train:
-                flat_config["local_epochs"] = train["local_epochs"]
-            if "num_rounds" in train:
-                flat_config["num_rounds"] = train["num_rounds"]
-            if "rounds" in train:
-                flat_config["num_rounds"] = train["rounds"]
-            if "weight_decay" in train:
-                flat_config["weight_decay"] = train["weight_decay"]
-            if "optimizer" in train:
-                flat_config["optimizer_type"] = train["optimizer"]
-            if "gradient_accumulation_steps" in train:
-                flat_config["gradient_accumulation_steps"] = train["gradient_accumulation_steps"]
-            # train_val_split: fraction used for training (rest for validation)
-            if "train_val_split" in train:
-                flat_config["train_val_split"] = train["train_val_split"]
-
-        # Federation section
-        if "federation" in fed_config:
-            fed = fed_config["federation"]
-            if "num_clients" in fed:
-                flat_config["num_clients"] = fed["num_clients"]
-            if "num_rounds" in fed:
-                flat_config["num_rounds"] = fed["num_rounds"]
-            if "noniid_type" in fed:
-                flat_config["noniid_type"] = fed["noniid_type"]
-            if "dirichlet_alpha" in fed:
-                flat_config["dirichlet_alpha"] = fed["dirichlet_alpha"]
-            if "participation" in fed:
-                flat_config["fraction_fit"] = fed["participation"]
-                flat_config["fraction_evaluate"] = fed["participation"]
-
-        # Augmentation section
-        if "augmentation" in fed_config:
-            aug = fed_config["augmentation"]
-            if "level" in aug:
-                flat_config["augmentation_level"] = aug["level"]
-            if "use_dermoscopy_norm" in aug:
-                flat_config["use_dermoscopy_norm"] = aug["use_dermoscopy_norm"]
-
-        # Evaluation section
-        if "evaluation" in fed_config:
-            evl = fed_config["evaluation"]
-            if "checkpoint_interval" in evl:
-                flat_config["checkpoint_interval"] = evl["checkpoint_interval"]
-            if "early_stopping_patience" in evl:
-                flat_config["early_stopping_patience"] = evl["early_stopping_patience"]
-            if "use_class_weights" in evl:
-                flat_config["use_class_weights"] = evl["use_class_weights"]
+        # Special handling: federation.participation maps to two fields
+        fed_section = fed_config.get("federation", {})
+        if "participation" in fed_section:
+            flat_config["fraction_fit"] = fed_section["participation"]
+            flat_config["fraction_evaluate"] = fed_section["participation"]
 
         config = SimulationConfig.from_dict(flat_config)
     elif checkpoint_config:
@@ -509,52 +469,24 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     else:
         config = SimulationConfig()
 
-    # Override with command line args (all hyperparameters)
+    # Apply common CLI overrides
+    _apply_cli_overrides(config, args)
+
+    # Federated-specific CLI overrides
     if args.rounds:
         config.num_rounds = args.rounds
     if args.clients:
         config.num_clients = args.clients
     if args.local_epochs:
         config.local_epochs = args.local_epochs
-    if args.batch_size:
-        config.batch_size = args.batch_size
-    if args.lr:
-        config.learning_rate = args.lr
-    if args.data_root:
-        config.data_root = args.data_root
-    if args.output_dir:
-        config.output_dir = args.output_dir
     if args.noniid_type:
         config.noniid_type = args.noniid_type
     if args.dirichlet_alpha:
         config.dirichlet_alpha = args.dirichlet_alpha
     if args.datasets:
-        config.datasets = args.datasets
         # Auto-adjust num_clients to match selected datasets for natural non-IID
         if config.noniid_type == "natural":
             config.num_clients = len(args.datasets)
-    if args.experiment_name:
-        config.experiment_name = args.experiment_name
-    else:
-        config.experiment_name = f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-    # Additional hyperparameter overrides
-    if args.model_variant:
-        config.model_variant = args.model_variant
-    if args.weight_decay is not None:
-        config.weight_decay = args.weight_decay
-    if args.early_stopping is not None:
-        config.early_stopping_patience = args.early_stopping
-    if args.checkpoint_interval is not None:
-        config.checkpoint_interval = args.checkpoint_interval
-    if args.image_size is not None:
-        config.image_size = args.image_size
-    if args.num_classes is not None:
-        config.num_classes = args.num_classes
-    if args.augmentation:
-        config.augmentation_level = args.augmentation
-    if args.num_workers is not None:
-        config.num_workers = args.num_workers
     if args.participation is not None:
         config.fraction_fit = args.participation
         config.fraction_evaluate = args.participation
@@ -565,9 +497,11 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     if args.train_val_split is not None:
         config.train_val_split = args.train_val_split
 
-    # Resume from checkpoint
-    if args.resume:
-        config.resume_from = args.resume
+    # Experiment name
+    if args.experiment_name:
+        config.experiment_name = args.experiment_name
+    elif not args.config:
+        config.experiment_name = f"federated_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     # Setup output directory and logging
     output_dir = Path(config.output_dir) / config.experiment_name

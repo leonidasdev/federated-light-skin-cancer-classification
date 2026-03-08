@@ -17,10 +17,8 @@ Provides comprehensive verification of dermoscopy datasets including:
 
 from pathlib import Path
 from typing import Dict, Any
-import numpy as np
 import pandas as pd
 from PIL import Image
-from tqdm import tqdm
 
 # =============================================================================
 # Dataset Verifier
@@ -42,49 +40,6 @@ class DatasetVerifier:
     def __init__(self, data_root: str):
         self.data_root = Path(data_root)
         self.results: Dict[str, Any] = {}
-
-    def verify_image(self, image_path: Path) -> Dict[str, Any]:
-        """
-        Verify a single image file.
-
-        Returns dict with:
-        - valid: bool
-        - width, height: dimensions
-        - channels: number of channels
-        - format: image format
-        - error: error message if invalid
-        """
-        result = {
-            "valid": False,
-            "path": str(image_path),
-            "width": None,
-            "height": None,
-            "channels": None,
-            "format": None,
-            "error": None
-        }
-
-        try:
-            with Image.open(image_path) as img:
-                result["valid"] = True
-                result["width"] = img.width
-                result["height"] = img.height
-                result["format"] = img.format
-
-                # Check channels
-                if img.mode == "RGB":
-                    result["channels"] = 3
-                elif img.mode == "RGBA":
-                    result["channels"] = 4
-                elif img.mode == "L":
-                    result["channels"] = 1
-                else:
-                    result["channels"] = len(img.mode)
-
-        except Exception as e:
-            result["error"] = str(e)
-
-        return result
 
     def verify_ham10000(self) -> Dict[str, Any]:
         """Verify HAM10000 dataset."""
@@ -362,125 +317,6 @@ class DatasetVerifier:
             },
             "all_valid": all(r["valid"] for r in self.results.values())
         }
-
-
-def compute_dataset_statistics(
-    data_root: str,
-    sample_size: int = 1000,
-    verbose: bool = True
-) -> Dict[str, Any]:
-    """
-    Compute detailed statistics across all datasets.
-
-    Samples images to compute:
-    - Mean/std per channel
-    - Image dimension distribution
-    - Aspect ratio distribution
-    """
-    from .datasets import (
-        HAM10000Dataset, ISIC2018Dataset,
-        ISIC2019Dataset, ISIC2020Dataset
-    )
-
-    stats = {}
-    data_root_path = Path(data_root)
-
-    datasets = {
-        "HAM10000": (HAM10000Dataset, "HAM10000", "HAM10000_metadata.csv"),
-        "ISIC2018": (ISIC2018Dataset, "ISIC2018/ISIC2018_Task3_Training_Input",
-                     "ISIC2018/ISIC2018_Task3_Training_GroundTruth.csv"),
-        "ISIC2019": (ISIC2019Dataset, "ISIC2019/ISIC_2019_Training_Input",
-                     "ISIC2019/ISIC_2019_Training_GroundTruth.csv"),
-        "ISIC2020": (ISIC2020Dataset, "ISIC2020/train", "ISIC2020/train.csv")
-    }
-
-    for name, (DatasetClass, img_dir, csv_file) in datasets.items():
-        if verbose:
-            print(f"\nAnalyzing {name}...")
-
-        img_path = data_root_path / img_dir.split("/")[0]
-        csv_path = data_root_path / csv_file
-
-        if not csv_path.exists():
-            if verbose:
-                print("  Skipping - CSV not found")
-            continue
-
-        try:
-            # Sample images for statistics
-            widths = []
-            heights = []
-
-            img_folder = data_root_path / img_dir
-            if img_folder.exists():
-                images = list(img_folder.glob("*.jpg"))[:sample_size]
-
-                for img_path in tqdm(images, desc=f"  Sampling {name}", disable=not verbose):
-                    try:
-                        with Image.open(img_path) as img:
-                            widths.append(img.width)
-                            heights.append(img.height)
-                    except (IOError, OSError):
-                        pass
-
-            if widths:
-                stats[name] = {
-                    "sampled": len(widths),
-                    "width_mean": np.mean(widths),
-                    "width_std": np.std(widths),
-                    "width_min": min(widths),
-                    "width_max": max(widths),
-                    "height_mean": np.mean(heights),
-                    "height_std": np.std(heights),
-                    "height_min": min(heights),
-                    "height_max": max(heights),
-                    "aspect_ratio_mean": np.mean([w/h for w, h in zip(widths, heights)])
-                }
-
-        except Exception as e:
-            if verbose:
-                print(f"  Error: {e}")
-
-    return stats
-
-
-def check_cross_dataset_consistency(data_root: str) -> Dict[str, Any]:
-    """
-    Check consistency across datasets for federated learning.
-
-    Verifies:
-    - Class label compatibility
-    - Image format consistency
-    - Potential preprocessing issues
-    """
-    verifier = DatasetVerifier(data_root)
-    verifier.verify_all(verbose=False)  # Run verification for side effects
-
-    consistency = {
-        "label_mapping_required": True,
-        "unified_classes": 7,
-        "class_mapping": {
-            "HAM10000": "Direct 7-class mapping",
-            "ISIC2018": "Direct 7-class mapping (same as HAM10000)",
-            "ISIC2019": "8 classes - SCC mapped to BCC",
-            "ISIC2020": "Binary - benign→NV, malignant→MEL"
-        },
-        "format_consistent": True,
-        "preprocessing_notes": [
-            "All datasets use JPEG format",
-            "Variable image sizes - resize to 224x224 needed",
-            "HAM10000/ISIC2018 have similar acquisition protocols",
-            "ISIC2020 images may have different characteristics"
-        ],
-        "recommendations": [
-            "Use ImageNet normalization for consistency",
-            "Apply same augmentation pipeline to all clients",
-            "Consider class weighting for imbalanced classes",
-            "ISIC2020 binary labels need special handling"
-        ]
-    }
-
-    return consistency
 
 
 if __name__ == "__main__":

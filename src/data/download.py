@@ -44,14 +44,6 @@ logger = logging.getLogger(__name__)
 
 ISIC_API_BASE_URL = "https://api.isic-archive.com/api/v2"
 
-# Dataset names as they appear in ISIC Archive API
-ISIC_DATASET_NAMES = {
-    "HAM10000": "HAM10000",
-    "ISIC2018": "ISIC_2018_Task_3_Training",
-    "ISIC2019": "ISIC_2019_Training",
-    "ISIC2020": "ISIC_2020_Training_JPEG",
-}
-
 # =============================================================================
 # Dataset Information
 # =============================================================================
@@ -1378,11 +1370,6 @@ class DatasetSetupWizard:
             print_download_instructions()
             print("\nTo download automatically, run:")
             print("  python -m src.data.download --download-all")
-
-    def quick_verify(self) -> bool:
-        """Quick verification of all datasets."""
-        results = verify_all_datasets(self.data_root)
-        return all(r["valid"] for r in results.values())
 
 
 # =============================================================================

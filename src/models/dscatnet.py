@@ -325,7 +325,7 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
     mapped_sd['norm_coarse.bias'] = vit_sd['norm.bias']
 
     # Load mapped weights (strict=False leaves unmapped params as-is)
-    missing, unexpected = model.load_state_dict(mapped_sd, strict=False)
+    missing, _ = model.load_state_dict(mapped_sd, strict=False)
 
     loaded_count = len(mapped_sd)
     total_count = len(model.state_dict())

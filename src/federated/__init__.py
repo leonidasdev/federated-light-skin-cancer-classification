@@ -27,7 +27,7 @@ from .client import SkinCancerClient, create_client
 # Server Imports
 # =============================================================================
 
-from .server import create_server, start_server
+from .server import create_server, start_server, FederatedServer
 
 # =============================================================================
 # Strategy Imports
@@ -52,6 +52,7 @@ __all__ = [
     # Server
     "create_server",
     "start_server",
+    "FederatedServer",
     # Strategy
     "create_fedavg_strategy",
     # Simulation

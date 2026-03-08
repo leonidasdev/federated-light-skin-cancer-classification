@@ -36,28 +36,6 @@ import torch
 # Class Mappings for Different Datasets
 # =============================================================================
 
-# HAM10000: 7 diagnostic categories
-HAM10000_CLASSES = {
-    'akiec': 0,  # Actinic keratoses and intraepithelial carcinoma
-    'bcc': 1,    # Basal cell carcinoma
-    'bkl': 2,    # Benign keratosis-like lesions
-    'df': 3,     # Dermatofibroma
-    'mel': 4,    # Melanoma
-    'nv': 5,     # Melanocytic nevi
-    'vasc': 6    # Vascular lesions
-}
-
-# ISIC2018: Same 7 classes as HAM10000 (uses AKIEC not AK)
-ISIC2018_CLASSES = {
-    'MEL': 4,    # Melanoma
-    'NV': 5,     # Melanocytic nevus
-    'BCC': 1,    # Basal cell carcinoma
-    'AKIEC': 0,  # Actinic keratosis (note: AKIEC not AK)
-    'BKL': 2,    # Benign keratosis
-    'DF': 3,     # Dermatofibroma
-    'VASC': 6    # Vascular lesion
-}
-
 # ISIC2019: 8 classes + UNK (adds SCC, uses AK not AKIEC)
 ISIC2019_CLASSES = {
     'MEL': 4,    # Melanoma
@@ -71,14 +49,6 @@ ISIC2019_CLASSES = {
     'UNK': -1,   # Unknown (to be filtered or handled specially)
 }
 
-# ISIC2020: Binary classification with rich diagnosis metadata
-# Primary: benign (0) vs malignant (1)
-# Diagnosis field has: nevus, melanoma, seborrheic keratosis, etc.
-ISIC2020_BINARY_CLASSES = {
-    'benign': 0,
-    'malignant': 1
-}
-
 # Mapping ISIC2020 diagnosis to unified 7-class (when not using binary mode)
 ISIC2020_DIAGNOSIS_TO_UNIFIED = {
     'nevus': 5,                           # NV - Melanocytic nevi
@@ -90,19 +60,6 @@ ISIC2020_DIAGNOSIS_TO_UNIFIED = {
     'cafe-au-lait macule': 5,             # NV - Benign pigmented lesion
     'atypical melanocytic proliferation': 4,  # MEL - Potential melanoma
     'unknown': -1,                        # Unknown - needs special handling
-}
-
-# PAD-UFES-20: 6 classes (Brazilian clinical images)
-# Classes: BCC, SCC, ACK (Actinic Keratosis), SEK (Seborrheic Keratosis),
-#          MEL (Melanoma), NEV (Nevus)
-# Note: Uses 3-letter abbreviations different from ISIC
-PADUFES20_CLASSES = {
-    'BCC': 1,    # Basal cell carcinoma
-    'SCC': 7,    # Squamous cell carcinoma (maps to class 7 in 8-class, 1 in 7-class)
-    'ACK': 0,    # Actinic keratosis
-    'SEK': 2,    # Seborrheic keratosis -> maps to BKL (benign keratosis)
-    'MEL': 4,    # Melanoma
-    'NEV': 5,    # Nevus
 }
 
 # =============================================================================
@@ -193,7 +150,6 @@ class BaseDermoscopyDataset(Dataset):
         target_transform: Optional transform to apply to labels
         classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
         filter_unknown: Whether to filter out unknown/UNK labels
-        use_unified_classes: Retained for API compatibility (ignored, use classification_mode)
     """
 
     def __init__(
@@ -204,7 +160,6 @@ class BaseDermoscopyDataset(Dataset):
         target_transform: Optional[Callable] = None,
         classification_mode: ClassificationMode = 'multiclass',
         filter_unknown: bool = True,
-        use_unified_classes: bool = True  # Retained for API compatibility, ignored
     ):
         self.root_dir = Path(root_dir)
         self.csv_path = Path(csv_path)
@@ -976,173 +931,3 @@ def get_available_datasets() -> List[str]:
         List of canonical dataset names
     """
     return list(DATASET_REGISTRY.keys())
-
-
-def get_combined_dataset(
-    data_root: Union[str, Path],
-    datasets: List[str] = ['HAM10000', 'ISIC2018', 'ISIC2019', 'ISIC2020'],
-    transform: Optional[Callable] = None,
-    classification_mode: ClassificationMode = 'multiclass',
-    filter_unknown: bool = True
-) -> Tuple[Dataset, Dict[str, int]]:
-    """
-    Create a combined dataset from multiple sources.
-
-    Args:
-        data_root: Root directory for all datasets
-        datasets: List of dataset names to combine
-        transform: Transform to apply
-        classification_mode: Classification mode for all datasets
-        filter_unknown: Whether to filter unknown labels
-
-    Returns:
-        Tuple of (combined_dataset, dataset_sizes)
-    """
-    from torch.utils.data import ConcatDataset
-
-    data_root = Path(data_root)
-
-    dataset_configs = {
-        'HAM10000': {
-            'class': HAM10000Dataset,
-            'root': data_root / 'HAM10000',
-            'csv': data_root / 'HAM10000' / 'HAM10000_metadata.csv'
-        },
-        'ISIC2018': {
-            'class': ISIC2018Dataset,
-            'root': data_root / 'ISIC2018' / 'ISIC2018_Task3_Training_Input',
-            'csv': data_root / 'ISIC2018' / 'ISIC2018_Task3_Training_GroundTruth.csv'
-        },
-        'ISIC2019': {
-            'class': ISIC2019Dataset,
-            'root': data_root / 'ISIC2019' / 'ISIC_2019_Training_Input',
-            'csv': data_root / 'ISIC2019' / 'ISIC_2019_Training_GroundTruth.csv'
-        },
-        'ISIC2020': {
-            'class': ISIC2020Dataset,
-            'root': data_root / 'ISIC2020' / 'ISIC_2020_Training_JPEG',
-            'csv': data_root / 'ISIC2020' / 'ISIC_2020_Training_GroundTruth.csv'
-        },
-        'PAD-UFES-20': {
-            'class': PADUFES20Dataset,
-            'root': data_root / 'PAD-UFES-20',
-            'csv': data_root / 'PAD-UFES-20' / 'metadata.csv'
-        }
-    }
-
-    loaded_datasets = []
-    dataset_sizes = {}
-
-    for name in datasets:
-        if name not in dataset_configs:
-            print(f"Warning: Unknown dataset {name}, skipping.")
-            continue
-
-        config = dataset_configs[name]
-
-        # Check for alternative paths
-        if name == 'ISIC2020':
-            if not config['csv'].exists():
-                alt_csv = data_root / 'ISIC2020' / 'train.csv'
-                if alt_csv.exists():
-                    config['csv'] = alt_csv
-            if not config['root'].exists():
-                alt_root = data_root / 'ISIC2020' / 'train'
-                if alt_root.exists():
-                    config['root'] = alt_root
-
-        if not config['csv'].exists():
-            print(f"Warning: CSV not found for {name} at {config['csv']}, skipping.")
-            continue
-
-        ds = config['class'](
-            root_dir=str(config['root']),
-            csv_path=str(config['csv']),
-            transform=transform,
-            classification_mode=classification_mode,
-            filter_unknown=filter_unknown
-        )
-
-        dataset_sizes[name] = len(ds)
-        loaded_datasets.append(ds)
-        print(f"Loaded {name}: {len(ds)} images")
-
-    combined = ConcatDataset(loaded_datasets)
-    return combined, dataset_sizes
-
-
-def print_dataset_statistics(
-    data_root: Union[str, Path],
-    classification_mode: ClassificationMode = 'multiclass'
-):
-    """Print statistics for all datasets."""
-    data_root = Path(data_root)
-
-    print(f"\n{'='*60}")
-    print(f"Dataset Statistics (mode: {classification_mode})")
-    print(f"{'='*60}\n")
-
-    dataset_configs = {
-        'HAM10000': (HAM10000Dataset, 'HAM10000', 'HAM10000_metadata.csv'),
-        'ISIC2018': (ISIC2018Dataset, 'ISIC2018/ISIC2018_Task3_Training_Input',
-                     'ISIC2018/ISIC2018_Task3_Training_GroundTruth.csv'),
-        'ISIC2019': (ISIC2019Dataset, 'ISIC2019/ISIC_2019_Training_Input',
-                     'ISIC2019/ISIC_2019_Training_GroundTruth.csv'),
-        'ISIC2020': (ISIC2020Dataset, 'ISIC2020/ISIC_2020_Training_JPEG',
-                     'ISIC2020/ISIC_2020_Training_GroundTruth.csv'),
-        'PAD-UFES-20': (PADUFES20Dataset, 'PAD-UFES-20', 'PAD-UFES-20/metadata.csv'),
-    }
-
-    class_names = (CLASS_NAMES_BINARY if classification_mode == 'binary'
-                   else CLASS_NAMES_8 if classification_mode == 'multiclass_8'
-                   else CLASS_NAMES_7)
-
-    total_samples = 0
-    total_dist = {}
-
-    for name, (cls, root_suffix, csv_suffix) in dataset_configs.items():
-        root = data_root / root_suffix
-        csv = data_root / csv_suffix
-
-        # Handle ISIC2020 alternatives
-        if name == 'ISIC2020':
-            if not csv.exists():
-                csv = data_root / 'ISIC2020' / 'train.csv'
-            if not root.exists():
-                root = data_root / 'ISIC2020' / 'train'
-
-        if not csv.exists():
-            print(f"{name}: CSV not found at {csv}")
-            continue
-
-        try:
-            ds = cls(
-                root_dir=str(root),
-                csv_path=str(csv),
-                classification_mode=classification_mode,
-                filter_unknown=True
-            )
-
-            dist = ds.get_class_distribution()
-            total_samples += len(ds)
-
-            print(f"\n{name}:")
-            print(f"  Total samples: {len(ds)}")
-            print("  Class distribution:")
-
-            for idx, count in sorted(dist.items()):
-                if 0 <= idx < len(class_names):
-                    pct = 100 * count / len(ds)
-                    print(f"    {idx}: {class_names[idx]}: {count} ({pct:.1f}%)")
-                    total_dist[idx] = total_dist.get(idx, 0) + count
-
-        except Exception as e:
-            print(f"{name}: Error loading - {e}")
-
-    print(f"\n{'='*60}")
-    print(f"Combined Statistics (Total: {total_samples} samples)")
-    print(f"{'='*60}")
-    for idx, count in sorted(total_dist.items()):
-        if 0 <= idx < len(class_names):
-            pct = 100 * count / total_samples if total_samples > 0 else 0
-            print(f"  {idx}: {class_names[idx]}: {count} ({pct:.1f}%)")
