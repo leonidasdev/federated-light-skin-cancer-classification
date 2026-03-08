@@ -29,7 +29,7 @@ from PIL import Image
 from pathlib import Path
 from typing import Optional, Callable, Dict, List, Tuple, Union, Literal
 from dataclasses import dataclass
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset
 import torch
 
 # =============================================================================
@@ -251,15 +251,6 @@ class BaseDermoscopyDataset(Dataset):
                 weights[cls] = total / (self.num_classes * count)
 
         return weights
-
-    def get_sample_weights(self) -> torch.Tensor:
-        """Get per-sample weights for weighted sampling (handles class imbalance)."""
-        class_weights = self.get_class_weights()
-        sample_weights = torch.tensor([
-            class_weights[label].item() if 0 <= label < self.num_classes else 0.0
-            for label in self.labels
-        ])
-        return sample_weights
 
 
 class HAM10000Dataset(BaseDermoscopyDataset):
@@ -523,158 +514,6 @@ class PADUFES20Dataset(BaseDermoscopyDataset):
                 labels.append(mapped_label)
 
         return image_paths, labels
-
-
-def get_client_dataloader(
-    client_id: int,
-    data_root: Union[str, Path],
-    batch_size: int = 8,
-    train_transform: Optional[Callable] = None,
-    val_transform: Optional[Callable] = None,
-    val_split: float = 0.2,
-    num_workers: int = 2,
-    seed: int = 42,
-    classification_mode: ClassificationMode = 'multiclass',
-    filter_unknown: bool = True,
-    use_weighted_sampling: bool = False
-) -> Tuple[DataLoader, DataLoader]:
-    """
-    Get train and validation DataLoaders for a specific FL client.
-
-    Args:
-        client_id: Client identifier (0-indexed, one per dataset)
-        data_root: Root directory for all datasets
-        batch_size: Batch size for DataLoader
-        train_transform: Transform for training data
-        val_transform: Transform for validation data
-        val_split: Fraction for validation split
-        num_workers: Number of data loading workers
-        seed: Random seed for reproducibility
-        classification_mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary'
-        filter_unknown: Whether to filter out unknown/UNK labels
-        use_weighted_sampling: Use weighted sampler for class imbalance
-
-    Returns:
-        Tuple of (train_loader, val_loader)
-    """
-    from torch.utils.data import WeightedRandomSampler
-    from .preprocessing import get_train_transforms, get_val_transforms
-    from .splits import train_val_split
-
-    data_root = Path(data_root)
-
-    # Default transforms if not provided
-    if train_transform is None:
-        train_transform = get_train_transforms()
-    if val_transform is None:
-        val_transform = get_val_transforms()
-
-    # Dataset paths based on client ID
-    dataset_configs = {
-        1: {
-            'class': HAM10000Dataset,
-            'root': data_root / 'HAM10000',
-            'csv': data_root / 'HAM10000' / 'HAM10000_metadata.csv'
-        },
-        2: {
-            'class': ISIC2018Dataset,
-            'root': data_root / 'ISIC2018' / 'ISIC2018_Task3_Training_Input',
-            'csv': data_root / 'ISIC2018' / 'ISIC2018_Task3_Training_GroundTruth.csv'
-        },
-        3: {
-            'class': ISIC2019Dataset,
-            'root': data_root / 'ISIC2019' / 'ISIC_2019_Training_Input',
-            'csv': data_root / 'ISIC2019' / 'ISIC_2019_Training_GroundTruth.csv'
-        },
-        4: {
-            'class': ISIC2020Dataset,
-            # use the ISIC2020 folder as base; select specific image subdir later
-            'root': data_root / 'ISIC2020',
-            'csv': data_root / 'ISIC2020' / 'train.csv'
-        },
-        5: {
-            'class': PADUFES20Dataset,
-            'root': data_root / 'PAD-UFES-20',
-            'csv': data_root / 'PAD-UFES-20' / 'metadata.csv'
-        }
-    }
-
-    if client_id not in dataset_configs:
-        raise ValueError(f"Invalid client_id: {client_id}. Must be 1-5.")
-
-    config = dataset_configs[client_id]
-
-    # Accept alternative ISIC2020 ground-truth filename if `train.csv` is not present
-    if client_id == 4:
-        t1 = data_root / 'ISIC2020' / 'train.csv'
-        t2 = data_root / 'ISIC2020' / 'ISIC_2020_Training_GroundTruth.csv'
-        # prefer existing CSV file; fall back to the other candidate
-        dataset_configs[4]['csv'] = t1 if t1.exists() else t2
-
-        # Detect common image-folder names for ISIC2020
-        possible_image_dirs = [
-            data_root / 'ISIC2020' / 'train',
-            data_root / 'ISIC2020' / 'ISIC_2020_Training_JPEG',
-            data_root / 'ISIC2020'
-        ]
-        selected_root = next((p for p in possible_image_dirs if p.exists()), data_root / 'ISIC2020')
-        dataset_configs[4]['root'] = selected_root
-        config = dataset_configs[4]
-
-    # Create full dataset with training transform initially
-    full_dataset = config['class'](
-        root_dir=str(config['root']),
-        csv_path=str(config['csv']),
-        transform=train_transform,
-        classification_mode=classification_mode,
-        filter_unknown=filter_unknown
-    )
-
-    # Split into train/val
-    train_indices, val_indices = train_val_split(
-        len(full_dataset),
-        val_split=val_split,
-        seed=seed
-    )
-
-    # Create train and val datasets
-    train_dataset = DatasetSubset(full_dataset, train_indices, train_transform)
-    val_dataset = DatasetSubset(full_dataset, val_indices, val_transform)
-
-    # Setup weighted sampling for class imbalance (especially for ISIC2020)
-    train_sampler = None
-    shuffle_train = True
-    if use_weighted_sampling:
-        # Get sample weights for the training subset
-        all_sample_weights = full_dataset.get_sample_weights()
-        train_sample_weights = all_sample_weights[train_indices]
-        train_sampler = WeightedRandomSampler(
-            weights=train_sample_weights,
-            num_samples=len(train_sample_weights),
-            replacement=True
-        )
-        shuffle_train = False  # Can't use shuffle with sampler
-
-    # Create DataLoaders
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=shuffle_train,
-        sampler=train_sampler,
-        num_workers=num_workers,
-        pin_memory=torch.cuda.is_available(),
-        drop_last=True
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=torch.cuda.is_available()
-    )
-
-    return train_loader, val_loader
 
 
 class DatasetSubset(Dataset):

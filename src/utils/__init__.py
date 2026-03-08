@@ -39,6 +39,8 @@ from .helpers import (
     count_parameters,
     format_time,
     format_size,
+    compute_class_weights,
+    create_grad_scaler,
 )
 
 # =============================================================================
@@ -76,6 +78,8 @@ __all__ = [
     "count_parameters",
     "format_time",
     "format_size",
+    "compute_class_weights",
+    "create_grad_scaler",
     # Config Schema
     "ConfigType",
     "validate_config",

@@ -21,7 +21,6 @@ from .datasets import (
     ISIC2019Dataset,
     ISIC2020Dataset,
     PADUFES20Dataset,
-    get_client_dataloader,
     CLASS_NAMES,
     UNIFIED_CLASSES,
     DATASET_REGISTRY,
@@ -41,6 +40,7 @@ from .preprocessing import (
     get_train_transforms,
     get_val_transforms,
     get_standardized_transforms,
+    get_transform_pair,
     IMAGENET_MEAN,
     IMAGENET_STD,
     DERMOSCOPY_MEAN,
@@ -52,7 +52,7 @@ from .preprocessing import (
 # =============================================================================
 
 from .splits import (
-    train_val_split,
+    deterministic_train_val_split,
     create_iid_split,
     create_noniid_split,
     create_label_skew_split,
@@ -86,7 +86,6 @@ __all__ = [
     "ISIC2019Dataset",
     "ISIC2020Dataset",
     "PADUFES20Dataset",
-    "get_client_dataloader",
     "CLASS_NAMES",
     "UNIFIED_CLASSES",
     # Dataset Registry
@@ -101,12 +100,13 @@ __all__ = [
     "get_train_transforms",
     "get_val_transforms",
     "get_standardized_transforms",
+    "get_transform_pair",
     "IMAGENET_MEAN",
     "IMAGENET_STD",
     "DERMOSCOPY_MEAN",
     "DERMOSCOPY_STD",
     # Splits
-    "train_val_split",
+    "deterministic_train_val_split",
     "create_iid_split",
     "create_noniid_split",
     "create_label_skew_split",

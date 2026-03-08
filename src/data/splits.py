@@ -20,6 +20,16 @@ import torch
 from typing import List, Tuple, Dict, Optional, Any
 from collections import defaultdict
 
+__all__ = [
+    "deterministic_train_val_split",
+    "create_iid_split",
+    "create_noniid_split",
+    "create_label_skew_split",
+    "create_quantity_skew_split",
+    "get_dataset_statistics",
+    "print_split_summary",
+]
+
 # =============================================================================
 # Basic Split Functions
 # =============================================================================
@@ -50,32 +60,6 @@ def deterministic_train_val_split(
     val_n = int(total_size * val_split)
     train_n = total_size - val_n
     return indices[:train_n], indices[train_n:]
-
-
-def train_val_split(
-    total_size: int,
-    val_split: float = 0.2,
-    seed: int = 42
-) -> Tuple[List[int], List[int]]:
-    """
-    Split indices into training and validation sets.
-
-    Args:
-        total_size: Total number of samples
-        val_split: Fraction for validation
-        seed: Random seed
-
-    Returns:
-        Tuple of (train_indices, val_indices)
-    """
-    np.random.seed(seed)
-    indices = np.random.permutation(total_size)
-
-    val_size = int(total_size * val_split)
-    val_indices = indices[:val_size].tolist()
-    train_indices = indices[val_size:].tolist()
-
-    return train_indices, val_indices
 
 
 def create_iid_split(

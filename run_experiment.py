@@ -30,6 +30,7 @@ Date: 2024
 import argparse
 import json
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -283,7 +284,7 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         combined_test,
         batch_size=args.batch_size or 32,
         shuffle=False,
-        num_workers=4,
+        num_workers=min(4, os.cpu_count() or 1),
         pin_memory=(device.type == "cuda"),
     )
 
@@ -318,8 +319,6 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
         output_dir = Path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        import json
-        from datetime import datetime
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
         results_dict = results.to_dict()

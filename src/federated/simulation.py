@@ -17,6 +17,7 @@ import sys
 import time
 import json
 import logging
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
@@ -282,6 +283,60 @@ class FLSimulator:
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
 
+    def _resolve_datasets(
+        self, transform: Any
+    ) -> List[Tuple[str, Any]]:
+        """Resolve and load datasets from the registry.
+
+        Returns a list of (dataset_name, full_dataset) tuples for every
+        dataset that was successfully loaded.
+        """
+        from ..data.datasets import (
+            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
+        )
+
+        if self.config.datasets:
+            dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
+            valid_names = get_available_datasets()
+            invalid = [n for n in dataset_names if n not in valid_names]
+            if invalid:
+                raise ValueError(
+                    f"Unknown datasets: {invalid}. Valid options: {valid_names}"
+                )
+        else:
+            dataset_names = get_available_datasets()
+
+        loaded: List[Tuple[str, Any]] = []
+        for dataset_name in dataset_names:
+            config = DATASET_REGISTRY[dataset_name]
+            csv_path, dataset_root = get_dataset_paths(dataset_name, self.config.data_root)
+
+            if csv_path is None or not csv_path.exists():
+                logger.warning(f"Dataset {dataset_name}: CSV not found")
+                continue
+            if dataset_root is None or not dataset_root.exists():
+                logger.warning(f"Dataset {dataset_name}: Image directory not found")
+                continue
+
+            try:
+                full_dataset = config.dataset_class(
+                    root_dir=str(dataset_root),
+                    csv_path=str(csv_path),
+                    transform=transform,
+                )
+            except Exception as e:
+                logger.warning(f"Failed loading dataset {dataset_name}: {e}")
+                continue
+
+            if len(full_dataset) == 0:
+                logger.warning(f"Dataset {dataset_name} contains 0 samples")
+                continue
+
+            loaded.append((dataset_name, full_dataset))
+            logger.info(f"Loaded {dataset_name}: {len(full_dataset)} samples")
+
+        return loaded
+
     def setup_natural_noniid(self) -> None:
         """
         Setup natural non-IID: each client gets a different dataset.
@@ -296,62 +351,17 @@ class FLSimulator:
 
         If config.datasets is specified, only those datasets are used.
         """
-        from ..data.datasets import (
-            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
-        )
-
         logger.info("Setting up natural non-IID distribution (each client = different dataset)")
 
         train_transform, val_transform = self._get_transforms()
+        loaded_datasets = self._resolve_datasets(train_transform)
 
-        # Determine which datasets to use
-        if self.config.datasets:
-            dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
-            # Validate names
-            valid_names = get_available_datasets()
-            invalid = [n for n in dataset_names if n not in valid_names]
-            if invalid:
-                raise ValueError(
-                    f"Unknown datasets: {invalid}. Valid options: {valid_names}"
-                )
-            logger.info(f"Using selected datasets: {dataset_names}")
-        else:
-            dataset_names = get_available_datasets()
-            logger.info("Using all available datasets")
-
-        for client_id, dataset_name in enumerate(dataset_names):
+        for client_id, (dataset_name, full_dataset) in enumerate(loaded_datasets):
             if client_id >= self.config.num_clients:
                 break
 
-            config = DATASET_REGISTRY[dataset_name]
-            csv_path, dataset_root = get_dataset_paths(dataset_name, self.config.data_root)
-
-            if csv_path is None or not csv_path.exists():
-                logger.warning(f"Dataset {dataset_name}: CSV not found")
-                continue
-
-            if dataset_root is None or not dataset_root.exists():
-                logger.warning(f"Dataset {dataset_name}: Image directory not found")
-                continue
-
-            # Instantiate full dataset (with train transforms for now)
-            try:
-                full_dataset = config.dataset_class(
-                    root_dir=str(dataset_root),
-                    csv_path=str(csv_path),
-                    transform=train_transform
-                )
-            except Exception as e:
-                logger.warning(f"Failed loading dataset {dataset_name}: {e}")
-                continue
-
-            n = len(full_dataset)
-            if n == 0:
-                logger.warning(f"Dataset {dataset_name} contains 0 samples")
-                continue
-
             train_indices, val_indices = deterministic_train_val_split(
-                n, val_split=1.0 - self.config.train_val_split
+                len(full_dataset), val_split=1.0 - self.config.train_val_split
             )
 
             train_dataset = DatasetSubset(full_dataset, train_indices, train_transform)
@@ -413,7 +423,6 @@ class FLSimulator:
         where N_total is the total number of training samples, C is the
         number of classes, and N_c is the number of samples in class c.
         """
-        from collections import Counter
         from ..utils.helpers import compute_class_weights
 
         global_counts: Counter = Counter()
@@ -435,59 +444,19 @@ class FLSimulator:
         Lower alpha = more heterogeneous (more non-IID)
         Higher alpha = more homogeneous (closer to IID)
         """
-        from ..data.datasets import (
-            DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name, get_available_datasets
-        )
-
         logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
 
         train_transform, val_transform = self._get_transforms()
+        loaded_datasets = self._resolve_datasets(train_transform)
 
-        # Determine which datasets to use
-        if self.config.datasets:
-            dataset_names = [normalize_dataset_name(d) for d in self.config.datasets]
-        else:
-            dataset_names = get_available_datasets()
-
-        # Load and combine datasets
+        # Combine all loaded datasets
         combined_images = []
         combined_labels = []
-        dataset_source = []
 
-        for dataset_name in dataset_names:
-            config = DATASET_REGISTRY[dataset_name]
-            csv_path, dataset_root = get_dataset_paths(dataset_name, self.config.data_root)
-
-            if csv_path is None or not csv_path.exists():
-                logger.warning(f"Dataset {dataset_name}: CSV not found")
-                continue
-
-            if dataset_root is None or not dataset_root.exists():
-                logger.warning(f"Dataset {dataset_name}: Image directory not found")
-                continue
-
-            try:
-                full_dataset = config.dataset_class(
-                    root_dir=str(dataset_root),
-                    csv_path=str(csv_path),
-                    transform=train_transform
-                )
-
-                n = len(full_dataset)
-                if n == 0:
-                    continue
-
-                # Collect indices and labels
-                for i in range(n):
-                    combined_images.append((full_dataset, i))  # Store reference
-                    combined_labels.append(full_dataset.labels[i])
-                    dataset_source.append(dataset_name)
-
-                logger.info(f"Loaded {dataset_name}: {n} samples")
-
-            except Exception as e:
-                logger.warning(f"Failed loading dataset {dataset_name}: {e}")
-                continue
+        for dataset_name, full_dataset in loaded_datasets:
+            for i in range(len(full_dataset)):
+                combined_images.append((full_dataset, i))
+                combined_labels.append(full_dataset.labels[i])
 
         if not combined_labels:
             raise RuntimeError("No data loaded. Please check dataset paths.")

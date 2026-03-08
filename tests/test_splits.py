@@ -20,7 +20,7 @@ import pytest
 from collections import Counter
 
 from src.data.splits import (
-    train_val_split,
+    deterministic_train_val_split,
     create_iid_split,
     create_noniid_split,
     create_label_skew_split,
@@ -54,7 +54,7 @@ def generate_mock_labels(n_samples=10000, n_classes=7, imbalanced=True):
 def test_train_val_split():
     """Test basic train/val split."""
     total = 1000
-    train_idx, val_idx = train_val_split(total, val_split=0.2, seed=42)
+    train_idx, val_idx = deterministic_train_val_split(total, val_split=0.2, seed=42)
 
     # Check sizes
     assert len(train_idx) == 800, f"Expected 800 train, got {len(train_idx)}"
@@ -68,7 +68,7 @@ def test_train_val_split():
     assert max(val_idx) < total
 
     # Check reproducibility
-    train_idx2, val_idx2 = train_val_split(total, val_split=0.2, seed=42)
+    train_idx2, val_idx2 = deterministic_train_val_split(total, val_split=0.2, seed=42)
     assert train_idx == train_idx2, "Same seed should produce same split"
 
 
