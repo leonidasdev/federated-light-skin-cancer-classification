@@ -374,6 +374,7 @@ class FLSimulator:
                 shuffle=True,
                 num_workers=self.config.num_workers,
                 pin_memory=(self.device.type == "cuda"),
+                drop_last=True,
             )
             val_loader = DataLoader(
                 val_dataset,
@@ -494,6 +495,7 @@ class FLSimulator:
                 shuffle=True,
                 num_workers=self.config.num_workers,
                 pin_memory=(self.device.type == "cuda"),
+                drop_last=True,
             )
             val_loader = DataLoader(
                 val_dataset,

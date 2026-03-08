@@ -20,6 +20,16 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "check_plotting_available",
+    "plot_training_curves",
+    "plot_confusion_matrix",
+    "plot_client_comparison",
+    "plot_noniid_distribution",
+    "plot_fl_vs_centralized",
+    "plot_communication_cost",
+]
+
 # =============================================================================
 # Optional Dependencies
 # =============================================================================

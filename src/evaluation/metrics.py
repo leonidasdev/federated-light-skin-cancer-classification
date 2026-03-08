@@ -34,6 +34,15 @@ from ..data.datasets import CLASS_NAMES as DATASET_CLASS_NAMES
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "EvaluationResults",
+    "ModelEvaluator",
+    "evaluate_model",
+    "compute_federated_metrics",
+    "compare_results",
+    "print_comparison",
+]
+
 # =============================================================================
 # Constants
 # =============================================================================
