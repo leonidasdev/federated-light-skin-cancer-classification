@@ -151,6 +151,9 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 | `small` | 384 | 6 | 6 | ~29.4M (default) |
 | `base` | 384 | 8 | 6 | ~39M |
 
+**Pretrained Weight Loading** (`pretrained: true`):
+When `pretrained=True` and `variant='small'`, calls `load_pretrained_vit_weights()` to transfer compatible ViT-Small (ImageNet) weights from `timm` into self-attention, FFN, and coarse-scale embedding layers. Cross-attention and classifier layers remain randomly initialized.
+
 ---
 
 ## Dataset Classes

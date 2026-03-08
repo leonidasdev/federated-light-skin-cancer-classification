@@ -140,8 +140,10 @@ federated-light-skin-cancer-classification/
 │
 ├── docs/                             # Documentation
 │   ├── architecture.md               # System architecture
+│   ├── benchmark-comparison.md       # FL vs centralized fairness audit
 │   ├── CLAUDE.md                     # AI assistant context
-│   └── config-options-guide.md       # Configuration reference
+│   ├── config-options-guide.md       # Configuration reference
+│   └── README.md                     # Documentation index
 │
 ├── run_experiment.py                 # Main entry point
 ├── run_download.py                   # Dataset downloader
@@ -186,7 +188,7 @@ Input Image (224×224×3)
          │
          ▼
 ┌─────────────────────────────────┐
-│   Global Average Pooling        │
+│   CLS Token Extraction          │
 │   + Classification Head         │
 │   → 7 classes (softmax)         │
 └─────────────────────────────────┘
@@ -960,6 +962,7 @@ Additional documentation is available in the `docs/` directory:
 | [docs/README.md](docs/README.md) | Documentation index and navigation |
 | [docs/config-options-guide.md](docs/config-options-guide.md) | Complete configuration reference |
 | [docs/architecture.md](docs/architecture.md) | System architecture and module documentation |
+| [docs/benchmark-comparison.md](docs/benchmark-comparison.md) | Federated vs centralized benchmark fairness audit |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contributing guidelines and code style |
 
 For AI assistants (Claude, GPT, etc.), see [docs/CLAUDE.md](docs/CLAUDE.md) for comprehensive codebase context.

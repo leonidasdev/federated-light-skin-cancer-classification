@@ -10,6 +10,7 @@ Welcome to the DSCATNet Federated Learning documentation!
 | [Configuration Guide](config-options-guide.md) | Comprehensive YAML configuration reference |
 | [Contributing Guide](../CONTRIBUTING.md) | Code style, testing, and PR process |
 | [Architecture Overview](architecture.md) | System design and module documentation |
+| [Benchmark Comparison](benchmark-comparison.md) | Federated vs centralized fairness audit |
 
 ## For AI Assistants
 
@@ -59,7 +60,7 @@ federated-light-skin-cancer-classification/
 ├── configs/                # YAML configuration files
 │   └── templates/          # Configuration templates
 ├── notebooks/              # Jupyter notebooks
-├── tests/                  # Unit and integration tests (217 tests)
+├── tests/                  # Unit and integration tests (225 tests)
 ├── docs/                   # Documentation (you are here)
 ├── data/                   # Dataset files (not in git)
 └── outputs/                # Experiment outputs (auto-generated)

@@ -236,6 +236,14 @@ federated:
 - `small`: embed_dim=384, depth=6, heads=6 (~29.4M params) **[DEFAULT]**
 - `base`: embed_dim=384, depth=8, heads=6 (~39M params)
 
+**Pretrained Weight Loading** (`pretrained: true` in config):
+- Loads ViT-Small (ImageNet-21k) weights from `timm` into compatible layers via `load_pretrained_vit_weights()`
+- Only supported for the `small` variant (embed_dim=384, num_heads=6 match `vit_small_patch16_224`)
+- Maps ViT blocks 0–5 → fine-scale self-attention + FFN, blocks 6–11 → coarse-scale self-attention + FFN
+- Transfers coarse patch embedding (16×16), positional embedding, CLS token, final LayerNorm
+- Cross-attention, fine-scale embeddings, fusion, and classifier remain randomly initialized
+- Loads 150/286 parameter tensors (~52% of model weights)
+
 ---
 
 ## Paper-Aligned Hyperparameters
@@ -511,6 +519,7 @@ python run_download.py --verify
 1. **No Multi-GPU**: Single GPU training only
 2. **Limited Aggregation**: Only FedAvg implemented (no FedProx, SCAFFOLD, etc.)
 3. **No Differential Privacy**: No DP-SGD or noise mechanisms
+4. **Pretrained Weights**: Only available for the `small` variant (ViT-Small from `timm`). Other variants use random initialization.
 
 ### Client Participation Options
 
