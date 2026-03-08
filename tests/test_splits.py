@@ -103,7 +103,7 @@ def test_iid_split():
     # Distributions should be similar across clients
     # Check that each class proportion differs by at most 10%
     for cls in range(7):
-        props = [client_dists[c].get(cls, 0) for c in client_data.keys()]
+        props = [client_dists[c].get(cls, 0) for c in client_data]
         if max(props) > 0:
             assert max(props) - min(props) < 0.15, \
                 f"IID split should have similar distributions, class {cls} varies too much"

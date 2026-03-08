@@ -26,9 +26,26 @@ select = [
     "E",     # pycodestyle errors
     "F",     # pyflakes
     "W",     # pycodestyle warnings
+    "B",     # flake8-bugbear
+    "UP",    # pyupgrade
+    "SIM",   # flake8-simplify
+    "PIE",   # flake8-pie
+    "C4",    # flake8-comprehensions
+    "PERF",  # perflint
+    "RUF",   # ruff-specific rules
+    "PLC",   # pylint convention
+    "PLE",   # pylint error
 ]
 ignore = [
-    "E501",  # line too long - handled by formatter
+    "E501",   # line too long - handled by formatter
+    "RUF012", # mutable class attribute - dataclass pattern
+    "RUF022", # unsorted __all__ - deliberately grouped by category
+    "RUF002", # ambiguous unicode in docstrings - intentional × symbol
+    "RUF003", # ambiguous unicode in comments - intentional × symbol
+    "RUF005", # collection concatenation - list + list is clear enough
+    "B905",   # zip without strict= - not always needed
+    "SIM102", # collapsible if - sometimes more readable when separate
+    "SIM115", # open-file-with-context-handler - sometimes file must stay open
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -36,7 +53,26 @@ ignore = [
     "E402",  # module level import not at top - common in notebooks
 ]
 "tests/*.py" = [
-    "F401",  # unused imports - test fixtures may appear unused
+    "F401",    # unused imports - test fixtures may appear unused
+    "PLC0415", # imports in test methods are intentional (isolation)
+]
+"run_experiment.py" = [
+    "PLC0415", # lazy imports of heavy modules (torch, etc.)
+]
+"run_tests.py" = [
+    "PLC0415", # lazy import of pytest
+]
+"src/data/download.py" = [
+    "PLC0415", # lazy imports of shutil/subprocess/zipfile
+]
+"src/utils/logging_utils.py" = [
+    "PLC0415", # lazy imports of numpy and tensorboard
+]
+"src/utils/helpers.py" = [
+    "PLC0415", # conditional GradScaler import
+]
+"src/evaluation/visualization.py" = [
+    "RUF059", # fig from plt.subplots() is standard matplotlib pattern
 ]
 
 # =============================================================================
