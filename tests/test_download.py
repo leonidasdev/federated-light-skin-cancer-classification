@@ -92,7 +92,7 @@ class TestDatasetInfo:
 
     def test_approx_images_are_positive(self):
         """approx_images should be positive integers."""
-        for name, info in DATASET_INFO.items():
+        for info in DATASET_INFO.values():
             assert info['approx_images'] > 0
             assert isinstance(info['approx_images'], int)
 

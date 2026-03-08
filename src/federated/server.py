@@ -17,7 +17,7 @@ from flwr.server import start_server as fl_start_server
 from flwr.server.strategy import Strategy
 from flwr.server.history import History
 from flwr.common import Scalar
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 import torch
 from pathlib import Path
 
@@ -37,9 +37,9 @@ def create_server(
     min_available_clients: int = 4,
     fraction_fit: float = 1.0,
     fraction_evaluate: float = 1.0,
-    strategy: Optional[Strategy] = None,
-    save_path: Optional[str] = None
-) -> Tuple[ServerConfig, Strategy]:
+    strategy: Strategy | None = None,
+    save_path: str | None = None
+) -> tuple[ServerConfig, Strategy]:
     """
     Create and configure the Flower FL server.
 
@@ -80,9 +80,9 @@ def create_server(
 
 def start_server(
     server_address: str = "[::]:8080",
-    model: Optional[DSCATNet] = None,
+    model: DSCATNet | None = None,
     num_rounds: int = 50,
-    strategy: Optional[Strategy] = None,
+    strategy: Strategy | None = None,
     **kwargs
 ) -> History:
     """
@@ -158,7 +158,7 @@ class FederatedServer:
 
         # Training state
         self.current_round = 0
-        self.history: Dict[str, List[Any]] = {
+        self.history: dict[str, list[Any]] = {
             'round': [],
             'loss': [],
             'accuracy': [],
@@ -190,8 +190,8 @@ class FederatedServer:
 
     def _aggregate_metrics(
         self,
-        metrics: List[Tuple[int, Dict[str, Scalar]]]
-    ) -> Dict[str, Scalar]:
+        metrics: list[tuple[int, dict[str, Scalar]]]
+    ) -> dict[str, Scalar]:
         """Aggregate evaluation metrics from all clients."""
         if not metrics:
             return {}
@@ -237,7 +237,7 @@ class FederatedServer:
         self.history = checkpoint.get('history', self.history)
         return checkpoint['round']
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get summary of FL training.
 
         Returns:

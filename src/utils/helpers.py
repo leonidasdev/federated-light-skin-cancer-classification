@@ -12,20 +12,20 @@ Common helper functions used across the project.
 # =============================================================================
 
 import random
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import torch
 
 __all__ = [
-    "set_seed",
-    "get_device",
     "autocast",
-    "create_grad_scaler",
-    "count_parameters",
     "compute_class_weights",
-    "format_time",
+    "count_parameters",
+    "create_grad_scaler",
     "format_size",
+    "format_time",
+    "get_device",
+    "set_seed",
 ]
 
 # =============================================================================
@@ -54,7 +54,7 @@ def set_seed(seed: int = 42) -> None:
 # =============================================================================
 
 
-def get_device(device: Optional[str] = None) -> torch.device:
+def get_device(device: str | None = None) -> torch.device:
     """
     Get torch device.
 
@@ -132,7 +132,7 @@ def count_parameters(model: torch.nn.Module, trainable_only: bool = True) -> int
 
 
 def compute_class_weights(
-    label_counts: Dict[int, int],
+    label_counts: dict[int, int],
     num_classes: int,
 ) -> torch.Tensor:
     """Compute inverse-frequency class weights for imbalanced datasets.

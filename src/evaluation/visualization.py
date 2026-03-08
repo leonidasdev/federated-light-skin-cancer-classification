@@ -13,7 +13,6 @@ and other analysis outputs.
 # =============================================================================
 
 import logging
-from typing import Dict, List, Optional
 from pathlib import Path
 
 import numpy as np
@@ -22,12 +21,12 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "check_plotting_available",
-    "plot_training_curves",
-    "plot_confusion_matrix",
     "plot_client_comparison",
-    "plot_noniid_distribution",
-    "plot_fl_vs_centralized",
     "plot_communication_cost",
+    "plot_confusion_matrix",
+    "plot_fl_vs_centralized",
+    "plot_noniid_distribution",
+    "plot_training_curves",
 ]
 
 # =============================================================================
@@ -61,8 +60,8 @@ def check_plotting_available() -> bool:
 
 
 def plot_training_curves(
-    history: Dict[str, List[float]],
-    save_path: Optional[Path] = None,
+    history: dict[str, list[float]],
+    save_path: Path | None = None,
     title: str = "Training Progress",
 ) -> None:
     """
@@ -117,8 +116,8 @@ def plot_training_curves(
 
 def plot_confusion_matrix(
     cm: np.ndarray,
-    class_names: List[str],
-    save_path: Optional[Path] = None,
+    class_names: list[str],
+    save_path: Path | None = None,
     title: str = "Confusion Matrix",
     normalize: bool = True,
 ) -> None:
@@ -170,9 +169,9 @@ def plot_confusion_matrix(
 
 
 def plot_client_comparison(
-    client_metrics: Dict[int, Dict[str, float]],
+    client_metrics: dict[int, dict[str, float]],
     metric_name: str = "accuracy",
-    save_path: Optional[Path] = None,
+    save_path: Path | None = None,
     title: str = "Client Performance Comparison",
 ) -> None:
     """
@@ -228,9 +227,9 @@ def plot_client_comparison(
 
 
 def plot_noniid_distribution(
-    client_distributions: Dict[int, Dict[int, int]],
-    class_names: List[str],
-    save_path: Optional[Path] = None,
+    client_distributions: dict[int, dict[int, int]],
+    class_names: list[str],
+    save_path: Path | None = None,
     title: str = "Data Distribution Across Clients",
 ) -> None:
     """
@@ -294,10 +293,10 @@ def plot_noniid_distribution(
 
 
 def plot_fl_vs_centralized(
-    fl_history: Dict[str, List[float]],
-    centralized_history: Dict[str, List[float]],
+    fl_history: dict[str, list[float]],
+    centralized_history: dict[str, list[float]],
     metric: str = "val_accuracy",
-    save_path: Optional[Path] = None,
+    save_path: Path | None = None,
     title: str = "Federated vs Centralized Learning",
 ) -> None:
     """
@@ -342,9 +341,9 @@ def plot_fl_vs_centralized(
 
 
 def plot_communication_cost(
-    rounds: List[int],
-    cumulative_cost_mb: List[float],
-    save_path: Optional[Path] = None,
+    rounds: list[int],
+    cumulative_cost_mb: list[float],
+    save_path: Path | None = None,
     title: str = "Cumulative Communication Cost",
 ) -> None:
     """
@@ -379,7 +378,7 @@ def plot_communication_cost(
         xy=(rounds[-1], final_cost),
         xytext=(rounds[-1] * 0.8, final_cost * 1.1),
         fontsize=10,
-        arrowprops=dict(arrowstyle="->", color="gray"),
+        arrowprops={"arrowstyle": "->", "color": "gray"},
     )
 
     plt.tight_layout()

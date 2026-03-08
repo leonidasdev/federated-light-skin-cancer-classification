@@ -68,7 +68,7 @@ def test_train_val_split():
     assert max(val_idx) < total
 
     # Check reproducibility
-    train_idx2, val_idx2 = deterministic_train_val_split(total, val_split=0.2, seed=42)
+    train_idx2, _val_idx2 = deterministic_train_val_split(total, val_split=0.2, seed=42)
     assert train_idx == train_idx2, "Same seed should produce same split"
 
 

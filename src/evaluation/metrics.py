@@ -13,12 +13,12 @@ accuracy, F1-score, AUC-ROC, confusion matrix, and per-class metrics.
 # =============================================================================
 
 import logging
-from typing import Dict, List, Optional, Any
+from typing import Any
 from dataclasses import dataclass
 
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader
 from sklearn.metrics import (
     accuracy_score,
@@ -37,9 +37,9 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "EvaluationResults",
     "ModelEvaluator",
-    "evaluate_model",
-    "compute_federated_metrics",
     "compare_results",
+    "compute_federated_metrics",
+    "evaluate_model",
     "print_comparison",
 ]
 
@@ -80,14 +80,14 @@ class EvaluationResults:
     recall_macro: float
     f1_macro: float
     f1_weighted: float
-    auc_macro: Optional[float]
+    auc_macro: float | None
     confusion_matrix: np.ndarray
-    per_class_metrics: Dict[str, Dict[str, float]]
+    per_class_metrics: dict[str, dict[str, float]]
     predictions: np.ndarray
     labels: np.ndarray
-    probabilities: Optional[np.ndarray]
+    probabilities: np.ndarray | None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
             "accuracy": self.accuracy,
@@ -119,7 +119,7 @@ class ModelEvaluator:
         model: nn.Module,
         device: torch.device,
         num_classes: int = 7,
-        class_names: Optional[List[str]] = None,
+        class_names: list[str] | None = None,
     ):
         """
         Initialize evaluator.
@@ -305,9 +305,9 @@ class ModelEvaluator:
 def evaluate_model(
     model: nn.Module,
     dataloader: DataLoader,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
     num_classes: int = 7,
-    class_names: Optional[List[str]] = None,
+    class_names: list[str] | None = None,
     print_report: bool = True,
 ) -> EvaluationResults:
     """
@@ -343,9 +343,9 @@ def evaluate_model(
 
 
 def compute_federated_metrics(
-    client_results: List[EvaluationResults],
-    client_weights: Optional[List[float]] = None,
-) -> Dict[str, float]:
+    client_results: list[EvaluationResults],
+    client_weights: list[float] | None = None,
+) -> dict[str, float]:
     """
     Compute aggregated metrics from multiple clients.
 
@@ -381,7 +381,7 @@ def compute_federated_metrics(
 def compare_results(
     centralized: EvaluationResults,
     federated: EvaluationResults,
-) -> Dict[str, Dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """
     Compare centralized and federated results.
 
@@ -412,7 +412,7 @@ def compare_results(
     return comparison
 
 
-def print_comparison(comparison: Dict[str, Dict[str, float]]) -> None:
+def print_comparison(comparison: dict[str, dict[str, float]]) -> None:
     """Print formatted comparison between centralized and federated.
 
     Args:

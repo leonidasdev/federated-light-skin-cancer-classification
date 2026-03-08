@@ -19,7 +19,8 @@ Key preprocessing steps:
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from typing import Any, Sequence, Tuple, cast
+from typing import Any, cast
+from collections.abc import Sequence
 
 # =============================================================================
 # Constants
@@ -224,18 +225,17 @@ def get_standardized_transforms(
             use_dermoscopy_norm=use_dermoscopy_norm,
             augmentation_level=augmentation_level
         )
-    else:
-        return get_val_transforms(
-            img_size=img_size,
-            use_dermoscopy_norm=use_dermoscopy_norm
-        )
+    return get_val_transforms(
+        img_size=img_size,
+        use_dermoscopy_norm=use_dermoscopy_norm
+    )
 
 
 def get_transform_pair(
     img_size: int = 224,
     augmentation_level: str = "medium",
     use_dermoscopy_norm: bool = False,
-) -> Tuple[A.Compose, A.Compose]:
+) -> tuple[A.Compose, A.Compose]:
     """Return (train_transform, val_transform) for the given config.
 
     Convenience wrapper used by both CentralizedTrainer and FLSimulator

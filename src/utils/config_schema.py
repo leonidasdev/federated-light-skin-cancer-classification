@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -151,7 +151,7 @@ class DataConfig(BaseModel):
     use_class_weights: bool = True
 
     @model_validator(mode="after")
-    def validate_splits(self) -> "DataConfig":
+    def validate_splits(self) -> DataConfig:
         """Ensure total splits don't exceed 1.0."""
         if self.val_split + self.test_split >= 1.0:
             raise ValueError(
@@ -181,13 +181,13 @@ class FederatedExperiment(BaseModel):
     local_epochs: int = Field(default=3, ge=1, le=50)
     batch_size: int = Field(default=8, ge=1, le=256)
     noniid_type: NonIIDType = NonIIDType.NATURAL
-    dirichlet_alpha: Optional[float] = Field(default=None, gt=0)
+    dirichlet_alpha: float | None = Field(default=None, gt=0)
 
 
 class MetricsConfig(BaseModel):
     """Metrics configuration."""
 
-    classification: List[str] = Field(
+    classification: list[str] = Field(
         default=[
             "accuracy",
             "balanced_accuracy",
@@ -198,7 +198,7 @@ class MetricsConfig(BaseModel):
             "confusion_matrix",
         ]
     )
-    federated: List[str] = Field(
+    federated: list[str] = Field(
         default=[
             "convergence_rounds",
             "communication_cost",
@@ -206,7 +206,7 @@ class MetricsConfig(BaseModel):
             "round_time",
         ]
     )
-    per_class: List[str] = Field(default=["sensitivity", "specificity"])
+    per_class: list[str] = Field(default=["sensitivity", "specificity"])
 
 
 class WandBConfig(BaseModel):
@@ -214,7 +214,7 @@ class WandBConfig(BaseModel):
 
     enabled: bool = False
     project: str = "dscatnet-fl"
-    entity: Optional[str] = None
+    entity: str | None = None
 
 
 class LoggingConfig(BaseModel):
@@ -260,7 +260,7 @@ class ScenarioConfig(BaseModel):
 
     description: str = ""
     noniid_type: NonIIDType = NonIIDType.NATURAL
-    dirichlet_alpha: Optional[float] = Field(default=None, gt=0)
+    dirichlet_alpha: float | None = Field(default=None, gt=0)
 
 
 class StrategyConfig(BaseModel):
@@ -268,7 +268,7 @@ class StrategyConfig(BaseModel):
 
     name: FLStrategy
     description: str = ""
-    mu: Optional[float] = Field(default=None, ge=0)  # For FedProx
+    mu: float | None = Field(default=None, ge=0)  # For FedProx
 
 
 class FederatedSettings(BaseModel):
@@ -277,7 +277,7 @@ class FederatedSettings(BaseModel):
     framework: FLFramework = FLFramework.FLOWER
     strategy: FLStrategy = FLStrategy.FEDAVG
     num_clients: int = Field(default=4, ge=1, le=100)
-    clients: Optional[List[ClientConfig]] = None
+    clients: list[ClientConfig] | None = None
     num_rounds: int = Field(default=100, ge=1, le=1000)
     early_stopping_patience: int = Field(default=20, ge=1, le=100)
     fraction_fit: float = Field(default=1.0, gt=0, le=1.0)
@@ -299,7 +299,7 @@ class FederatedSettings(BaseModel):
     server_address: str = "[::]:8080"
 
     @model_validator(mode="after")
-    def validate_client_counts(self) -> "FederatedSettings":
+    def validate_client_counts(self) -> FederatedSettings:
         """Ensure client counts are consistent."""
         if self.min_fit_clients > self.num_clients:
             raise ValueError(
@@ -337,7 +337,7 @@ class ModelSettings(BaseModel):
     fusion_method: FusionMethod = FusionMethod.CONCAT
 
     @model_validator(mode="after")
-    def validate_patch_sizes(self) -> "ModelSettings":
+    def validate_patch_sizes(self) -> ModelSettings:
         """Ensure patch sizes divide image size evenly."""
         if self.img_size % self.fine_patch_size != 0:
             raise ValueError(
@@ -364,7 +364,7 @@ class ModelVariant(BaseModel):
     depth: int = Field(ge=1, le=24)
     num_heads: int = Field(ge=1, le=16)
     mlp_ratio: float = Field(ge=1.0, le=8.0)
-    approx_params: Optional[str] = None
+    approx_params: str | None = None
 
 
 # =============================================================================
@@ -379,7 +379,7 @@ class ExperimentConfig(BaseModel):
     hardware: HardwareConfig = Field(default_factory=HardwareConfig)
     data: DataConfig = Field(default_factory=DataConfig)
     centralized: CentralizedConfig = Field(default_factory=CentralizedConfig)
-    federated_experiments: List[FederatedExperiment] = Field(default_factory=list)
+    federated_experiments: list[FederatedExperiment] = Field(default_factory=list)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     reproducibility: ReproducibilityConfig = Field(default_factory=ReproducibilityConfig)
@@ -389,15 +389,15 @@ class FLConfig(BaseModel):
     """Complete federated learning configuration schema."""
 
     federated: FederatedSettings
-    scenarios: Optional[Dict[str, ScenarioConfig]] = None
-    strategies: Optional[List[StrategyConfig]] = None
+    scenarios: dict[str, ScenarioConfig] | None = None
+    strategies: list[StrategyConfig] | None = None
 
 
 class ModelConfig(BaseModel):
     """Complete model configuration schema."""
 
     model: ModelSettings
-    variants: Optional[Dict[str, ModelVariant]] = None
+    variants: dict[str, ModelVariant] | None = None
 
 
 # =============================================================================
@@ -405,7 +405,7 @@ class ModelConfig(BaseModel):
 # =============================================================================
 
 
-def detect_config_type(config: Dict[str, Any]) -> ConfigType:
+def detect_config_type(config: dict[str, Any]) -> ConfigType:
     """
     Auto-detect the configuration type from its contents.
 
@@ -420,20 +420,19 @@ def detect_config_type(config: Dict[str, Any]) -> ConfigType:
     """
     if "experiment" in config or "federated_experiments" in config:
         return ConfigType.EXPERIMENT
-    elif "federated" in config and "num_clients" in config.get("federated", {}):
+    if "federated" in config and "num_clients" in config.get("federated", {}):
         return ConfigType.FEDERATED
-    elif "model" in config and "embed_dim" in config.get("model", {}):
+    if "model" in config and "embed_dim" in config.get("model", {}):
         return ConfigType.MODEL
-    else:
-        raise ValueError(
-            "Cannot auto-detect config type. Please specify ConfigType explicitly."
-        )
+    raise ValueError(
+        "Cannot auto-detect config type. Please specify ConfigType explicitly."
+    )
 
 
 def validate_config(
-    config_path: Union[str, Path],
-    config_type: Optional[ConfigType] = None,
-) -> Union[ExperimentConfig, FLConfig, ModelConfig]:
+    config_path: str | Path,
+    config_type: ConfigType | None = None,
+) -> ExperimentConfig | FLConfig | ModelConfig:
     """
     Load and validate a YAML configuration file.
 
@@ -454,7 +453,7 @@ def validate_config(
     if not config_path.exists():
         raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         raw_config = yaml.safe_load(f)
 
     if raw_config is None:
@@ -465,18 +464,17 @@ def validate_config(
 
     if config_type == ConfigType.EXPERIMENT:
         return ExperimentConfig(**raw_config)
-    elif config_type == ConfigType.FEDERATED:
+    if config_type == ConfigType.FEDERATED:
         return FLConfig(**raw_config)
-    elif config_type == ConfigType.MODEL:
+    if config_type == ConfigType.MODEL:
         return ModelConfig(**raw_config)
-    else:
-        raise ValueError(f"Unknown config type: {config_type}")
+    raise ValueError(f"Unknown config type: {config_type}")
 
 
 def validate_config_dict(
-    config: Dict[str, Any],
-    config_type: Optional[ConfigType] = None,
-) -> Union[ExperimentConfig, FLConfig, ModelConfig]:
+    config: dict[str, Any],
+    config_type: ConfigType | None = None,
+) -> ExperimentConfig | FLConfig | ModelConfig:
     """
     Validate a configuration dictionary.
 
@@ -495,15 +493,14 @@ def validate_config_dict(
 
     if config_type == ConfigType.EXPERIMENT:
         return ExperimentConfig(**config)
-    elif config_type == ConfigType.FEDERATED:
+    if config_type == ConfigType.FEDERATED:
         return FLConfig(**config)
-    elif config_type == ConfigType.MODEL:
+    if config_type == ConfigType.MODEL:
         return ModelConfig(**config)
-    else:
-        raise ValueError(f"Unknown config type: {config_type}")
+    raise ValueError(f"Unknown config type: {config_type}")
 
 
-def get_default_config(config_type: ConfigType) -> Dict[str, Any]:
+def get_default_config(config_type: ConfigType) -> dict[str, Any]:
     """
     Get default configuration for a given type.
 
@@ -515,16 +512,15 @@ def get_default_config(config_type: ConfigType) -> Dict[str, Any]:
     """
     if config_type == ConfigType.EXPERIMENT:
         return ExperimentConfig().model_dump()
-    elif config_type == ConfigType.FEDERATED:
+    if config_type == ConfigType.FEDERATED:
         return FLConfig(
             federated=FederatedSettings()
         ).model_dump()
-    elif config_type == ConfigType.MODEL:
+    if config_type == ConfigType.MODEL:
         return ModelConfig(
             model=ModelSettings()
         ).model_dump()
-    else:
-        raise ValueError(f"Unknown config type: {config_type}")
+    raise ValueError(f"Unknown config type: {config_type}")
 
 
 # =============================================================================

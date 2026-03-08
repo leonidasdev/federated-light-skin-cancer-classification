@@ -12,10 +12,11 @@ Dataset-to-client mapping is configured at runtime via the experiment config.
 # Imports
 # =============================================================================
 
-from typing import Dict, List, Tuple, Sized, cast, Optional
+from typing import cast
+from collections.abc import Sized
 
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader
 from flwr.client import NumPyClient
 from flwr.common import NDArrays, Scalar
@@ -61,7 +62,7 @@ class SkinCancerClient(NumPyClient):
         local_epochs: int = 1,
         learning_rate: float = 1e-3,
         weight_decay: float = 0.0,
-        class_weights: Optional[torch.Tensor] = None,
+        class_weights: torch.Tensor | None = None,
         use_amp: bool = True,
         scheduler_type: str = "none",
         scheduler_t_max: int = 100,
@@ -110,14 +111,14 @@ class SkinCancerClient(NumPyClient):
             self.scheduler = None
 
         # Training history
-        self.history: Dict[str, List[float]] = {
+        self.history: dict[str, list[float]] = {
             'train_loss': [],
             'train_acc': [],
             'val_loss': [],
             'val_acc': []
         }
 
-    def get_parameters(self, config: Dict[str, Scalar]) -> NDArrays:
+    def get_parameters(self, config: dict[str, Scalar]) -> NDArrays:
         """Return current model parameters as numpy arrays."""
         return get_model_parameters(self.model)
 
@@ -128,8 +129,8 @@ class SkinCancerClient(NumPyClient):
     def fit(
         self,
         parameters: NDArrays,
-        config: Dict[str, Scalar]
-    ) -> Tuple[NDArrays, int, Dict[str, Scalar]]:
+        config: dict[str, Scalar]
+    ) -> tuple[NDArrays, int, dict[str, Scalar]]:
         """
         Train model on local dataset.
 
@@ -173,8 +174,8 @@ class SkinCancerClient(NumPyClient):
     def evaluate(
         self,
         parameters: NDArrays,
-        config: Dict[str, Scalar]
-    ) -> Tuple[float, int, Dict[str, Scalar]]:
+        config: dict[str, Scalar]
+    ) -> tuple[float, int, dict[str, Scalar]]:
         """
         Evaluate model on local validation set.
 
@@ -201,7 +202,7 @@ class SkinCancerClient(NumPyClient):
         num_val = len(cast(Sized, self.val_loader.dataset))
         return loss, num_val, metrics
 
-    def _train_epoch(self, epochs: int = 1) -> Tuple[float, float]:
+    def _train_epoch(self, epochs: int = 1) -> tuple[float, float]:
         """
         Train for specified number of epochs.
 
@@ -258,7 +259,7 @@ class SkinCancerClient(NumPyClient):
 
         return avg_loss, accuracy
 
-    def _evaluate(self) -> Tuple[float, float, Dict[str, Scalar]]:
+    def _evaluate(self) -> tuple[float, float, dict[str, Scalar]]:
         """
         Evaluate model on validation set.
 
@@ -322,7 +323,7 @@ class SkinCancerClient(NumPyClient):
 
         return avg_loss, accuracy, metrics
 
-    def get_history(self) -> Dict[str, List[float]]:
+    def get_history(self) -> dict[str, list[float]]:
         """Return training history."""
         return self.history
 

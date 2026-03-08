@@ -34,7 +34,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 
 # =============================================================================
 # Third-Party Imports
@@ -75,7 +75,7 @@ def setup_file_logging(output_dir: Path) -> None:
     logging.getLogger().addHandler(file_handler)
 
 
-def load_config(config_path: str) -> Dict[str, Any]:
+def load_config(config_path: str) -> dict[str, Any]:
     """
     Load configuration from YAML file.
 
@@ -89,7 +89,7 @@ def load_config(config_path: str) -> Dict[str, Any]:
         FileNotFoundError: If config file does not exist.
         yaml.YAMLError: If config file is malformed.
     """
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         return yaml.safe_load(f)
 
 
@@ -121,9 +121,9 @@ _COMMON_SECTION_MAPPINGS = [
 
 
 def _flatten_config(
-    config_dict: Dict[str, Any],
+    config_dict: dict[str, Any],
     extra_mappings: list,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Flatten a nested YAML config dict into a flat dict for dataclass construction.
 
     Args:
@@ -133,7 +133,7 @@ def _flatten_config(
     Returns:
         Flat dict suitable for passing to ``Config.from_dict()``.
     """
-    flat: Dict[str, Any] = {}
+    flat: dict[str, Any] = {}
     all_mappings = _COMMON_SECTION_MAPPINGS + extra_mappings
 
     for section_name, field_pairs in all_mappings:
@@ -186,7 +186,7 @@ def _apply_cli_overrides(config: Any, args: argparse.Namespace) -> None:
         config.use_amp = False
 
 
-def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
+def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
     """Evaluate a trained model checkpoint using the DATASET_REGISTRY."""
     from src.models.dscatnet import create_dscatnet
     from src.evaluation.metrics import ModelEvaluator
@@ -333,7 +333,7 @@ def run_evaluate(args: argparse.Namespace) -> Dict[str, Any]:
     return results.to_dict()
 
 
-def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
+def run_centralized(args: argparse.Namespace) -> dict[str, Any]:
     """Run centralized training experiment."""
     from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
     from src.utils.helpers import set_seed
@@ -409,7 +409,7 @@ def run_centralized(args: argparse.Namespace) -> Dict[str, Any]:
     return results
 
 
-def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
+def run_federated(args: argparse.Namespace) -> dict[str, Any]:
     """Run federated learning experiment."""
     from src.federated.simulation import SimulationConfig, FLSimulator
     from src.utils.helpers import set_seed
@@ -517,7 +517,7 @@ def run_federated(args: argparse.Namespace) -> Dict[str, Any]:
     return results
 
 
-def run_comparison(args: argparse.Namespace) -> Dict[str, Any]:
+def run_comparison(args: argparse.Namespace) -> dict[str, Any]:
     """Run both centralized and federated experiments for comparison."""
     from src.evaluation.visualization import (
         plot_fl_vs_centralized,
@@ -566,7 +566,7 @@ def run_comparison(args: argparse.Namespace) -> Dict[str, Any]:
         )
 
     # Summary comparison
-    comparison_summary: Dict[str, Any] = {
+    comparison_summary: dict[str, Any] = {
         "centralized": {
             "best_accuracy": centralized_results.get("best_val_accuracy"),
             "best_epoch": centralized_results.get("best_epoch"),

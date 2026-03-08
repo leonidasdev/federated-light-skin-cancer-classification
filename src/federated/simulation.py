@@ -20,13 +20,13 @@ import logging
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
 from dataclasses import dataclass, asdict
 
 from PIL import Image
 import numpy as np
 import torch
-import torch.nn as nn
+from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
@@ -62,9 +62,9 @@ class DirichletSubset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        combined_images: List[Tuple[Any, int]],
-        indices: List[int],
-        transform: Optional[Any] = None
+        combined_images: list[tuple[Any, int]],
+        indices: list[int],
+        transform: Any | None = None
     ):
         """
         Initialize DirichletSubset.
@@ -81,7 +81,7 @@ class DirichletSubset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.indices)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         """Get sample at index."""
         combined_idx = self.indices[idx]
         dataset, original_idx = self.combined_images[combined_idx]
@@ -150,10 +150,10 @@ class SimulationConfig:
     # Dataset selection: list of datasets to use, or None/empty for all
     # Valid options: "HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"
     # For natural non-IID, each selected dataset becomes one client
-    datasets: Optional[List[str]] = None
+    datasets: list[str] | None = None
 
     # Resume training from checkpoint
-    resume_from: Optional[str] = None
+    resume_from: str | None = None
 
     # Experiment configuration
     experiment_name: str = "fl_experiment"
@@ -173,12 +173,12 @@ class SimulationConfig:
     # Set to 0 for auto-detection based on CPU count
     parallel_clients: int = 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert config to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "SimulationConfig":
+    def from_dict(cls, config_dict: dict[str, Any]) -> "SimulationConfig":
         """Create config from dictionary."""
         return cls(**{k: v for k, v in config_dict.items() if k in cls.__dataclass_fields__})
 
@@ -202,7 +202,7 @@ class ClientData:
     val_loader: DataLoader
     num_train_samples: int
     num_val_samples: int
-    class_distribution: Dict[int, int]
+    class_distribution: dict[int, int]
     dataset_name: str
 
 
@@ -237,10 +237,10 @@ class FLSimulator:
         ).to(self.device)
 
         # Client data
-        self.client_data: Dict[int, ClientData] = {}
+        self.client_data: dict[int, ClientData] = {}
 
         # Class weights for handling imbalanced data (computed after setup)
-        self.class_weights: Optional[torch.Tensor] = None
+        self.class_weights: torch.Tensor | None = None
 
         # Training history
         self.history = {
@@ -269,7 +269,7 @@ class FLSimulator:
         logger.info(f"Device: {self.device}")
         logger.info(f"Output directory: {self.output_dir}")
 
-    def _get_transforms(self) -> Tuple[Any, Any]:
+    def _get_transforms(self) -> tuple[Any, Any]:
         """Get train and validation transforms based on config."""
         return get_transform_pair(
             img_size=self.config.image_size,
@@ -279,7 +279,7 @@ class FLSimulator:
 
     def _resolve_datasets(
         self, transform: Any
-    ) -> List[Tuple[str, Any]]:
+    ) -> list[tuple[str, Any]]:
         """Resolve and load datasets from the registry.
 
         Returns a list of (dataset_name, full_dataset) tuples for every
@@ -296,7 +296,7 @@ class FLSimulator:
         else:
             dataset_names = get_available_datasets()
 
-        loaded: List[Tuple[str, Any]] = []
+        loaded: list[tuple[str, Any]] = []
         for dataset_name in dataset_names:
             config = DATASET_REGISTRY[dataset_name]
             csv_path, dataset_root = get_dataset_paths(dataset_name, self.config.data_root)
@@ -516,8 +516,8 @@ class FLSimulator:
     def train_client(
         self,
         client_id: int,
-        model_parameters: List[np.ndarray],
-    ) -> Tuple[List[np.ndarray], int, Dict[str, Scalar]]:
+        model_parameters: list[np.ndarray],
+    ) -> tuple[list[np.ndarray], int, dict[str, Scalar]]:
         """
         Train a single client for local epochs.
 
@@ -608,8 +608,8 @@ class FLSimulator:
     def evaluate_client(
         self,
         client_id: int,
-        model_parameters: List[np.ndarray],
-    ) -> Tuple[float, int, Dict[str, Scalar]]:
+        model_parameters: list[np.ndarray],
+    ) -> tuple[float, int, dict[str, Scalar]]:
         """
         Evaluate model on a single client's validation data.
 
@@ -666,8 +666,8 @@ class FLSimulator:
 
     def aggregate_parameters(
         self,
-        results: List[Tuple[List[np.ndarray], int]],
-    ) -> List[np.ndarray]:
+        results: list[tuple[list[np.ndarray], int]],
+    ) -> list[np.ndarray]:
         """
         Aggregate parameters using FedAvg.
 
@@ -690,7 +690,7 @@ class FLSimulator:
 
         return aggregated
 
-    def _select_clients(self, round_num: int) -> List[int]:
+    def _select_clients(self, round_num: int) -> list[int]:
         """
         Select clients for this round based on client_selection_fraction.
 
@@ -733,7 +733,7 @@ class FLSimulator:
             return min(os.cpu_count() or 1, 4)
         return self.config.parallel_clients
 
-    def run_round(self, round_num: int, pbar: Optional[tqdm] = None) -> Dict[str, float]:
+    def run_round(self, round_num: int, pbar: tqdm | None = None) -> dict[str, float]:
         """
         Run a single FL round with optional parallel client training.
 
@@ -819,7 +819,7 @@ class FLSimulator:
         eval_results = []
         client_val_metrics = []
 
-        for client_id in self.client_data.keys():
+        for client_id in self.client_data:
             loss, num_samples, metrics = self.evaluate_client(client_id, aggregated_params)
             eval_results.append((loss, num_samples, metrics))
             client_val_metrics.append(metrics)
@@ -857,7 +857,7 @@ class FLSimulator:
 
         return metrics
 
-    def save_checkpoint(self, round_num: int, metrics: Dict[str, float]) -> None:
+    def save_checkpoint(self, round_num: int, metrics: dict[str, float]) -> None:
         """Save model checkpoint with full state for resumption.
 
         Args:
@@ -937,7 +937,7 @@ class FLSimulator:
         return round_num
 
 
-    def run(self) -> Dict[str, Any]:
+    def run(self) -> dict[str, Any]:
         """
         Run the complete FL simulation.
 
@@ -1089,7 +1089,7 @@ class FLSimulator:
         return results
 
 
-def run_fl_simulation(config: Optional[SimulationConfig] = None) -> Dict[str, Any]:
+def run_fl_simulation(config: SimulationConfig | None = None) -> dict[str, Any]:
     """
     Convenience function to run FL simulation.
 

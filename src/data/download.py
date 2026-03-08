@@ -28,7 +28,7 @@ import time
 import logging
 import concurrent.futures
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Any
 from urllib.parse import urlparse, parse_qs
 
 import requests
@@ -139,7 +139,7 @@ def get_data_root() -> Path:
     return Path("./data")
 
 
-def create_directory_structure(data_root: Optional[Path] = None) -> Dict[str, Path]:
+def create_directory_structure(data_root: Path | None = None) -> dict[str, Path]:
     """
     Create the expected directory structure for all datasets.
 
@@ -192,7 +192,7 @@ def check_kaggle_available() -> bool:
 
 
 def download_ham10000_kaggle(
-    data_root: Optional[Path] = None,
+    data_root: Path | None = None,
     force_redownload: bool = False
 ) -> bool:
     """
@@ -320,7 +320,7 @@ def download_ham10000_kaggle(
 # =============================================================================
 
 def download_padufes20_mendeley(
-    data_root: Optional[Path] = None,
+    data_root: Path | None = None,
     force_redownload: bool = False
 ) -> bool:
     """
@@ -397,11 +397,13 @@ def download_padufes20_mendeley(
         total_size = int(response.headers.get('content-length', 0))
         block_size = 8192
 
-        with open(zip_path, 'wb') as f:
-            with tqdm(total=total_size, unit='iB', unit_scale=True, desc="  Downloading") as pbar:
-                for data in response.iter_content(block_size):
-                    size = f.write(data)
-                    pbar.update(size)
+        with (
+            open(zip_path, 'wb') as f,
+            tqdm(total=total_size, unit='iB', unit_scale=True, desc="  Downloading") as pbar,
+        ):
+            for data in response.iter_content(block_size):
+                size = f.write(data)
+                pbar.update(size)
 
         print("  Download completed!")
 
@@ -412,7 +414,7 @@ def download_padufes20_mendeley(
             namelist = zip_ref.namelist()
 
             # PAD-UFES-20 ZIP structure may have a top-level folder
-            _ = any(n.startswith("zr7vgbcyr2") or n.startswith("PAD-UFES-20") for n in namelist[:10])
+            _ = any(n.startswith(("zr7vgbcyr2", "PAD-UFES-20")) for n in namelist[:10])
 
             zip_ref.extractall(temp_dir)
 
@@ -499,10 +501,10 @@ def download_padufes20_mendeley(
 
 def download_dataset(
     dataset_name: str,
-    data_root: Optional[Path] = None,
+    data_root: Path | None = None,
     max_workers: int = 8,
     force_redownload: bool = False,
-    prefer_source: Optional[str] = None
+    prefer_source: str | None = None
 ) -> bool:
     """
     Download a dataset using the appropriate source.
@@ -534,16 +536,14 @@ def download_dataset(
         # Try Kaggle first, fall back to ISIC
         if check_kaggle_available():
             return download_ham10000_kaggle(data_root, force_redownload)
-        else:
-            print("Kaggle not available, falling back to ISIC Archive API...")
-            return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
+        print("Kaggle not available, falling back to ISIC Archive API...")
+        return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
 
-    elif dataset_name == "PAD-UFES-20":
+    if dataset_name == "PAD-UFES-20":
         return download_padufes20_mendeley(data_root, force_redownload)
 
-    else:
-        # ISIC datasets
-        return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
+    # ISIC datasets
+    return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
 
 
 
@@ -601,7 +601,7 @@ class ISICArchiveClient:
     def _make_request(
         self,
         endpoint: str,
-        params: Optional[Dict] = None
+        params: dict | None = None
     ) -> requests.Response:
         """Make API request with error handling."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
@@ -616,10 +616,10 @@ class ISICArchiveClient:
 
     def get_image_list(
         self,
-        collection: Optional[str] = None,
+        collection: str | None = None,
         limit: int = 10000,
         offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get list of images from ISIC Archive.
 
@@ -631,7 +631,7 @@ class ISICArchiveClient:
         Returns:
             List of image metadata dictionaries
         """
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "limit": limit,
             "offset": offset
         }
@@ -648,7 +648,7 @@ class ISICArchiveClient:
         self,
         collection: str,
         batch_size: int = 1000
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Get all images from a specific collection with pagination.
 
@@ -659,7 +659,7 @@ class ISICArchiveClient:
         Returns:
             List of all image metadata
         """
-        all_images: List[Dict[str, Any]] = []
+        all_images: list[dict[str, Any]] = []
         seen_ids = set()
         cursor = None
 
@@ -667,7 +667,7 @@ class ISICArchiveClient:
 
         with tqdm(desc="  Fetching metadata", unit=" images") as pbar:
             while True:
-                params: Dict[str, Any] = {"limit": batch_size}
+                params: dict[str, Any] = {"limit": batch_size}
                 if collection:
                     params["collections"] = collection
                     params["collection"] = collection
@@ -772,8 +772,8 @@ class ISICArchiveClient:
 
     def _download_worker(
         self,
-        task: Tuple[str, Path]
-    ) -> Tuple[str, bool]:
+        task: tuple[str, Path]
+    ) -> tuple[str, bool]:
         """Worker function for parallel downloads."""
         image_id, output_path = task
 
@@ -785,10 +785,10 @@ class ISICArchiveClient:
 
     def download_images_parallel(
         self,
-        images: List[Dict[str, Any]],
+        images: list[dict[str, Any]],
         output_dir: Path,
-        max_workers: Optional[int] = None
-    ) -> Dict[str, Any]:
+        max_workers: int | None = None
+    ) -> dict[str, Any]:
         """
         Download multiple images in parallel.
 
@@ -851,7 +851,7 @@ class ISICArchiveClient:
 
     def save_metadata_csv(
         self,
-        images: List[Dict[str, Any]],
+        images: list[dict[str, Any]],
         output_path: Path
     ) -> None:
         """
@@ -921,7 +921,7 @@ class ISICArchiveClient:
 
 def download_dataset_isic(
     dataset_name: str,
-    data_root: Optional[Path] = None,
+    data_root: Path | None = None,
     max_workers: int = 8,
     force_redownload: bool = False
 ) -> bool:
@@ -1008,11 +1008,11 @@ def download_dataset_isic(
 
 
 def download_all_datasets(
-    data_root: Optional[Path] = None,
-    datasets: Optional[List[str]] = None,
+    data_root: Path | None = None,
+    datasets: list[str] | None = None,
     max_workers: int = 8,
     force_redownload: bool = False
-) -> Dict[str, bool]:
+) -> dict[str, bool]:
     """
     Download all (or specified) datasets using the appropriate source.
 
@@ -1074,7 +1074,7 @@ def download_all_datasets(
 # Verification Functions
 # =============================================================================
 
-def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[str, Any]:
+def verify_dataset(dataset_name: str, data_root: Path | None = None) -> dict[str, Any]:
     """
     Verify that a dataset is properly set up.
 
@@ -1171,7 +1171,7 @@ def verify_dataset(dataset_name: str, data_root: Optional[Path] = None) -> Dict[
     return result
 
 
-def verify_all_datasets(data_root: Optional[Path] = None) -> Dict[str, Dict]:
+def verify_all_datasets(data_root: Path | None = None) -> dict[str, dict]:
     """Verify all datasets and return summary."""
     results = {}
     for dataset_name in DATASET_INFO:
@@ -1179,7 +1179,7 @@ def verify_all_datasets(data_root: Optional[Path] = None) -> Dict[str, Dict]:
     return results
 
 
-def print_verification_report(results: Dict[str, Dict]) -> None:
+def print_verification_report(results: dict[str, dict]) -> None:
     """Print a formatted verification report."""
     print("\n" + "=" * 70)
     print("DATASET VERIFICATION REPORT")
@@ -1331,7 +1331,7 @@ Total: ~80,785 dermoscopy images
 class DatasetSetupWizard:
     """Interactive wizard for setting up datasets."""
 
-    def __init__(self, data_root: Optional[Path] = None):
+    def __init__(self, data_root: Path | None = None):
         self.data_root = Path(data_root) if data_root else get_data_root()
 
     def run(self, auto_download: bool = False) -> None:

@@ -17,15 +17,15 @@ for federated learning experiments:
 
 import numpy as np
 import torch
-from typing import List, Tuple, Dict, Optional, Any
+from typing import Any
 from collections import defaultdict
 
 __all__ = [
-    "deterministic_train_val_split",
     "create_iid_split",
-    "create_noniid_split",
     "create_label_skew_split",
+    "create_noniid_split",
     "create_quantity_skew_split",
+    "deterministic_train_val_split",
     "get_dataset_statistics",
     "print_split_summary",
 ]
@@ -39,7 +39,7 @@ def deterministic_train_val_split(
     total_size: int,
     val_split: float = 0.15,
     seed: int = 42,
-) -> Tuple[List[int], List[int]]:
+) -> tuple[list[int], list[int]]:
     """Split indices into train and val sets using a torch Generator for reproducibility.
 
     This is the canonical split function used by both centralized and federated
@@ -63,10 +63,10 @@ def deterministic_train_val_split(
 
 
 def create_iid_split(
-    labels: List[int],
+    labels: list[int],
     num_clients: int = 4,
     seed: int = 42
-) -> Dict[int, List[int]]:
+) -> dict[int, list[int]]:
     """
     Create IID (Independent and Identically Distributed) split.
 
@@ -97,11 +97,11 @@ def create_iid_split(
 
 
 def create_noniid_split(
-    labels: List[int],
+    labels: list[int],
     num_clients: int = 4,
     alpha: float = 0.5,
     seed: int = 42
-) -> Dict[int, List[int]]:
+) -> dict[int, list[int]]:
     """
     Create Non-IID split using Dirichlet distribution.
 
@@ -150,18 +150,18 @@ def create_noniid_split(
             start = end
 
     # Shuffle each client's data
-    for client_id, data in client_data.items():
+    for _client_id, data in client_data.items():
         np.random.shuffle(data)
 
     return client_data
 
 
 def create_label_skew_split(
-    labels: List[int],
+    labels: list[int],
     num_clients: int = 4,
     num_classes_per_client: int = 3,
     seed: int = 42
-) -> Dict[int, List[int]]:
+) -> dict[int, list[int]]:
     """
     Create Non-IID split with label skew.
 
@@ -219,18 +219,18 @@ def create_label_skew_split(
                 client_data[client_id].extend(split.tolist())
 
     # Shuffle each client's data
-    for client_id, data in client_data.items():
+    for _client_id, data in client_data.items():
         np.random.shuffle(data)
 
     return client_data
 
 
 def create_quantity_skew_split(
-    labels: List[int],
+    labels: list[int],
     num_clients: int = 4,
     imbalance_factor: float = 0.5,
     seed: int = 42
-) -> Dict[int, List[int]]:
+) -> dict[int, list[int]]:
     """
     Create Non-IID split with quantity skew.
 
@@ -274,9 +274,9 @@ def create_quantity_skew_split(
 
 
 def get_dataset_statistics(
-    client_data: Dict[int, List[int]],
-    labels: List[int]
-) -> Dict[str, Any]:
+    client_data: dict[int, list[int]],
+    labels: list[int]
+) -> dict[str, Any]:
     """
     Compute statistics about the data distribution across clients.
 
@@ -341,9 +341,9 @@ def get_dataset_statistics(
 
 
 def print_split_summary(
-    client_data: Dict[int, List[int]],
-    labels: List[int],
-    class_names: Optional[List[str]] = None
+    client_data: dict[int, list[int]],
+    labels: list[int],
+    class_names: list[str] | None = None
 ) -> None:
     """Print a formatted summary of the data split."""
     stats = get_dataset_statistics(client_data, labels)

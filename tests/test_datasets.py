@@ -138,7 +138,7 @@ class TestGetDatasetPaths:
 
         # All these should resolve to the same dataset
         for name in ["HAM10000", "ham10000", "Ham10000"]:
-            csv_path, image_root = get_dataset_paths(name, tmp_path)
+            _csv_path, image_root = get_dataset_paths(name, tmp_path)
             assert image_root is not None
 
 

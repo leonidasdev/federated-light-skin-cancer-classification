@@ -13,9 +13,9 @@ Helpers for saving, loading, and managing model checkpoints.
 
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any
 import torch
-import torch.nn as nn
+from torch import nn
 
 logger = logging.getLogger(__name__)
 
@@ -51,19 +51,19 @@ class CheckpointManager:
         self.max_checkpoints = max_checkpoints
         self.keep_best = keep_best
 
-        self.checkpoints: List[Path] = []
-        self.best_checkpoint: Optional[Path] = None
-        self.best_metric: Optional[float] = None
+        self.checkpoints: list[Path] = []
+        self.best_checkpoint: Path | None = None
+        self.best_metric: float | None = None
 
     def save(
         self,
         model: nn.Module,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        scheduler: Optional[Any] = None,
+        optimizer: torch.optim.Optimizer | None = None,
+        scheduler: Any | None = None,
         epoch: int = 0,
-        metrics: Optional[Dict[str, float]] = None,
+        metrics: dict[str, float] | None = None,
         is_best: bool = False,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """
         Save a checkpoint.
@@ -134,11 +134,11 @@ class CheckpointManager:
     def load(
         self,
         model: nn.Module,
-        checkpoint_path: Optional[Path] = None,
+        checkpoint_path: Path | None = None,
         load_best: bool = False,
-        optimizer: Optional[torch.optim.Optimizer] = None,
-        scheduler: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+        optimizer: torch.optim.Optimizer | None = None,
+        scheduler: Any | None = None,
+    ) -> dict[str, Any]:
         """
         Load a checkpoint.
 
@@ -177,7 +177,7 @@ class CheckpointManager:
 
         return checkpoint
 
-    def get_checkpoints(self) -> List[Path]:
+    def get_checkpoints(self) -> list[Path]:
         """Get list of all checkpoint paths."""
         return list(self.checkpoint_dir.glob("checkpoint_*.pt"))
 
@@ -185,7 +185,7 @@ class CheckpointManager:
 def save_model_for_inference(
     model: nn.Module,
     save_path: Path,
-    config: Optional[Dict[str, Any]] = None,
+    config: dict[str, Any] | None = None,
 ) -> None:
     """
     Save model in a format suitable for inference.
@@ -209,7 +209,7 @@ def save_model_for_inference(
 def load_model_for_inference(
     model: nn.Module,
     load_path: Path,
-    device: Optional[torch.device] = None,
+    device: torch.device | None = None,
 ) -> nn.Module:
     """
     Load model for inference.

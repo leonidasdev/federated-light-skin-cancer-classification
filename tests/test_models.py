@@ -320,8 +320,8 @@ class TestPretrainedViTWeightLoading:
         load_pretrained_vit_weights(model, variant='tiny')
 
         # All weights should be unchanged
-        for k in original_sd:
-            assert torch.equal(model.state_dict()[k], original_sd[k])
+        for k, orig_v in original_sd.items():
+            assert torch.equal(model.state_dict()[k], orig_v)
 
     def test_create_dscatnet_calls_pretrained_loading(self):
         """create_dscatnet with pretrained=True should call load_pretrained_vit_weights."""

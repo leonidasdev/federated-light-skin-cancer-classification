@@ -16,7 +16,7 @@ Provides comprehensive verification of dermoscopy datasets including:
 # =============================================================================
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any
 import pandas as pd
 
 # =============================================================================
@@ -38,9 +38,9 @@ class DatasetVerifier:
 
     def __init__(self, data_root: str):
         self.data_root = Path(data_root)
-        self.results: Dict[str, Any] = {}
+        self.results: dict[str, Any] = {}
 
-    def verify_ham10000(self) -> Dict[str, Any]:
+    def verify_ham10000(self) -> dict[str, Any]:
         """Verify HAM10000 dataset."""
         dataset_path = self.data_root / "HAM10000"
         result = {
@@ -108,7 +108,7 @@ class DatasetVerifier:
 
         return result
 
-    def verify_isic2018(self) -> Dict[str, Any]:
+    def verify_isic2018(self) -> dict[str, Any]:
         """Verify ISIC 2018 dataset."""
         dataset_path = self.data_root / "ISIC2018"
         result = {
@@ -163,7 +163,7 @@ class DatasetVerifier:
 
         return result
 
-    def verify_isic2019(self) -> Dict[str, Any]:
+    def verify_isic2019(self) -> dict[str, Any]:
         """Verify ISIC 2019 dataset."""
         dataset_path = self.data_root / "ISIC2019"
         result = {
@@ -204,7 +204,7 @@ class DatasetVerifier:
 
         return result
 
-    def verify_isic2020(self) -> Dict[str, Any]:
+    def verify_isic2020(self) -> dict[str, Any]:
         """Verify ISIC 2020 dataset."""
         dataset_path = self.data_root / "ISIC2020"
         result = {
@@ -246,7 +246,7 @@ class DatasetVerifier:
 
         return result
 
-    def verify_all(self, verbose: bool = True) -> Dict[str, Dict]:
+    def verify_all(self, verbose: bool = True) -> dict[str, dict]:
         """
         Verify all datasets.
 
@@ -302,7 +302,7 @@ class DatasetVerifier:
         print(f"Total images across all datasets: {total_images:,}")
         print("=" * 80)
 
-    def get_summary_stats(self) -> Dict[str, Any]:
+    def get_summary_stats(self) -> dict[str, Any]:
         """Get summary statistics across all datasets."""
         if not self.results:
             self.verify_all(verbose=False)
@@ -321,10 +321,7 @@ class DatasetVerifier:
 if __name__ == "__main__":
     import sys
 
-    if len(sys.argv) > 1:
-        data_root = sys.argv[1]
-    else:
-        data_root = "./data"
+    data_root = sys.argv[1] if len(sys.argv) > 1 else "./data"
 
     verifier = DatasetVerifier(data_root)
     verifier.verify_all()

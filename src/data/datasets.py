@@ -30,7 +30,8 @@ import numpy as np
 from PIL import Image
 from pathlib import Path
 from collections import Counter
-from typing import Optional, Callable, Dict, List, Tuple, Union, Literal
+from typing import Literal
+from collections.abc import Callable
 from dataclasses import dataclass
 from torch.utils.data import Dataset
 import torch
@@ -161,8 +162,8 @@ class BaseDermoscopyDataset(Dataset):
         self,
         root_dir: str,
         csv_path: str,
-        transform: Optional[Callable] = None,
-        target_transform: Optional[Callable] = None,
+        transform: Callable | None = None,
+        target_transform: Callable | None = None,
         classification_mode: ClassificationMode = 'multiclass',
         filter_unknown: bool = True,
     ):
@@ -194,7 +195,7 @@ class BaseDermoscopyDataset(Dataset):
         """Load and preprocess metadata CSV."""
         raise NotImplementedError
 
-    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+    def _build_image_list(self) -> tuple[list[str], list[int]]:
         """Build list of image paths and labels."""
         raise NotImplementedError
 
@@ -202,16 +203,16 @@ class BaseDermoscopyDataset(Dataset):
         """Map string label to integer class based on classification mode."""
         if self.classification_mode == 'binary':
             return UNIFIED_CLASSES_BINARY.get(label, -1)
-        elif self.classification_mode == 'multiclass_8':
+        if self.classification_mode == 'multiclass_8':
             # For 8-class, use ISIC2019 mapping with fallback
             return ISIC2019_CLASSES.get(label, UNIFIED_CLASSES_7.get(label, -1))
-        else:  # multiclass (7)
-            return UNIFIED_CLASSES_7.get(label, -1)
+        # multiclass (7)
+        return UNIFIED_CLASSES_7.get(label, -1)
 
     def __len__(self) -> int:
         return len(self.image_paths)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         """Load and return (image, label) for the given index."""
         # Load image
         img_path = self.image_paths[idx]
@@ -230,17 +231,16 @@ class BaseDermoscopyDataset(Dataset):
         if not isinstance(image, torch.Tensor):
             # NumPy HWC -> Tensor CHW, scale to [0,1]
             image = torch.from_numpy(image).permute(2, 0, 1).contiguous().float() / 255.0
-        else:
-            # If tensor is HWC (last dim channels), convert to CHW
-            if image.ndim == 3 and image.shape[-1] in (1, 3):
-                image = image.permute(2, 0, 1).contiguous()
+        # If tensor is HWC (last dim channels), convert to CHW
+        elif image.ndim == 3 and image.shape[-1] in (1, 3):
+            image = image.permute(2, 0, 1).contiguous()
 
         if self.target_transform:
             label = self.target_transform(label)
 
         return image, label
 
-    def get_class_distribution(self) -> Dict[int, int]:
+    def get_class_distribution(self) -> dict[int, int]:
         """Get distribution of classes in the dataset."""
         return dict(Counter(self.labels))
 
@@ -277,7 +277,7 @@ class HAM10000Dataset(BaseDermoscopyDataset):
         df = pd.read_csv(self.csv_path)
         return df
 
-    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+    def _build_image_list(self) -> tuple[list[str], list[int]]:
         image_paths = []
         labels = []
 
@@ -319,7 +319,7 @@ class ISIC2018Dataset(BaseDermoscopyDataset):
         df = pd.read_csv(self.csv_path)
         return df
 
-    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+    def _build_image_list(self) -> tuple[list[str], list[int]]:
         image_paths = []
         labels = []
 
@@ -369,7 +369,7 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
         df = pd.read_csv(self.csv_path)
         return df
 
-    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+    def _build_image_list(self) -> tuple[list[str], list[int]]:
         image_paths = []
         labels = []
 
@@ -418,7 +418,7 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
         df = pd.read_csv(self.csv_path)
         return df
 
-    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+    def _build_image_list(self) -> tuple[list[str], list[int]]:
         image_paths = []
         labels = []
 
@@ -485,7 +485,7 @@ class PADUFES20Dataset(BaseDermoscopyDataset):
         df = pd.read_csv(self.csv_path)
         return df
 
-    def _build_image_list(self) -> Tuple[List[str], List[int]]:
+    def _build_image_list(self) -> tuple[list[str], list[int]]:
         image_paths = []
         labels = []
 
@@ -527,7 +527,7 @@ class DatasetSubset(Dataset):
     is recognized by static type checkers like Pylance.
     """
 
-    def __init__(self, dataset: "BaseDermoscopyDataset", indices: List[int], transform: Optional[Callable] = None):
+    def __init__(self, dataset: "BaseDermoscopyDataset", indices: list[int], transform: Callable | None = None):
         self.dataset: BaseDermoscopyDataset = dataset
         self.indices = indices
         self.transform = transform
@@ -538,7 +538,7 @@ class DatasetSubset(Dataset):
     def __len__(self) -> int:
         return len(self.indices)
 
-    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, int]:
+    def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
         """Load and return (image, label) for the given index."""
         # Get original item
         real_idx = self.indices[idx]
@@ -559,13 +559,12 @@ class DatasetSubset(Dataset):
         # Ensure torch.Tensor CHW float
         if not isinstance(image, torch.Tensor):
             image = torch.from_numpy(image).permute(2, 0, 1).contiguous().float() / 255.0
-        else:
-            if image.ndim == 3 and image.shape[-1] in (1, 3):
-                image = image.permute(2, 0, 1).contiguous()
+        elif image.ndim == 3 and image.shape[-1] in (1, 3):
+            image = image.permute(2, 0, 1).contiguous()
 
         return image, label
 
-    def get_class_distribution(self) -> Dict[int, int]:
+    def get_class_distribution(self) -> dict[int, int]:
         """Get distribution of classes in this subset."""
         subset_labels = [self.dataset.labels[i] for i in self.indices]
         return dict(Counter(subset_labels))
@@ -580,13 +579,13 @@ class DatasetConfig:
     """Configuration for a single dataset."""
     dataset_class: type
     csv_filename: str
-    image_subdir: Optional[str] = None  # None means images are in root
-    alt_csv_filenames: Optional[List[str]] = None  # Alternative CSV names
-    alt_image_subdirs: Optional[List[str]] = None  # Alternative image directories
+    image_subdir: str | None = None  # None means images are in root
+    alt_csv_filenames: list[str] | None = None  # Alternative CSV names
+    alt_image_subdirs: list[str] | None = None  # Alternative image directories
 
 
 # Forward references for dataset classes (they're defined above)
-DATASET_REGISTRY: Dict[str, DatasetConfig] = {
+DATASET_REGISTRY: dict[str, DatasetConfig] = {
     "HAM10000": DatasetConfig(
         dataset_class=HAM10000Dataset,
         csv_filename="HAM10000_metadata.csv",
@@ -645,8 +644,8 @@ def normalize_dataset_name(name: str) -> str:
 
 def get_dataset_paths(
     dataset_name: str,
-    data_root: Union[str, Path],
-) -> Tuple[Optional[Path], Optional[Path]]:
+    data_root: str | Path,
+) -> tuple[Path | None, Path | None]:
     """
     Get the CSV path and image root for a dataset.
 
@@ -694,11 +693,11 @@ def get_dataset_paths(
 
 def load_dataset(
     dataset_name: str,
-    data_root: Union[str, Path],
-    transform: Optional[Callable] = None,
+    data_root: str | Path,
+    transform: Callable | None = None,
     classification_mode: ClassificationMode = 'multiclass',
     filter_unknown: bool = True,
-) -> Optional[BaseDermoscopyDataset]:
+) -> BaseDermoscopyDataset | None:
     """
     Load a dataset by name using the registry.
 
@@ -752,7 +751,7 @@ def load_dataset(
         return None
 
 
-def get_available_datasets() -> List[str]:
+def get_available_datasets() -> list[str]:
     """
     Get list of all available dataset names.
 

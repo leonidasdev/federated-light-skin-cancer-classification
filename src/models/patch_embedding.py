@@ -13,9 +13,8 @@ to capture both fine-grained and coarse-grained features from dermoscopic images
 # =============================================================================
 
 import torch
-import torch.nn as nn
+from torch import nn
 from einops import rearrange
-from typing import Tuple
 
 # =============================================================================
 # Single-Scale Patch Embedding
@@ -157,7 +156,7 @@ class DualScalePatchEmbedding(nn.Module):
         nn.init.trunc_normal_(self.fine_pos_embed, std=0.02)
         nn.init.trunc_normal_(self.coarse_pos_embed, std=0.02)
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Create dual-scale patch embeddings.
 
@@ -189,6 +188,6 @@ class DualScalePatchEmbedding(nn.Module):
 
         return fine_tokens, coarse_tokens
 
-    def get_num_patches(self) -> Tuple[int, int]:
+    def get_num_patches(self) -> tuple[int, int]:
         """Return the number of patches for each scale (excluding CLS token)."""
         return self.num_fine_patches, self.num_coarse_patches

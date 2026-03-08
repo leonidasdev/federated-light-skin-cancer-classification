@@ -11,6 +11,7 @@ Tests the centralized training baseline implementation.
 # Imports
 # =============================================================================
 
+import _pickle
 import pytest
 
 # =============================================================================
@@ -137,7 +138,7 @@ class TestCentralizedTrainer:
         with open(corrupt_path, 'w') as f:
             f.write("This is not a valid PyTorch checkpoint")
 
-        with pytest.raises(Exception):
+        with pytest.raises((RuntimeError, EOFError, OSError, _pickle.UnpicklingError)):
             trainer.load_checkpoint(str(corrupt_path))
 
     def test_save_and_load_checkpoint_roundtrip(self, tmp_path):

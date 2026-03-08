@@ -21,7 +21,8 @@ from flwr.common import (
     parameters_to_ndarrays
 )
 from flwr.server.client_proxy import ClientProxy
-from typing import Any, Dict, List, Tuple, Optional, Callable, Union
+from typing import Any
+from collections.abc import Callable
 import logging
 import numpy as np
 from pathlib import Path
@@ -52,7 +53,7 @@ class DSCATNetFedAvg(FedAvg):
 
     def __init__(
         self,
-        save_path: Optional[str] = None,
+        save_path: str | None = None,
         save_every: int = 10,
         early_stopping_patience: int = 20,
         min_delta: float = 0.001,
@@ -74,7 +75,7 @@ class DSCATNetFedAvg(FedAvg):
         self.should_stop = False
 
         # History for analysis
-        self.metrics_history: Dict[str, List[Any]] = {
+        self.metrics_history: dict[str, list[Any]] = {
             'round': [],
             'train_loss': [],
             'train_accuracy': [],
@@ -114,9 +115,9 @@ class DSCATNetFedAvg(FedAvg):
     def aggregate_fit(
         self,
         server_round: int,
-        results: List[Tuple[ClientProxy, FitRes]],
-        failures: List[Union[Tuple[ClientProxy, FitRes], BaseException]]
-    ) -> Tuple[Optional[Parameters], Dict[str, Scalar]]:
+        results: list[tuple[ClientProxy, FitRes]],
+        failures: list[tuple[ClientProxy, FitRes] | BaseException]
+    ) -> tuple[Parameters | None, dict[str, Scalar]]:
         """
         Aggregate training results with custom logging.
         """
@@ -192,9 +193,9 @@ class DSCATNetFedAvg(FedAvg):
     def aggregate_evaluate(
         self,
         server_round: int,
-        results: List[Tuple[ClientProxy, EvaluateRes]],
-        failures: List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]]
-    ) -> Tuple[Optional[float], Dict[str, Scalar]]:
+        results: list[tuple[ClientProxy, EvaluateRes]],
+        failures: list[tuple[ClientProxy, EvaluateRes] | BaseException]
+    ) -> tuple[float | None, dict[str, Scalar]]:
         """
         Aggregate evaluation results with early stopping check.
         """
@@ -263,7 +264,7 @@ class DSCATNetFedAvg(FedAvg):
 
     def _save_checkpoint(
         self,
-        parameters: Optional[Parameters],
+        parameters: Parameters | None,
         round_num: int,
         suffix: str = ''
     ) -> None:
@@ -295,20 +296,20 @@ class DSCATNetFedAvg(FedAvg):
             val_accuracy=self.metrics_history['val_accuracy']
         )
 
-    def get_history(self) -> Dict[str, List[Any]]:
+    def get_history(self) -> dict[str, list[Any]]:
         """Return training history."""
         return self.metrics_history
 
 
 def create_fedavg_strategy(
-    initial_parameters: List[np.ndarray],
+    initial_parameters: list[np.ndarray],
     min_fit_clients: int = 4,
     min_evaluate_clients: int = 4,
     min_available_clients: int = 4,
     fraction_fit: float = 1.0,
     fraction_evaluate: float = 1.0,
-    save_path: Optional[str] = None,
-    evaluate_metrics_aggregation_fn: Optional[Callable] = None
+    save_path: str | None = None,
+    evaluate_metrics_aggregation_fn: Callable | None = None
 ) -> DSCATNetFedAvg:
     """
     Factory function to create FedAvg strategy for DSCATNet.
@@ -337,7 +338,7 @@ def create_fedavg_strategy(
 
             aggregated = {}
 
-            for key in metrics[0][1].keys():
+            for key in metrics[0][1]:
                 if key == 'client_id':
                     continue
                 values = [m[key] for _, m in metrics if key in m]

@@ -13,9 +13,8 @@ exchange between fine-scale and coarse-scale representations.
 # =============================================================================
 
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
-from typing import Tuple
 
 # =============================================================================
 # Cross-Scale Attention
@@ -78,7 +77,7 @@ class CrossScaleAttention(nn.Module):
 
     def _reshape_for_attention(self, x: torch.Tensor) -> torch.Tensor:
         """Reshape tensor for multi-head attention."""
-        B, N, C = x.shape
+        B, N, _C = x.shape
         # (B, N, C) -> (B, num_heads, N, head_dim)
         return x.reshape(B, N, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
 
@@ -118,7 +117,7 @@ class CrossScaleAttention(nn.Module):
         self,
         fine_tokens: torch.Tensor,
         coarse_tokens: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Bidirectional cross-attention between scales.
 
@@ -233,7 +232,7 @@ class CrossScaleAttentionBlock(nn.Module):
         self,
         fine_tokens: torch.Tensor,
         coarse_tokens: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass through the cross-scale attention block.
 

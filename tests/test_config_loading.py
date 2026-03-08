@@ -94,7 +94,7 @@ class TestYAMLLoading:
         config_file = tmp_path / "valid_config.yaml"
         config_file.write_text(valid_config_content)
 
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             config = yaml.safe_load(f)
 
         assert config is not None
@@ -106,16 +106,15 @@ class TestYAMLLoading:
         config_file = tmp_path / "malformed_config.yaml"
         config_file.write_text(malformed_yaml_content)
 
-        with pytest.raises(yaml.YAMLError):
-            with open(config_file, 'r') as f:
-                yaml.safe_load(f)
+        with pytest.raises(yaml.YAMLError), open(config_file) as f:
+            yaml.safe_load(f)
 
     def test_load_empty_yaml(self, tmp_path):
         """Test loading an empty YAML file."""
         config_file = tmp_path / "empty_config.yaml"
         config_file.write_text("")
 
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             config = yaml.safe_load(f)
 
         # Empty YAML returns None
@@ -126,7 +125,7 @@ class TestYAMLLoading:
         config_file = tmp_path / "comments_only.yaml"
         config_file.write_text("# This is just a comment\n# Another comment")
 
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             config = yaml.safe_load(f)
 
         assert config is None
@@ -141,7 +140,7 @@ class TestConfigValidation:
         config_file = tmp_path / "extra_config.yaml"
         config_file.write_text(extra_content)
 
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             config = yaml.safe_load(f)
 
         assert config is not None
@@ -158,7 +157,7 @@ training:
         config_file = tmp_path / "numeric_config.yaml"
         config_file.write_text(config_content)
 
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             config = yaml.safe_load(f)
 
         assert isinstance(config['training']['batch_size'], int)
@@ -177,7 +176,7 @@ settings:
         config_file = tmp_path / "bool_config.yaml"
         config_file.write_text(config_content)
 
-        with open(config_file, 'r') as f:
+        with open(config_file) as f:
             config = yaml.safe_load(f)
 
         assert config['settings']['pretrained'] is True
@@ -231,9 +230,8 @@ class TestRunExperimentConfigLoading:
         """Test behavior with non-existent config file."""
         nonexistent = tmp_path / "does_not_exist.yaml"
 
-        with pytest.raises(FileNotFoundError):
-            with open(nonexistent, 'r') as f:
-                yaml.safe_load(f)
+        with pytest.raises(FileNotFoundError), open(nonexistent) as f:
+            yaml.safe_load(f)
 
 
 # =============================================================================

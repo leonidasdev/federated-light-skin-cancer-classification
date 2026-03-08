@@ -19,9 +19,9 @@ Reference: Adapted for Federated Learning based on the original DSCATNet paper (
 # =============================================================================
 
 import torch
-import torch.nn as nn
+from torch import nn
 import torch.nn.functional as F
-from typing import Dict, Any, List
+from typing import Any
 import logging
 import numpy as np
 
@@ -219,7 +219,7 @@ class DSCATNet(nn.Module):
         """Return the total number of trainable parameters."""
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
-    def get_model_config(self) -> Dict[str, Any]:
+    def get_model_config(self) -> dict[str, Any]:
         """Return model configuration dictionary."""
         return {
             'img_size': self.img_size,
@@ -269,7 +269,7 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
 
     depth = model.depth  # 6 for small
     vit_depth = 12  # ViT-Small has 12 blocks
-    mapped_sd: Dict[str, torch.Tensor] = {}
+    mapped_sd: dict[str, torch.Tensor] = {}
 
     for i in range(depth):
         fine_vit_idx = i
@@ -397,7 +397,7 @@ def create_dscatnet(
     extra_keys = set(config.keys()) - accepted_keys
     if extra_keys:
         logger = logging.getLogger(__name__)
-        logger.debug(f"create_dscatnet: ignoring unknown keys: {sorted(list(extra_keys))}")
+        logger.debug(f"create_dscatnet: ignoring unknown keys: {sorted(extra_keys)}")
 
     filtered_config = {k: v for k, v in config.items() if k in accepted_keys}
 
@@ -418,7 +418,7 @@ def create_dscatnet(
 # =============================================================================
 
 
-def get_model_parameters(model: nn.Module) -> List[np.ndarray]:
+def get_model_parameters(model: nn.Module) -> list[np.ndarray]:
     """Get model parameters as a list of numpy arrays.
 
     Used by Flower FL framework for parameter serialization.
@@ -432,7 +432,7 @@ def get_model_parameters(model: nn.Module) -> List[np.ndarray]:
     return [val.cpu().numpy() for val in model.state_dict().values()]
 
 
-def set_model_parameters(model: nn.Module, parameters: List[np.ndarray]) -> None:
+def set_model_parameters(model: nn.Module, parameters: list[np.ndarray]) -> None:
     """Set model parameters from a list of numpy arrays.
 
     Used by Flower FL framework for parameter deserialization.

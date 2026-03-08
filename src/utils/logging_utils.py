@@ -16,7 +16,7 @@ import sys
 import json
 import csv
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any
 from datetime import datetime
 from collections import defaultdict
 
@@ -27,7 +27,7 @@ from collections import defaultdict
 
 def setup_logging(
     level: int = logging.INFO,
-    log_file: Optional[Path] = None,
+    log_file: Path | None = None,
     name: str = "dscatnet_fl",
 ) -> logging.Logger:
     """
@@ -97,8 +97,8 @@ class MetricsTracker:
         self.metrics_dir.mkdir(parents=True, exist_ok=True)
 
         # Metrics storage
-        self.metrics: Dict[str, List[float]] = defaultdict(list)
-        self.metadata: Dict[str, Any] = {
+        self.metrics: dict[str, list[float]] = defaultdict(list)
+        self.metadata: dict[str, Any] = {
             "experiment_name": experiment_name,
             "start_time": datetime.now().isoformat(),
         }
@@ -122,7 +122,7 @@ class MetricsTracker:
         # Write to CSV
         self._write_csv_row(step, kwargs)
 
-    def _write_csv_row(self, step: int, metrics: Dict[str, float]) -> None:
+    def _write_csv_row(self, step: int, metrics: dict[str, float]) -> None:
         """Write a row to the CSV file."""
         if self.csv_file is None:
             self.csv_file = open(self.csv_path, "w", newline="")
@@ -143,7 +143,7 @@ class MetricsTracker:
 
             existing_data = self._read_existing_csv()
 
-            all_headers = set(["step"])
+            all_headers = {"step"}
             for data in existing_data:
                 all_headers.update(data.keys())
             all_headers.update(metrics.keys())
@@ -160,7 +160,7 @@ class MetricsTracker:
         if self.csv_file:
             self.csv_file.flush()
 
-    def _read_existing_csv(self) -> List[Dict[str, str]]:
+    def _read_existing_csv(self) -> list[dict[str, str]]:
         """Read existing CSV data.
 
         Returns:
@@ -168,10 +168,9 @@ class MetricsTracker:
         """
         data = []
         try:
-            with open(self.csv_path, "r") as f:
+            with open(self.csv_path) as f:
                 reader = csv.DictReader(f)
-                for row in reader:
-                    data.append(row)
+                data = list(reader)
         except FileNotFoundError:
             pass
         return data
@@ -198,7 +197,7 @@ class MetricsTracker:
 
         return values[best_idx], best_idx + 1
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """Get summary statistics for all metrics."""
         summary = {
             "experiment_name": self.experiment_name,
@@ -314,14 +313,14 @@ class ExperimentLogger:
         metrics_str = ", ".join(f"{k}={v:.4f}" for k, v in kwargs.items())
         self.logger.info(f"Step {step}: {metrics_str}")
 
-    def log_config(self, config: Dict[str, Any]) -> None:
+    def log_config(self, config: dict[str, Any]) -> None:
         """Log experiment configuration."""
         config_path = self.output_dir / "config.json"
         with open(config_path, "w") as f:
             json.dump(config, f, indent=2)
         self.logger.info(f"Configuration saved to {config_path}")
 
-    def finish(self) -> Dict[str, Any]:
+    def finish(self) -> dict[str, Any]:
         """Finish experiment and return summary."""
         summary = self.metrics.get_summary()
         self.metrics.save()
@@ -365,7 +364,7 @@ class TensorBoardLogger:
         if self.enabled and self.writer:
             self.writer.add_scalar(tag, value, step)
 
-    def log_scalars(self, main_tag: str, tag_scalar_dict: Dict[str, float], step: int) -> None:
+    def log_scalars(self, main_tag: str, tag_scalar_dict: dict[str, float], step: int) -> None:
         """Log multiple scalars."""
         if self.enabled and self.writer:
             self.writer.add_scalars(main_tag, tag_scalar_dict, step)
