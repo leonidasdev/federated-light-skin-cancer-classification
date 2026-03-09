@@ -26,6 +26,8 @@ API Reference: https://isic-archive.com/api/v2
 import csv
 import time
 import logging
+import shutil
+import zipfile
 import concurrent.futures
 from pathlib import Path
 from typing import Any
@@ -43,6 +45,10 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 ISIC_API_BASE_URL = "https://api.isic-archive.com/api/v2"
+
+# Minimum fraction of expected images to consider a download complete
+DOWNLOAD_COMPLETION_THRESHOLD = 0.95
+VERIFICATION_COMPLETION_THRESHOLD = 0.9
 
 # =============================================================================
 # Dataset Information
@@ -233,7 +239,7 @@ def download_ham10000_kaggle(
         part2_dir = dataset_path / "HAM10000_images_part_2"
         if part1_dir.exists() and part2_dir.exists():
             existing_images = len(list(part1_dir.glob("*.jpg"))) + len(list(part2_dir.glob("*.jpg")))
-            if existing_images >= info["approx_images"] * 0.95:
+            if existing_images >= info["approx_images"] * DOWNLOAD_COMPLETION_THRESHOLD:
                 print(f"Dataset appears complete ({existing_images:,} images found)")
                 return True
 
@@ -307,7 +313,7 @@ def download_ham10000_kaggle(
         print(f"  Location: {dataset_path}")
         print(f"{'='*60}")
 
-        return total_images >= info["approx_images"] * 0.9
+        return total_images >= info["approx_images"] * VERIFICATION_COMPLETION_THRESHOLD
 
     except Exception as e:
         logger.error(f"Error downloading HAM10000 from Kaggle: {e}")
@@ -338,9 +344,6 @@ def download_padufes20_mendeley(
     Returns:
         True if successful
     """
-    import zipfile
-    import shutil
-
     if data_root is None:
         data_root = get_data_root()
 
@@ -363,7 +366,7 @@ def download_padufes20_mendeley(
             part_dir = dataset_path / part
             if part_dir.exists():
                 total_images += len(list(part_dir.glob("*.png")))
-        if total_images >= info["approx_images"] * 0.95:
+        if total_images >= info["approx_images"] * DOWNLOAD_COMPLETION_THRESHOLD:
             print(f"Dataset appears complete ({total_images:,} images found)")
             return True
 
@@ -487,7 +490,7 @@ def download_padufes20_mendeley(
         print(f"  Location: {dataset_path}")
         print(f"{'='*60}")
 
-        return total_images >= info["approx_images"] * 0.9
+        return total_images >= info["approx_images"] * VERIFICATION_COMPLETION_THRESHOLD
 
     except Exception as e:
         logger.error(f"Error downloading PAD-UFES-20 from Mendeley: {e}")
@@ -962,7 +965,7 @@ def download_dataset_isic(
     # Check if already downloaded
     if not force_redownload:
         existing_images = len(list(images_dir.glob("*.jpg")))
-        if existing_images >= info["approx_images"] * 0.95:  # 95% threshold
+        if existing_images >= info["approx_images"] * DOWNLOAD_COMPLETION_THRESHOLD:
             print(f"Dataset appears complete ({existing_images:,} images found)")
             return True
 
@@ -1166,7 +1169,7 @@ def verify_dataset(dataset_name: str, data_root: Path | None = None) -> dict[str
     result["completeness"] = min(100.0, (result["image_count"] / expected_images) * 100)
 
     # Valid if we have enough images (>90% threshold)
-    result["valid"] = result["image_count"] >= expected_images * 0.9
+    result["valid"] = result["image_count"] >= expected_images * VERIFICATION_COMPLETION_THRESHOLD
 
     return result
 

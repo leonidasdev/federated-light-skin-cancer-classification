@@ -42,6 +42,8 @@ from typing import Any
 import yaml
 import torch
 
+__version__ = "0.1.0"
+
 # =============================================================================
 # Logging Configuration
 # =============================================================================
@@ -622,9 +624,6 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main():
-    # Version info
-    __version__ = "1.0.0"
-
     parser = argparse.ArgumentParser(
         description="Run DSCATNet Federated Learning Experiments",
         formatter_class=argparse.RawDescriptionHelpFormatter,

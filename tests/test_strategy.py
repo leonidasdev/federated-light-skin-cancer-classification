@@ -300,8 +300,9 @@ class TestDSCATNetFedAvg:
             min_delta=0.001,
             initial_parameters=initial_params,
         )
-        # Simulate that the server has assigned parameters to strategy
-        strategy.parameters = initial_params
+        # Simulate that the server has assigned parameters to strategy.
+        # 'parameters' is a Flower-internal attribute not declared on DSCATNetFedAvg.
+        strategy.parameters = initial_params  # type: ignore[attr-defined]
         results = _make_eval_results(accuracy=0.9)
         strategy.aggregate_evaluate(1, results, [])
         assert (tmp_path / "model_round_1_best.npz").exists()

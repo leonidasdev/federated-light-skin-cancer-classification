@@ -29,6 +29,7 @@ spec = importlib.util.spec_from_file_location(
     "download",
     Path(__file__).parent.parent / "src" / "data" / "download.py"
 )
+assert spec is not None and spec.loader is not None
 download_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(download_module)
 

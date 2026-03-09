@@ -59,6 +59,10 @@
 | 3.2 | Large file sizes (`simulation.py` ~900L, `download.py` ~1200L) | Splitting is risky during active experiments. |
 | 3.3 | `CheckpointManager` unused by trainers | `src/utils/checkpoints.py` — keep for potential future use. |
 | 3.4 | `DatasetVerifier` only used in notebook | `src/data/verify.py` — keep for interactive use. |
+| 3.5 | `logging_utils.py` CSV header rewrite logic is fragile | Rebuilds entire file when columns change. Refactor to maintain column schema upfront. |
+| 3.6 | `server.py` hardcodes `num_classes=7` | Make it a parameter with default. |
+| 3.7 | `simulation.py` uses magic `42` as seed offset | Extract to `RANDOM_SEED_BASE` constant. |
+| 3.8 | Expand dataclass docstrings (`CentralizedConfig`, `SimulationConfig`) | Document individual fields and their purposes. |
 
 ---
 

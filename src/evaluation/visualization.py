@@ -314,13 +314,22 @@ def plot_fl_vs_centralized(
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    has_data = False
+
     if metric in fl_history:
         rounds = range(1, len(fl_history[metric]) + 1)
         ax.plot(rounds, fl_history[metric], "b-", label="Federated", linewidth=2, marker="o", markersize=3)
+        has_data = True
 
     if metric in centralized_history:
         epochs = range(1, len(centralized_history[metric]) + 1)
         ax.plot(epochs, centralized_history[metric], "r-", label="Centralized", linewidth=2, marker="s", markersize=3)
+        has_data = True
+
+    if not has_data:
+        logger.warning(f"Metric '{metric}' not found in either history. Skipping plot.")
+        plt.close(fig)
+        return
 
     ax.set_xlabel("Epoch / Round", fontsize=12)
     ax.set_ylabel(metric.replace("_", " ").title(), fontsize=12)

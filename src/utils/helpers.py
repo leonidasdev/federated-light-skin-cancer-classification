@@ -12,7 +12,9 @@ Common helper functions used across the project.
 # =============================================================================
 
 import logging
+import platform
 import random
+import sys
 from typing import Any
 
 import numpy as np
@@ -219,9 +221,6 @@ def collect_environment_info() -> dict[str, Any]:
     Returns:
         Dictionary with python, pytorch, cuda, and GPU details.
     """
-    import platform
-    import sys
-
     info: dict[str, Any] = {
         "python_version": sys.version,
         "platform": platform.platform(),

@@ -30,7 +30,7 @@ from sklearn.metrics import (
     balanced_accuracy_score,
 )
 
-from ..data.datasets import CLASS_NAMES as DATASET_CLASS_NAMES
+from ..data.datasets import CLASS_NAMES
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ __all__ = [
 # =============================================================================
 
 # Default class names for reporting (strings)
-DEFAULT_CLASS_NAMES = list(DATASET_CLASS_NAMES)
+DEFAULT_CLASS_NAMES = list(CLASS_NAMES)
 
 # =============================================================================
 # Data Classes
