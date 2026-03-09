@@ -47,8 +47,8 @@ centralized:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 8                 # Physical batch size (1-256)
-    gradient_accumulation_steps: 4  # Effective BS = batch_size * steps (1-32)
+    batch_size: 4                 # Physical batch size (1-256)
+    gradient_accumulation_steps: 8  # Effective BS = batch_size * steps (1-32)
     optimizer: adam               # Options: adam, adamw
     lr: 0.001                     # Learning rate (>0, <=1.0)
     weight_decay: 0.0             # L2 regularization (>=0, <=1.0)

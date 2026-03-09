@@ -72,11 +72,11 @@ class CentralizedConfig:
 
     # Training configuration
     num_epochs: int = 200
-    batch_size: int = 8
+    batch_size: int = 4
     learning_rate: float = 1e-3
     weight_decay: float = 0.0
     optimizer_type: str = "adam"  # adam, adamw
-    gradient_accumulation_steps: int = 4  # Effective batch = 8 × 4 = 32
+    gradient_accumulation_steps: int = 8  # Effective batch = 4 × 8 = 32
 
     # Scheduler configuration
     scheduler_type: str = "none"  # none, cosine, plateau

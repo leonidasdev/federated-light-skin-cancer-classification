@@ -12,6 +12,7 @@ from flwr.common import (
     FitRes,
     EvaluateRes,
     Parameters,
+    Scalar,
     Status,
     Code,
     ndarrays_to_parameters,
@@ -364,8 +365,9 @@ class TestCreateFedAvgStrategy:
         initial = [np.ones((4, 3))]
         strategy = create_fedavg_strategy(initial_parameters=initial)
         fn = strategy.evaluate_metrics_aggregation_fn
+        assert fn is not None
         # Each tuple is (num_examples, metrics_dict)
-        metrics = [
+        metrics: list[tuple[int, dict[str, Scalar]]] = [
             (100, {"accuracy": 0.8, "loss": 0.3, "client_id": 0}),
             (200, {"accuracy": 0.9, "loss": 0.2, "client_id": 1}),
         ]
@@ -373,13 +375,14 @@ class TestCreateFedAvgStrategy:
         # client_id should be skipped
         assert "client_id" not in result
         # Weighted avg: (0.8*100 + 0.9*200)/300 = 260/300
-        assert abs(result["accuracy"] - 260 / 300) < 1e-6
+        assert abs(float(result["accuracy"]) - 260 / 300) < 1e-6
 
     def test_default_aggregation_fn_empty_metrics(self):
         """Default aggregation fn should return empty dict for empty input."""
         initial = [np.ones((4, 3))]
         strategy = create_fedavg_strategy(initial_parameters=initial)
         fn = strategy.evaluate_metrics_aggregation_fn
+        assert fn is not None
         assert fn([]) == {}
 
     def test_custom_evaluate_metrics_aggregation(self):
@@ -475,13 +478,13 @@ class TestFederatedServer:
             num_rounds=5,
             checkpoint_dir=str(tmp_path),
         )
-        metrics = [
+        metrics: list[tuple[int, dict[str, Scalar]]] = [
             (100, {"accuracy": 0.8, "loss": 0.3}),
             (200, {"accuracy": 0.9, "loss": 0.2}),
         ]
         result = server._aggregate_metrics(metrics)
         # Weighted avg: (0.8*100 + 0.9*200) / 300 = 260/300 ≈ 0.8667
-        assert abs(result["accuracy"] - (80 + 180) / 300) < 1e-6
+        assert abs(float(result["accuracy"]) - (80 + 180) / 300) < 1e-6
         assert "loss" in result
 
     def test_aggregate_metrics_empty(self, tiny_model, tmp_path):
@@ -500,7 +503,7 @@ class TestFederatedServer:
             num_rounds=5,
             checkpoint_dir=str(tmp_path),
         )
-        metrics = [(100, {"accuracy": 0.8, "client_id": 0})]
+        metrics: list[tuple[int, dict[str, Scalar]]] = [(100, {"accuracy": 0.8, "client_id": 0})]
         result = server._aggregate_metrics(metrics)
         assert "client_id" not in result
         assert "accuracy" in result

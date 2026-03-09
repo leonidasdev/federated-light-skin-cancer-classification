@@ -386,7 +386,7 @@ federated:
 
   # Training
   training:
-    batch_size: 8
+    batch_size: 4
     lr: 0.001
     local_epochs: 1
     num_rounds: 25

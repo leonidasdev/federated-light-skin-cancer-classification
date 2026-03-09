@@ -141,11 +141,11 @@ All configurable components use `@dataclass` with:
 @dataclass
 class SimulationConfig:
     num_rounds: int = 100
-    batch_size: int = 8
+    batch_size: int = 4
     learning_rate: float = 1e-3
     optimizer_type: str = "adam"           # adam, adamw
     weight_decay: float = 0.0
-    gradient_accumulation_steps: int = 4  # Effective BS = batch_size × steps
+    gradient_accumulation_steps: int = 8  # Effective BS = batch_size × steps
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -167,11 +167,11 @@ federated:
     variant: paper
     image_size: 224
   training:
-    batch_size: 8
+    batch_size: 4
     lr: 0.001
     optimizer: adam
     weight_decay: 0.0
-    gradient_accumulation_steps: 4
+    gradient_accumulation_steps: 8
     scheduler: none
     use_amp: false
   federation:
@@ -256,7 +256,7 @@ The training configuration is aligned with the DSCATNet paper (Yadav et al., PLO
 | Optimizer | Adam | `optimizer: adam` | Not AdamW |
 | Learning Rate | 0.001 | `lr: 0.001` | Fixed LR throughout training |
 | Weight Decay | 0.0 | `weight_decay: 0.0` | Paper uses Adam without L2 penalty |
-| Effective Batch Size | 32 | `batch_size: 8` × `gradient_accumulation_steps: 4` | Fits 4GB VRAM |
+| Effective Batch Size | 32 | `batch_size: 4` × `gradient_accumulation_steps: 8` | Fits 4GB VRAM |
 | LR Scheduler | None | `scheduler: none` | Paper uses fixed LR |
 | Epochs | 200 | `epochs: 200` | Full training run |
 | AMP | Not used | `use_amp: false` | Disabled for stability |
@@ -291,7 +291,7 @@ Both IID and non-IID configs use Dirichlet sampling (`noniid_type: dirichlet`). 
 
 ### GPU Constraints
 
-Training runs on an RTX 3050 (4GB VRAM). The effective batch size of 32 is achieved through gradient accumulation (`batch_size: 8 × gradient_accumulation_steps: 4`). Checkpoints enable resuming interrupted experiments via `resume_from` in config or `--resume` on the CLI.
+Training runs on an RTX 3050 (4GB VRAM). The effective batch size of 32 is achieved through gradient accumulation (`batch_size: 4 × gradient_accumulation_steps: 8`). Checkpoints enable resuming interrupted experiments via `resume_from` in config or `--resume` on the CLI.
 
 ---
 
@@ -497,8 +497,8 @@ else:
 
 ### Memory Management
 
-- `batch_size=8` default (fits 4GB VRAM with paper variant)
-- Gradient accumulation (`gradient_accumulation_steps=4`) for effective BS=32
+- `batch_size=4` default (fits 4GB VRAM with paper variant)
+- Gradient accumulation (`gradient_accumulation_steps=8`) for effective BS=32
 - `num_workers=4` for data loading (Windows: may need `num_workers=0`)
 - AMP disabled by default for training stability
 

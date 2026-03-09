@@ -63,7 +63,7 @@ federated:
   # Local Training
   # ---------------------------------------------------------------------------
   local_epochs: 1
-  local_batch_size: 8
+  local_batch_size: 4
   train_val_split: 0.15  # Fraction for validation set
   
   # ---------------------------------------------------------------------------

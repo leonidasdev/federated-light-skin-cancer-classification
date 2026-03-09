@@ -58,11 +58,11 @@ data:
 # -----------------------------------------------------------------------------
 centralized:
   epochs: 200                     # Training epochs (1-1000)
-  batch_size: 8                   # Batch size (1-256)
+  batch_size: 4                   # Batch size (1-256)
   learning_rate: 0.001            # Learning rate (>0, <=1.0)
   weight_decay: 0.0               # L2 regularization (>=0, <=1.0)
   early_stopping_patience: 200    # Early stopping patience (1-1000)
-  gradient_accumulation_steps: 4  # Gradient accumulation steps
+  gradient_accumulation_steps: 8  # Gradient accumulation steps
   pooled_data: true               # Combine all datasets
 
 # -----------------------------------------------------------------------------
@@ -74,7 +74,7 @@ federated_experiments:
     description: "First experiment configuration"
     num_rounds: 100               # FL rounds (1-1000)
     local_epochs: 1               # Local training epochs (1-50)
-    batch_size: 8                 # Local batch size (1-256)
+    batch_size: 4                 # Local batch size (1-256)
     noniid_type: natural          # Options: natural, dirichlet, label_skew
     # dirichlet_alpha: 0.5        # Only for dirichlet type (>0)
 

@@ -178,8 +178,8 @@ Class weighting is available as a configuration option (`use_class_weights: true
 ```yaml
 centralized:
   training:
-    batch_size: 8
-    gradient_accumulation_steps: 4
+    batch_size: 4
+    gradient_accumulation_steps: 8
     optimizer: adam
     lr: 0.001
     weight_decay: 0.0
@@ -200,8 +200,8 @@ centralized:
 ```yaml
 federated:
   training:
-    batch_size: 8
-    gradient_accumulation_steps: 4
+    batch_size: 4
+    gradient_accumulation_steps: 8
     optimizer: adam
     lr: 0.001
     weight_decay: 0.0

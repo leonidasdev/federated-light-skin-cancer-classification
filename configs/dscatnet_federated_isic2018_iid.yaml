@@ -42,8 +42,8 @@ federated:
   # Training Configuration
   # ---------------------------------------------------------------------------
   training:
-    batch_size: 8
-    gradient_accumulation_steps: 4  # Effective batch = 8 × 4 = 32
+    batch_size: 4
+    gradient_accumulation_steps: 8  # Effective batch = 4 × 4 = 32
     optimizer: adam
     lr: 0.001
     weight_decay: 0.0

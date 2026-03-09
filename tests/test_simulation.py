@@ -31,7 +31,7 @@ class TestSimulationConfig:
         assert config.num_clients == 4
         assert config.num_rounds == 100
         assert config.local_epochs == 1
-        assert config.batch_size == 8
+        assert config.batch_size == 4
         assert config.noniid_type == "natural"
         assert config.use_class_weights is False  # Paper: unweighted cross-entropy
 

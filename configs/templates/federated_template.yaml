@@ -55,8 +55,8 @@ federated:
   # Local Training
   # ---------------------------------------------------------------------------
   local_epochs: 1                 # Local epochs per round (1-50)
-  local_batch_size: 8             # Local batch size (1-256)
-  gradient_accumulation_steps: 4  # Effective BS = batch_size * steps (1-32)
+  local_batch_size: 4             # Local batch size (1-256)
+  gradient_accumulation_steps: 8  # Effective BS = batch_size * steps (1-32)
   train_val_split: 0.85           # Fraction for training (rest for validation)
   
   # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ strategies:
 #
 #   training:
 #     optimizer: adam, lr: 0.001, weight_decay: 0.0
-#     batch_size: 8, gradient_accumulation_steps: 4  (effective BS = 32)
+#     batch_size: 4, gradient_accumulation_steps: 8  (effective BS = 32)
 #     local_epochs: 1, num_rounds: 100
 #
 #   evaluation:

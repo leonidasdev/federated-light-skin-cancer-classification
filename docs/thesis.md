@@ -772,8 +772,8 @@ centralized:
     num_classes: 7
     pretrained: true
   training:
-    batch_size: 8
-    gradient_accumulation_steps: 4
+    batch_size: 4
+    gradient_accumulation_steps: 8
     optimizer: adam
     lr: 0.001
     weight_decay: 0.0
@@ -807,8 +807,8 @@ federated:
     num_classes: 7
     pretrained: true
   training:
-    batch_size: 8
-    gradient_accumulation_steps: 4
+    batch_size: 4
+    gradient_accumulation_steps: 8
     optimizer: adam
     lr: 0.001
     weight_decay: 0.0

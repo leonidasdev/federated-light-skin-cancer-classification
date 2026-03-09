@@ -29,7 +29,7 @@ class TestCentralizedConfig:
         config = CentralizedConfig()
 
         assert config.num_epochs == 200
-        assert config.batch_size == 8
+        assert config.batch_size == 4
         assert config.learning_rate == 1e-3  # Paper-aligned (Yadav et al.)
         assert config.scheduler_type == "none"  # Paper-aligned: no LR scheduler
 
