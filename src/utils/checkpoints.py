@@ -28,7 +28,7 @@ class CheckpointManager:
     """
     Manage model checkpoints with automatic cleanup.
 
-    Keeps track of checkpoints and optionally removes old ones
+    Keeps track of checkpoints and optionally removes expired ones
     to save disk space.
     """
 
@@ -109,13 +109,13 @@ class CheckpointManager:
             self.best_checkpoint = best_path
             logger.info(f"Saved best model (epoch {epoch})")
 
-        # Cleanup old checkpoints
+        # Cleanup excess checkpoints
         self._cleanup()
 
         return checkpoint_path
 
     def _cleanup(self) -> None:
-        """Remove old checkpoints to stay under max limit."""
+        """Remove excess checkpoints to stay under max limit."""
         if len(self.checkpoints) <= self.max_checkpoints:
             return
 
@@ -129,7 +129,7 @@ class CheckpointManager:
                 continue
             if path.exists():
                 path.unlink()
-                logger.debug(f"Removed old checkpoint: {path}")
+                logger.debug(f"Removed checkpoint: {path}")
 
     def load(
         self,

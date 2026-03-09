@@ -134,7 +134,7 @@ class MetricsTracker:
 
         # Check if headers match (ensure writer exists before accessing attributes)
         if self.csv_writer is None or set(row.keys()) != set(self.csv_writer.fieldnames):
-            # Reopen with new headers
+            # Reopen with updated headers
             try:
                 if self.csv_file:
                     self.csv_file.close()

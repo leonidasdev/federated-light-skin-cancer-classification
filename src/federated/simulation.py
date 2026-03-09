@@ -129,7 +129,7 @@ class SimulationConfig:
 
     # FL configuration
     num_clients: int = 4
-    num_rounds: int = 50
+    num_rounds: int = 100
     fraction_fit: float = 1.0
     fraction_evaluate: float = 1.0
     min_fit_clients: int = 2
@@ -146,14 +146,14 @@ class SimulationConfig:
     learning_rate: float = 1e-3
     weight_decay: float = 0.0
     optimizer_type: str = "adam"  # adam, adamw
-    gradient_accumulation_steps: int = 1  # Accumulate gradients for effective larger batch
+    gradient_accumulation_steps: int = 4  # Effective batch = 8 × 4 = 32
 
     # Data configuration
     data_root: str = "./data"
     image_size: int = 224
-    augmentation_level: str = "medium"
+    augmentation_level: str = "none"
     use_dermoscopy_norm: bool = False
-    train_val_split: float = 0.8  # Fraction of data for training (rest for validation)
+    train_val_split: float = 0.85  # Fraction of data for training (rest for validation)
 
     # Non-IID configuration
     noniid_type: str = "natural"  # natural, dirichlet, label_skew, quantity_skew
@@ -171,14 +171,14 @@ class SimulationConfig:
     experiment_name: str = "fl_experiment"
     output_dir: str = "./outputs"
     checkpoint_interval: int = 5
-    early_stopping_patience: int = 10
+    early_stopping_patience: int = 100
 
     # Device configuration
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
     num_workers: int = 2
 
     # Class weights for handling class imbalance in loss function
-    use_class_weights: bool = True
+    use_class_weights: bool = False
 
     # Gradient clipping (None = disabled, as in original paper)
     max_grad_norm: float | None = None

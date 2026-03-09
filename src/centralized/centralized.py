@@ -71,12 +71,12 @@ class CentralizedConfig:
     pretrained: bool = True
 
     # Training configuration
-    num_epochs: int = 100
+    num_epochs: int = 200
     batch_size: int = 8
     learning_rate: float = 1e-3
     weight_decay: float = 0.0
     optimizer_type: str = "adam"  # adam, adamw
-    gradient_accumulation_steps: int = 1  # Accumulate gradients for effective larger batch
+    gradient_accumulation_steps: int = 4  # Effective batch = 8 × 4 = 32
 
     # Scheduler configuration
     scheduler_type: str = "none"  # none, cosine, plateau
@@ -86,7 +86,7 @@ class CentralizedConfig:
     # Data configuration
     data_root: str = "./data"
     image_size: int = 224
-    augmentation_level: str = "medium"
+    augmentation_level: str = "none"
     use_dermoscopy_norm: bool = False
     val_split: float = 0.15
     test_split: float = 0.0  # Fraction held out for final test-set evaluation
@@ -94,7 +94,7 @@ class CentralizedConfig:
     # Classification mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
     classification_mode: str = "multiclass"
     filter_unknown: bool = True
-    use_class_weights: bool = True  # Use class weights in loss for imbalance
+    use_class_weights: bool = False  # Paper uses unweighted cross-entropy
 
     # Dataset selection: list of datasets to use, or None/empty for all
     # Valid options: "HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"
@@ -107,14 +107,14 @@ class CentralizedConfig:
     experiment_name: str = "centralized_baseline"
     output_dir: str = "./outputs"
     checkpoint_interval: int = 10
-    early_stopping_patience: int = 15
+    early_stopping_patience: int = 200
 
     # Gradient clipping (None = disabled, as in original paper)
     max_grad_norm: float | None = None
 
     # Device configuration
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    num_workers: int = 4
+    num_workers: int = 2
 
     # Mixed precision (AMP) for faster training on compatible GPUs
     use_amp: bool = False

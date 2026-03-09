@@ -140,12 +140,12 @@ All configurable components use `@dataclass` with:
 ```python
 @dataclass
 class SimulationConfig:
-    num_rounds: int = 50
+    num_rounds: int = 100
     batch_size: int = 8
     learning_rate: float = 1e-3
     optimizer_type: str = "adam"           # adam, adamw
     weight_decay: float = 0.0
-    gradient_accumulation_steps: int = 1  # Effective BS = batch_size × steps
+    gradient_accumulation_steps: int = 4  # Effective BS = batch_size × steps
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -264,6 +264,34 @@ The training configuration is aligned with the DSCATNet paper (Yadav et al., PLO
 | Class Weights | Standard CE | `use_class_weights: false` | Paper uses unweighted cross-entropy |
 | Image Size | 224 | `image_size: 224` | Standard ViT input |
 | Augmentation | None | `augmentation: none` (HAM10000) | Paper reports no augmentation |
+
+### Federated Experiment Structure
+
+Each dataset has two federated configs for IID vs non-IID comparison:
+
+| Config | Distribution | `dirichlet_alpha` | Purpose |
+|--------|-------------|-------------------|---------|
+| `dscatnet_federated_{dataset}.yaml` | Non-IID | 0.5 | Heterogeneous data across clients |
+| `dscatnet_federated_{dataset}_iid.yaml` | IID | 1000.0 | Uniform baseline for comparison |
+
+Both IID and non-IID configs use Dirichlet sampling (`noniid_type: dirichlet`). A high alpha (1000.0) produces near-uniform class distributions across clients, approximating IID. A low alpha (0.5) produces heterogeneous distributions where each client may specialize in a subset of classes.
+
+**Federated hyperparameters** (shared across IID and non-IID):
+
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Clients | 4 | Simulated hospital sites |
+| Rounds | 100 | Communication rounds |
+| Local Epochs | 1 | Per-round local training |
+| Aggregation | FedAvg | Weighted by sample count |
+| Participation | 1.0 | All clients each round |
+| Train/Val Split | 0.85 | Per-client split |
+| Checkpoint Interval | 1 | Every round |
+| Early Stopping | 100 | Rounds without improvement |
+
+### GPU Constraints
+
+Training runs on an RTX 3050 (4GB VRAM). The effective batch size of 32 is achieved through gradient accumulation (`batch_size: 8 × gradient_accumulation_steps: 4`). Checkpoints enable resuming interrupted experiments via `resume_from` in config or `--resume` on the CLI.
 
 ---
 

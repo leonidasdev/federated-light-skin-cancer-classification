@@ -29,11 +29,11 @@ class TestSimulationConfig:
         config = SimulationConfig()
 
         assert config.num_clients == 4
-        assert config.num_rounds == 50
+        assert config.num_rounds == 100
         assert config.local_epochs == 1
-        assert config.batch_size == 8  # Updated to match reduced batch size for memory efficiency
+        assert config.batch_size == 8
         assert config.noniid_type == "natural"
-        assert config.use_class_weights is True  # Default: handle class imbalance
+        assert config.use_class_weights is False  # Paper: unweighted cross-entropy
 
     def test_config_to_dict(self):
         """Test config serialization."""

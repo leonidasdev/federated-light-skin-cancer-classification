@@ -102,7 +102,7 @@ def create_grad_scaler() -> Any:
     """Create a GradScaler instance, handling PyTorch version differences.
 
     Returns:
-        A ``torch.amp.GradScaler`` (or legacy ``torch.cuda.amp.GradScaler``).
+        A ``torch.amp.GradScaler`` (or ``torch.cuda.amp.GradScaler`` on older PyTorch versions).
     """
     amp_mod = getattr(torch, "amp", None)
     scaler_cls = getattr(amp_mod, "GradScaler", None) if amp_mod else None

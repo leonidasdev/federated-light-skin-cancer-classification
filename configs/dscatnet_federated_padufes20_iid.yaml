@@ -1,0 +1,78 @@
+# =============================================================================
+# DSCATNet Federated Learning Configuration - PAD-UFES-20 (IID)
+# =============================================================================
+#
+# Usage:
+#   python run_experiment.py --mode federated --config configs/dscatnet_federated_padufes20_iid.yaml
+#
+# Description:
+#   Federated learning on PAD-UFES-20 (~2,298 clinical skin images, 7 classes)
+#   with IID data distribution across 4 clients (Dirichlet alpha=1000.0).
+#   Serves as the IID baseline for comparison against non-IID experiments.
+#
+# =============================================================================
+
+federated:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
+  experiment:
+    name: dscatnet_federated_padufes20_iid
+    description: "FL training on PAD-UFES-20 with FedAvg (IID baseline)"
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
+  data_root: ./data
+  output_dir: ./outputs
+  datasets:
+    - PAD-UFES-20
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
+  model:
+    name: DSCATNet
+    variant: small
+    image_size: 224
+    num_classes: 7
+    pretrained: true
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
+  training:
+    batch_size: 8
+    gradient_accumulation_steps: 4  # Effective batch = 8 × 4 = 32
+    optimizer: adam
+    lr: 0.001
+    weight_decay: 0.0
+    local_epochs: 1
+    num_rounds: 100
+    train_val_split: 0.85
+
+  # ---------------------------------------------------------------------------
+  # Federation Configuration
+  # ---------------------------------------------------------------------------
+  federation:
+    num_clients: 4
+    aggregation: FedAvg
+    participation: 1.0
+    noniid_type: dirichlet
+    dirichlet_alpha: 1000.0  # High alpha approximates IID (uniform) distribution
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
+  augmentation:
+    level: light
+    use_dermoscopy_norm: false
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
+  evaluation:
+    checkpoint_interval: 1
+    early_stopping_patience: 100
+    use_class_weights: false
+    max_grad_norm: null
