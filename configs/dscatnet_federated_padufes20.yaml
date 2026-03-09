@@ -64,7 +64,7 @@ federated:
   # Augmentation Configuration
   # ---------------------------------------------------------------------------
   augmentation:
-    level: none
+    level: light
     use_dermoscopy_norm: false
 
   # ---------------------------------------------------------------------------
@@ -72,5 +72,6 @@ federated:
   # ---------------------------------------------------------------------------
   evaluation:
     checkpoint_interval: 1
-    early_stopping_patience: 10
-    use_class_weights: true
+    early_stopping_patience: 100
+    use_class_weights: false
+    max_grad_norm: null

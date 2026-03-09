@@ -4,8 +4,14 @@
 """
 Flower FL Client for Skin Cancer Classification.
 
-Each client represents a hospital/institution with its own dermoscopy dataset.
-Dataset-to-client mapping is configured at runtime via the experiment config.
+Each client represents a hospital or institution with its own dermoscopy
+dataset, following the natural non-IID partition where each site
+contributes data from a different imaging source.
+
+Training protocol per client follows Yadav et al. (PLOS ONE 2024):
+Adam optimizer, LR=0.001, standard cross-entropy loss.
+Gradient accumulation enables effective batch sizes larger than
+what GPU memory allows.
 """
 
 # =============================================================================
@@ -66,6 +72,7 @@ class SkinCancerClient(NumPyClient):
         use_amp: bool = True,
         scheduler_type: str = "none",
         scheduler_t_max: int = 100,
+        max_grad_norm: float | None = None,
     ):
         self.client_id = client_id
         self.model = model
@@ -75,6 +82,7 @@ class SkinCancerClient(NumPyClient):
         self.local_epochs = local_epochs
         self.learning_rate = learning_rate
         self.scheduler_t_max = scheduler_t_max
+        self.max_grad_norm = max_grad_norm
 
         # Move model to device
         self.model.to(self.device)
@@ -234,7 +242,8 @@ class SkinCancerClient(NumPyClient):
                     # Backward pass with AMP
                     self.scaler.scale(loss).backward()
                     self.scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    if self.max_grad_norm is not None:
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.max_grad_norm)
                     self.scaler.step(self.optimizer)
                     self.scaler.update()
                 else:
@@ -243,7 +252,8 @@ class SkinCancerClient(NumPyClient):
                     # Backward pass
                     loss.backward()
                     # Gradient clipping for stability
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    if self.max_grad_norm is not None:
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.max_grad_norm)
                     self.optimizer.step()
 
                 # Statistics

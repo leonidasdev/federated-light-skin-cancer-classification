@@ -510,6 +510,433 @@ class TestCommunicationCost:
         assert total_bytes < 100 * 1024 * 1024
 
 
+class TestTrainAndEvaluateClient:
+    """Tests for train_client and evaluate_client methods."""
+
+    @pytest.fixture
+    def simulator_with_client(self, tmp_path):
+        """Create a simulator with one mock client using tiny model."""
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="train_eval_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            local_epochs=1,
+            batch_size=4,
+        )
+
+        simulator = FLSimulator(config)
+
+        images = torch.randn(8, 3, 32, 32)
+        labels = torch.randint(0, 7, (8,))
+        train_loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
+        val_loader = DataLoader(TensorDataset(images, labels), batch_size=4)
+
+        simulator.client_data[0] = ClientData(
+            client_id=0,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            num_train_samples=8,
+            num_val_samples=8,
+            class_distribution={0: 4, 1: 4},
+            dataset_name="test_ds",
+        )
+
+        return simulator
+
+    def test_train_client(self, simulator_with_client):
+        from src.models.dscatnet import get_model_parameters
+        params = get_model_parameters(simulator_with_client.global_model)
+        updated, n_samples, metrics = simulator_with_client.train_client(0, params)
+        assert isinstance(updated, list)
+        assert n_samples == 8
+        assert "train_loss" in metrics
+        assert "train_accuracy" in metrics
+
+    def test_train_client_invalid_id(self, simulator_with_client):
+        from src.models.dscatnet import get_model_parameters
+        params = get_model_parameters(simulator_with_client.global_model)
+        with pytest.raises(ValueError, match="Client 99 not found"):
+            simulator_with_client.train_client(99, params)
+
+    def test_evaluate_client(self, simulator_with_client):
+        from src.models.dscatnet import get_model_parameters
+        params = get_model_parameters(simulator_with_client.global_model)
+        loss, n_samples, metrics = simulator_with_client.evaluate_client(0, params)
+        assert isinstance(loss, float)
+        assert n_samples == 8
+        assert "val_accuracy" in metrics
+
+    def test_evaluate_client_invalid_id(self, simulator_with_client):
+        from src.models.dscatnet import get_model_parameters
+        params = get_model_parameters(simulator_with_client.global_model)
+        with pytest.raises(ValueError, match="Client 99 not found"):
+            simulator_with_client.evaluate_client(99, params)
+
+    def test_train_with_adamw(self, tmp_path):
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from src.models.dscatnet import get_model_parameters
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="adamw_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            optimizer_type="adamw",
+        )
+        simulator = FLSimulator(config)
+
+        images = torch.randn(8, 3, 32, 32)
+        labels = torch.randint(0, 7, (8,))
+        loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
+        simulator.client_data[0] = ClientData(
+            client_id=0, train_loader=loader, val_loader=loader,
+            num_train_samples=8, num_val_samples=8,
+            class_distribution={0: 4, 1: 4}, dataset_name="test",
+        )
+
+        params = get_model_parameters(simulator.global_model)
+        _, _, metrics = simulator.train_client(0, params)
+        assert "train_loss" in metrics
+
+    def test_train_with_gradient_accumulation(self, tmp_path):
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from src.models.dscatnet import get_model_parameters
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="accum_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            gradient_accumulation_steps=2,
+        )
+        simulator = FLSimulator(config)
+
+        images = torch.randn(8, 3, 32, 32)
+        labels = torch.randint(0, 7, (8,))
+        loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
+        simulator.client_data[0] = ClientData(
+            client_id=0, train_loader=loader, val_loader=loader,
+            num_train_samples=8, num_val_samples=8,
+            class_distribution={0: 4, 1: 4}, dataset_name="test",
+        )
+
+        params = get_model_parameters(simulator.global_model)
+        _, _, metrics = simulator.train_client(0, params)
+        assert "train_loss" in metrics
+
+
+class TestSimulatorCheckpoints:
+    """Tests for save_checkpoint, load_checkpoint, and save_best_model."""
+
+    @pytest.fixture
+    def simulator(self, tmp_path):
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="ckpt_test",
+            pretrained=False,
+            model_variant="tiny",
+        )
+        return FLSimulator(config)
+
+    def test_save_checkpoint(self, simulator):
+        metrics = {"train_loss": 0.5, "val_accuracy": 0.8}
+        simulator.save_checkpoint(round_num=3, metrics=metrics)
+        assert (simulator.checkpoint_dir / "checkpoint_round_3.pt").exists()
+
+    def test_save_and_load_checkpoint(self, simulator):
+        simulator.best_val_accuracy = 0.9
+        simulator.best_round = 5
+        simulator.history["rounds"].append(1)
+        simulator.save_checkpoint(round_num=1, metrics={"val_accuracy": 0.9})
+
+        # Load into fresh simulator
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        sim2 = FLSimulator(SimulationConfig(
+            output_dir=str(simulator.output_dir.parent),
+            experiment_name="ckpt_test2",
+            pretrained=False,
+            model_variant="tiny",
+        ))
+        ckpt_path = str(simulator.checkpoint_dir / "checkpoint_round_1.pt")
+        resumed = sim2.load_checkpoint(ckpt_path)
+        assert resumed == 1
+        assert sim2.best_val_accuracy == 0.9
+
+    def test_save_best_model(self, simulator):
+        simulator.best_val_accuracy = 0.95
+        simulator.save_best_model(round_num=10)
+        assert (simulator.checkpoint_dir / "best_checkpoint.pt").exists()
+        assert (simulator.checkpoint_dir / "best_model.pt").exists()
+
+
+class TestRunRound:
+    """Tests for run_round method."""
+
+    def test_run_round_returns_metrics(self, tmp_path):
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="round_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            batch_size=4,
+        )
+        simulator = FLSimulator(config)
+
+        images = torch.randn(8, 3, 32, 32)
+        labels = torch.randint(0, 7, (8,))
+        loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
+
+        simulator.client_data[0] = ClientData(
+            client_id=0, train_loader=loader, val_loader=loader,
+            num_train_samples=8, num_val_samples=8,
+            class_distribution={0: 4, 1: 4}, dataset_name="test_ds",
+        )
+
+        metrics = simulator.run_round(round_num=1)
+        assert "train_loss" in metrics
+        assert "train_accuracy" in metrics
+        assert "val_loss" in metrics
+        assert "val_accuracy" in metrics
+        assert "communication_cost_mb" in metrics
+        assert "clients_participated" in metrics
+        assert metrics["clients_participated"] == 1
+
+
+class TestDirichletSubset:
+    """Tests for DirichletSubset."""
+
+    def test_len_and_getitem(self):
+        from src.federated.simulation import DirichletSubset
+        from torch.utils.data import TensorDataset
+        import torch
+
+        ds = TensorDataset(torch.randn(10, 3, 32, 32), torch.arange(10))
+        combined = [(ds, i) for i in range(10)]
+        subset = DirichletSubset(combined, [0, 2, 4])
+
+        assert len(subset) == 3
+        img, label = subset[0]
+        assert img.shape == (3, 32, 32)
+
+    def test_different_indices(self):
+        """DirichletSubset with different indices returns different items."""
+        from src.federated.simulation import DirichletSubset
+        from torch.utils.data import TensorDataset
+        import torch
+
+        ds = TensorDataset(torch.arange(10).float().unsqueeze(1), torch.arange(10))
+        combined = [(ds, i) for i in range(10)]
+        subset = DirichletSubset(combined, [1, 3, 5])
+        _, label0 = subset[0]
+        _, label1 = subset[1]
+        assert label0 == 1
+        assert label1 == 3
+
+
+class TestGetTransforms:
+    """Tests for FLSimulator._get_transforms."""
+
+    def test_returns_pair(self, tmp_path):
+        from src.federated.simulation import SimulationConfig, FLSimulator
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="tfm_test",
+            pretrained=False,
+        )
+        simulator = FLSimulator(config)
+        train_tfm, val_tfm = simulator._get_transforms()
+        assert train_tfm is not None
+        assert val_tfm is not None
+
+
+class TestSetupClients:
+    """Tests for setup_clients dispatching."""
+
+    def test_setup_clients_unknown_noniid_type(self, tmp_path):
+        """Unknown noniid_type should fall back to natural."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="unknown_noniid_test",
+            pretrained=False,
+            noniid_type="unknown_type",
+            use_class_weights=False,
+        )
+        simulator = FLSimulator(config)
+
+        with mock_patch.object(simulator, 'setup_natural_noniid') as mock_natural:
+            simulator.setup_clients()
+            mock_natural.assert_called_once()
+
+
+class TestRunSimulation:
+    """Tests for the run() method and run_fl_simulation convenience function."""
+
+    def test_run_with_mocked_clients(self, tmp_path):
+        """Test the run() method with pre-populated client data."""
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        from unittest.mock import patch as mock_patch
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="run_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            batch_size=4,
+            num_rounds=2,
+            num_clients=1,
+            checkpoint_interval=1,
+            early_stopping_patience=100,
+        )
+        simulator = FLSimulator(config)
+
+        images = torch.randn(8, 3, 32, 32)
+        labels = torch.randint(0, 7, (8,))
+        loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
+
+        simulator.client_data[0] = ClientData(
+            client_id=0, train_loader=loader, val_loader=loader,
+            num_train_samples=8, num_val_samples=8,
+            class_distribution={0: 4, 1: 4}, dataset_name="test_ds",
+        )
+
+        # Patch setup_clients to not load real data (we already set client_data)
+        with mock_patch.object(simulator, 'setup_clients'):
+            results = simulator.run()
+
+        assert "history" in results
+        assert "best_val_accuracy" in results
+        assert len(results["history"]["rounds"]) == 2
+        assert results["total_communication_mb"] > 0
+        # Config saved
+        assert (simulator.output_dir / "config.json").exists()
+        # Results saved
+        assert (simulator.output_dir / "results.json").exists()
+
+    def test_run_early_stopping(self, tmp_path):
+        """Test that early stopping works in run() method."""
+        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
+        from torch.utils.data import TensorDataset, DataLoader
+        from unittest.mock import patch as mock_patch
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="early_stop_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            batch_size=4,
+            num_rounds=100,
+            num_clients=1,
+            early_stopping_patience=2,
+        )
+        simulator = FLSimulator(config)
+
+        images = torch.randn(8, 3, 32, 32)
+        labels = torch.randint(0, 7, (8,))
+        loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
+
+        simulator.client_data[0] = ClientData(
+            client_id=0, train_loader=loader, val_loader=loader,
+            num_train_samples=8, num_val_samples=8,
+            class_distribution={0: 4, 1: 4}, dataset_name="test_ds",
+        )
+
+        with mock_patch.object(simulator, 'setup_clients'):
+            results = simulator.run()
+
+        # Should stop early (well before 100 rounds)
+        assert len(results["history"]["rounds"]) < 100
+
+    def test_run_no_clients_raises(self, tmp_path):
+        """Test that run() raises when no clients available."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="no_clients_test",
+            pretrained=False,
+            model_variant="tiny",
+        )
+        simulator = FLSimulator(config)
+
+        # setup_clients does nothing, leaving client_data empty
+        with mock_patch.object(simulator, 'setup_clients'):
+            with pytest.raises(RuntimeError, match="No clients available"):
+                simulator.run()
+
+    def test_run_fl_simulation_convenience(self, tmp_path):
+        """Test run_fl_simulation convenience function with mocked run."""
+        from src.federated.simulation import run_fl_simulation, SimulationConfig
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="convenience_test",
+            pretrained=False,
+            model_variant="tiny",
+            image_size=32,
+            num_rounds=1,
+        )
+
+        # Mock FLSimulator.run to avoid needing real data
+        with mock_patch("src.federated.simulation.FLSimulator.run", return_value={"done": True}):
+            result = run_fl_simulation(config)
+        assert result == {"done": True}
+
+    def test_load_checkpoint_partial_state(self, tmp_path):
+        """Test load_checkpoint with partial checkpoint (missing some keys)."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        import torch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="partial_ckpt",
+            pretrained=False,
+            model_variant="tiny",
+        )
+        simulator = FLSimulator(config)
+
+        # Save a minimal checkpoint without some optional keys
+        checkpoint = {
+            "round": 3,
+            "model_state_dict": simulator.global_model.state_dict(),
+            "metrics": {"val_accuracy": 0.75},
+        }
+        ckpt_path = tmp_path / "partial.pt"
+        torch.save(checkpoint, ckpt_path)
+
+        resumed = simulator.load_checkpoint(str(ckpt_path))
+        assert resumed == 3
+        assert simulator.best_val_accuracy == 0.75
+
+
 # Integration tests that require actual data
 @pytest.mark.integration
 @pytest.mark.slow

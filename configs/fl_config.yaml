@@ -22,7 +22,7 @@ federated:
   # ---------------------------------------------------------------------------
   # Client Configuration (Natural Non-IID: Each dataset = 1 client)
   # ---------------------------------------------------------------------------
-  num_clients: 4
+  num_clients: 5
   clients:
     - id: 1
       dataset: HAM10000
@@ -36,6 +36,9 @@ federated:
     - id: 4
       dataset: ISIC2020
       description: "ISIC 2020 Challenge - ~33k images, binary classification"
+    - id: 5
+      dataset: PADUFES20
+      description: "PAD-UFES-20 - 2,298 images, 6 classes (Brazilian dataset)"
   
   # ---------------------------------------------------------------------------
   # Training Rounds
@@ -48,9 +51,9 @@ federated:
   # ---------------------------------------------------------------------------
   fraction_fit: 1.0         # Train on all clients each round
   fraction_evaluate: 1.0    # Evaluate on all clients each round
-  min_fit_clients: 4
-  min_evaluate_clients: 4
-  min_available_clients: 4
+  min_fit_clients: 5
+  min_evaluate_clients: 5
+  min_available_clients: 5
   
   # Optional client selection
   # client_selection_fraction: 0.75  # Randomly select 75% of clients per round
@@ -59,7 +62,7 @@ federated:
   # ---------------------------------------------------------------------------
   # Local Training
   # ---------------------------------------------------------------------------
-  local_epochs: 3
+  local_epochs: 1
   local_batch_size: 8
   train_val_split: 0.15  # Fraction for validation set
   

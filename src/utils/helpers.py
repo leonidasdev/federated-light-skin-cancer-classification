@@ -11,14 +11,18 @@ Common helper functions used across the project.
 # Imports
 # =============================================================================
 
+import logging
 import random
 from typing import Any
 
 import numpy as np
 import torch
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
     "autocast",
+    "collect_environment_info",
     "compute_class_weights",
     "count_parameters",
     "create_grad_scaler",
@@ -48,6 +52,7 @@ def set_seed(seed: int = 42) -> None:
         torch.cuda.manual_seed_all(seed)
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
+    logger.debug("Random seed set to %d", seed)
 
 # =============================================================================
 # Device Utilities
@@ -66,6 +71,7 @@ def get_device(device: str | None = None) -> torch.device:
     """
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.debug("Using device: %s", device)
     return torch.device(device)
 
 
@@ -149,8 +155,10 @@ def compute_class_weights(
     total = sum(label_counts.values())
     weights = torch.zeros(num_classes)
     for cls, count in label_counts.items():
-        if 0 <= cls < num_classes:
+        if 0 <= cls < num_classes and count > 0:
             weights[cls] = total / (num_classes * count)
+        elif 0 <= cls < num_classes and count == 0:
+            logger.warning("Class %d has 0 samples; weight set to 0.0", cls)
     return weights
 
 # =============================================================================
@@ -198,3 +206,47 @@ def format_size(size_bytes: int) -> str:
             return f"{size:.2f} {unit}"
         size /= 1024.0
     return f"{size:.2f} PB"
+
+
+# =============================================================================
+# Environment Info
+# =============================================================================
+
+
+def collect_environment_info() -> dict[str, Any]:
+    """Collect hardware and software environment information for reproducibility.
+
+    Returns:
+        Dictionary with python, pytorch, cuda, and GPU details.
+    """
+    import platform
+    import sys
+
+    info: dict[str, Any] = {
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "pytorch_version": torch.__version__,
+        "cuda_available": torch.cuda.is_available(),
+    }
+
+    if torch.cuda.is_available():
+        info["cuda_version"] = torch.version.cuda
+        info["gpu_name"] = torch.cuda.get_device_name(0)
+        info["gpu_memory_mb"] = round(
+            torch.cuda.get_device_properties(0).total_memory / (1024 * 1024)
+        )
+        info["cudnn_version"] = str(torch.backends.cudnn.version())
+
+    try:
+        import timm as _timm
+        info["timm_version"] = _timm.__version__
+    except (ImportError, AttributeError):
+        pass
+
+    try:
+        import flwr
+        info["flower_version"] = flwr.__version__
+    except (ImportError, AttributeError):
+        pass
+
+    return info

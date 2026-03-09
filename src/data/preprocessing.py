@@ -17,10 +17,14 @@ Key preprocessing steps:
 # Imports
 # =============================================================================
 
+import logging
+
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
 from typing import Any, cast
 from collections.abc import Sequence
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Constants

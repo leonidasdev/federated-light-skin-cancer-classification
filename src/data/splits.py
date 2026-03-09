@@ -15,10 +15,14 @@ for federated learning experiments:
 # Imports
 # =============================================================================
 
+import logging
+
 import numpy as np
 import torch
 from typing import Any
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "create_iid_split",
@@ -26,6 +30,7 @@ __all__ = [
     "create_noniid_split",
     "create_quantity_skew_split",
     "deterministic_train_val_split",
+    "deterministic_train_val_test_split",
     "get_dataset_statistics",
     "print_split_summary",
 ]
@@ -60,6 +65,40 @@ def deterministic_train_val_split(
     val_n = int(total_size * val_split)
     train_n = total_size - val_n
     return indices[:train_n], indices[train_n:]
+
+
+def deterministic_train_val_test_split(
+    total_size: int,
+    val_split: float = 0.15,
+    test_split: float = 0.15,
+    seed: int = 42,
+) -> tuple[list[int], list[int], list[int]]:
+    """Split indices into train, val, and test sets.
+
+    Uses the same Generator-based approach as deterministic_train_val_split
+    for reproducibility. The test set is carved from the end, then val from
+    the remaining indices, so that when test_split=0 the train/val split is
+    identical to deterministic_train_val_split.
+
+    Args:
+        total_size: Total number of samples.
+        val_split: Fraction reserved for validation.
+        test_split: Fraction reserved for testing.
+        seed: Random seed.
+
+    Returns:
+        Tuple of (train_indices, val_indices, test_indices).
+    """
+    gen = torch.Generator()
+    gen.manual_seed(seed)
+    indices = torch.randperm(total_size, generator=gen).tolist()
+
+    test_n = int(total_size * test_split)
+    remaining = total_size - test_n
+    val_n = int(remaining * (val_split / (1.0 - test_split)))
+    train_n = remaining - val_n
+
+    return indices[:train_n], indices[train_n:train_n + val_n], indices[train_n + val_n:]
 
 
 def create_iid_split(

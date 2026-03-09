@@ -118,6 +118,18 @@ class TestDSCATNet:
         out = model(x)
         assert out.shape == (1, 7)
 
+    def test_fusion_method_attention(self):
+        """Model with fusion_method='attention' should work."""
+        model = DSCATNet(num_classes=7, embed_dim=192, depth=2, num_heads=3, fusion_method="attention")
+        x = torch.randn(1, 3, 224, 224)
+        out = model(x)
+        assert out.shape == (1, 7)
+
+    def test_unknown_fusion_method_raises(self):
+        """Unknown fusion method should raise ValueError."""
+        with pytest.raises(ValueError, match="Unknown fusion method"):
+            DSCATNet(num_classes=7, embed_dim=192, depth=2, num_heads=3, fusion_method="unknown")
+
 
 # =============================================================================
 # FL Utility Functions Tests
@@ -343,3 +355,23 @@ class TestPretrainedViTWeightLoading:
 
         mock_timm.create_model.assert_not_called()
         assert isinstance(model, DSCATNet)
+
+    def test_timm_none_skips_loading(self):
+        """When timm is None, load_pretrained_vit_weights should skip."""
+        model = create_dscatnet(num_classes=7, variant='small')
+        original_sd = {k: v.clone() for k, v in model.state_dict().items()}
+
+        with patch('src.models.dscatnet.timm', None):
+            load_pretrained_vit_weights(model, variant='small')
+
+        # All weights should be unchanged
+        for k, orig_v in original_sd.items():
+            assert torch.equal(model.state_dict()[k], orig_v)
+
+    def test_create_dscatnet_custom_img_size(self):
+        """create_dscatnet with custom img_size should pass it through."""
+        model = create_dscatnet(num_classes=7, variant='tiny', img_size=32)
+        assert model.img_size == 32
+        x = torch.randn(1, 3, 32, 32)
+        out = model(x)
+        assert out.shape == (1, 7)

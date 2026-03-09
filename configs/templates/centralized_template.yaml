@@ -63,8 +63,8 @@ centralized:
   # ---------------------------------------------------------------------------
   augmentation:
     # Options: none, light, medium, heavy
-    #   none:   Only resize + normalize (matches original DSCATNet paper)
-    #   light:  Horizontal/vertical flip
+    #   none:   Only resize + normalize (matches DSCATNet paper for HAM10000)
+    #   light:  Horizontal/vertical flip (matches DSCATNet paper for PAD-UFES-20)
     #   medium: Flips + rotation + color jitter
     #   heavy:  Medium + random erasing + affine transforms
     level: none
@@ -82,5 +82,11 @@ centralized:
   # ---------------------------------------------------------------------------
   evaluation:
     checkpoint_interval: 10       # Save checkpoint every N epochs (1-100)
-    early_stopping_patience: 15   # Stop if no improvement for N epochs (1-100)
+    # Paper-aligned: set to epochs value (e.g. 200) to train full duration
+    # without early stopping. Use a lower value (e.g. 15) for practical runs.
+    early_stopping_patience: 15   # Stop if no improvement for N epochs (1-1000)
+    # Paper uses standard CrossEntropy (no class weights).
+    # Set true for practical runs with imbalanced data.
     use_class_weights: true       # Use class weights in loss for imbalance
+    # Paper does not use gradient clipping. Set null to disable.
+    max_grad_norm: null           # Max gradient norm for clipping (null=disabled)

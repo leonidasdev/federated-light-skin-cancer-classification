@@ -11,7 +11,10 @@ import torch
 
 from src.utils.helpers import (
     autocast,
+    collect_environment_info,
+    compute_class_weights,
     count_parameters,
+    create_grad_scaler,
     format_size,
     format_time,
     get_device,
@@ -184,3 +187,83 @@ class TestFormatSize:
 
     def test_zero(self):
         assert format_size(0) == "0.00 B"
+
+    def test_terabytes(self):
+        assert format_size(1024**4) == "1.00 TB"
+
+    def test_petabytes(self):
+        assert format_size(1024**5) == "1.00 PB"
+
+
+# =============================================================================
+# Tests for create_grad_scaler
+# =============================================================================
+
+
+class TestCreateGradScaler:
+    """Tests for create_grad_scaler utility."""
+
+    def test_returns_grad_scaler(self):
+        scaler = create_grad_scaler()
+        # Should return some kind of GradScaler object
+        assert scaler is not None
+        assert hasattr(scaler, "scale")
+        assert hasattr(scaler, "step")
+        assert hasattr(scaler, "update")
+
+
+# =============================================================================
+# Tests for compute_class_weights
+# =============================================================================
+
+
+class TestComputeClassWeights:
+    """Tests for compute_class_weights utility."""
+
+    def test_balanced_classes(self):
+        counts = {0: 100, 1: 100, 2: 100}
+        w = compute_class_weights(counts, num_classes=3)
+        assert w.shape == (3,)
+        torch.testing.assert_close(w, torch.ones(3))
+
+    def test_imbalanced_classes(self):
+        counts = {0: 10, 1: 90}
+        w = compute_class_weights(counts, num_classes=2)
+        assert w[0] > w[1]  # minority class gets higher weight
+
+    def test_missing_class_gets_zero_weight(self):
+        counts = {0: 50}
+        w = compute_class_weights(counts, num_classes=3)
+        assert w[1] == 0.0
+        assert w[2] == 0.0
+
+    def test_negative_class_index_ignored(self):
+        counts = {-1: 20, 0: 80}
+        w = compute_class_weights(counts, num_classes=2)
+        assert w[0] > 0.0
+
+
+# =============================================================================
+# Tests for collect_environment_info
+# =============================================================================
+
+
+class TestCollectEnvironmentInfo:
+    """Tests for collect_environment_info utility."""
+
+    def test_returns_dict(self):
+        info = collect_environment_info()
+        assert isinstance(info, dict)
+
+    def test_has_basic_keys(self):
+        info = collect_environment_info()
+        assert "python_version" in info
+        assert "platform" in info
+        assert "pytorch_version" in info
+        assert "cuda_available" in info
+
+    def test_has_library_versions(self):
+        info = collect_environment_info()
+        # timm and flower should be found since they are installed
+        assert "timm_version" in info
+        assert "flower_version" in info

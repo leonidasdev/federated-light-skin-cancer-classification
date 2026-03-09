@@ -347,6 +347,237 @@ class TestISICArchiveClient:
         assert result == []
         mock_get.assert_called_once()
 
+    @patch('requests.Session.get')
+    def test_make_request_raises_on_error(self, mock_get):
+        """_make_request should raise on HTTP errors."""
+        import requests as req
+        mock_get.side_effect = req.exceptions.ConnectionError("fail")
+
+        client = ISICArchiveClient()
+        with pytest.raises(req.exceptions.ConnectionError):
+            client._make_request("/images/")
+
+    @patch('requests.Session.get')
+    def test_download_image_success(self, mock_get, tmp_path):
+        """download_image should save file on success."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_content.return_value = [b"fake image data"]
+        mock_get.return_value = mock_response
+
+        client = ISICArchiveClient()
+        out = tmp_path / "img.jpg"
+        result = client.download_image("ISIC_0000001", out)
+        assert result is True
+        assert out.exists()
+        assert out.read_bytes() == b"fake image data"
+
+    @patch('requests.Session.get')
+    def test_download_image_failure(self, mock_get, tmp_path):
+        """download_image should return False on network error."""
+        mock_get.side_effect = Exception("network error")
+
+        client = ISICArchiveClient()
+        result = client.download_image("ISIC_0000001", tmp_path / "img.jpg")
+        assert result is False
+
+    @patch('requests.Session.get')
+    def test_download_image_404_with_metadata_fallback(self, mock_get, tmp_path):
+        """download_image should try metadata fallback on 404."""
+        import requests as req
+
+        # First call: 404 HTTPError
+        resp_404 = MagicMock()
+        resp_404.status_code = 404
+        http_err = req.exceptions.HTTPError(response=resp_404)
+
+        # Second call: metadata with file URL
+        meta_resp = MagicMock()
+        meta_resp.raise_for_status = MagicMock()
+        meta_resp.json.return_value = {
+            "files": {"full": {"url": "https://example.com/img.jpg"}}
+        }
+
+        # Third call: actual image download
+        img_resp = MagicMock()
+        img_resp.raise_for_status = MagicMock()
+        img_resp.iter_content.return_value = [b"image data"]
+
+        mock_get.side_effect = [http_err, meta_resp, img_resp]
+
+        client = ISICArchiveClient()
+        result = client.download_image("ISIC_0000001", tmp_path / "img.jpg")
+        assert result is True
+
+    def test_download_worker_skips_existing(self, tmp_path):
+        """_download_worker should skip files that already exist."""
+        out = tmp_path / "img.jpg"
+        out.write_bytes(b"existing")
+
+        client = ISICArchiveClient()
+        image_id, success = client._download_worker(("ISIC_0000001", out))
+        assert success is True
+
+    @patch('requests.Session.get')
+    def test_download_images_parallel(self, mock_get, tmp_path):
+        """download_images_parallel should return stats dict."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.iter_content.return_value = [b"data"]
+        mock_get.return_value = mock_response
+
+        client = ISICArchiveClient()
+        images = [{"isic_id": f"ISIC_{i:07d}"} for i in range(3)]
+        stats = client.download_images_parallel(images, tmp_path, max_workers=2)
+
+        assert "total" in stats
+        assert "success" in stats
+        assert "failed" in stats
+        assert stats["total"] == 3
+
+    def test_save_metadata_csv(self, tmp_path):
+        """save_metadata_csv should write a valid CSV."""
+        client = ISICArchiveClient()
+        images = [
+            {
+                "isic_id": "ISIC_0000001",
+                "attribution": "test",
+                "metadata": {"diagnosis": "melanoma", "clinical": {"sex": "male"}},
+            },
+            {
+                "isic_id": "ISIC_0000002",
+                "metadata": {"clinical": {"diagnosis": "nevus"}},
+            },
+        ]
+        out = tmp_path / "meta.csv"
+        client.save_metadata_csv(images, out)
+        assert out.exists()
+        content = out.read_text(encoding="utf-8")
+        assert "ISIC_0000001" in content
+        assert "ISIC_0000002" in content
+
+    def test_save_metadata_csv_empty(self, tmp_path):
+        """save_metadata_csv with empty list should not create a file."""
+        client = ISICArchiveClient()
+        out = tmp_path / "empty.csv"
+        client.save_metadata_csv([], out)
+        assert not out.exists()
+
+
+# =============================================================================
+# Tests for download_dataset_isic
+# =============================================================================
+
+
+class TestDownloadDatasetISIC:
+    """Tests for download_dataset_isic function."""
+
+    def test_unknown_dataset_returns_false(self, tmp_path):
+        result = download_module.download_dataset_isic("UnknownDataset", tmp_path)
+        assert result is False
+
+    @patch.object(download_module.ISICArchiveClient, 'get_all_images_for_collection')
+    def test_returns_false_when_no_images(self, mock_get, tmp_path):
+        mock_get.return_value = []
+        result = download_module.download_dataset_isic("ISIC2018", tmp_path)
+        assert result is False
+
+    def test_already_complete_returns_true(self, tmp_path):
+        """Should skip download when images already present."""
+        ds_dir = tmp_path / "ISIC2018" / "images"
+        ds_dir.mkdir(parents=True)
+        # Create enough dummy images to pass 95% threshold
+        approx = DATASET_INFO["ISIC2018"]["approx_images"]
+        for i in range(int(approx * 0.96)):
+            (ds_dir / f"img_{i}.jpg").touch()
+        result = download_module.download_dataset_isic("ISIC2018", tmp_path)
+        assert result is True
+
+
+# =============================================================================
+# Tests for download_all_datasets
+# =============================================================================
+
+
+class TestDownloadAllDatasets:
+    """Tests for download_all_datasets function."""
+
+    @patch.object(download_module, 'download_dataset')
+    def test_downloads_all(self, mock_dl, tmp_path):
+        mock_dl.return_value = True
+        results = download_module.download_all_datasets(tmp_path)
+        assert len(results) == len(DATASET_INFO)
+        assert all(results.values())
+
+    @patch.object(download_module, 'download_dataset')
+    def test_downloads_subset(self, mock_dl, tmp_path):
+        mock_dl.return_value = True
+        results = download_module.download_all_datasets(tmp_path, datasets=["HAM10000"])
+        assert len(results) == 1
+        assert "HAM10000" in results
+
+
+# =============================================================================
+# Tests for print functions
+# =============================================================================
+
+
+class TestPrintFunctions:
+    """Tests for print_verification_report and print_download_instructions."""
+
+    def test_print_verification_report(self, capsys, tmp_path):
+        results = verify_all_datasets(tmp_path)
+        download_module.print_verification_report(results)
+        captured = capsys.readouterr()
+        assert "DATASET VERIFICATION REPORT" in captured.out
+
+    def test_print_download_instructions(self, capsys):
+        download_module.print_download_instructions()
+        captured = capsys.readouterr()
+        assert "DOWNLOAD" in captured.out
+        assert "HAM10000" in captured.out
+
+
+# =============================================================================
+# Tests for DatasetSetupWizard
+# =============================================================================
+
+
+class TestDatasetSetupWizard:
+    """Tests for DatasetSetupWizard class."""
+
+    def test_init_with_path(self, tmp_path):
+        wizard = download_module.DatasetSetupWizard(data_root=tmp_path)
+        assert wizard.data_root == tmp_path
+
+    def test_init_default_path(self):
+        wizard = download_module.DatasetSetupWizard()
+        assert wizard.data_root.name == "data"
+
+    @patch.object(download_module, 'verify_all_datasets')
+    @patch.object(download_module, 'print_verification_report')
+    def test_run_all_valid(self, mock_print, mock_verify, tmp_path, capsys):
+        mock_verify.return_value = {
+            name: {"valid": True} for name in DATASET_INFO
+        }
+        wizard = download_module.DatasetSetupWizard(data_root=tmp_path)
+        wizard.run()
+        captured = capsys.readouterr()
+        assert "ready" in captured.out.lower() or "proceed" in captured.out.lower()
+
+    @patch.object(download_module, 'download_all_datasets')
+    @patch.object(download_module, 'print_verification_report')
+    @patch.object(download_module, 'verify_all_datasets')
+    def test_run_auto_download(self, mock_verify, mock_print, mock_dl, tmp_path):
+        mock_verify.return_value = {
+            "HAM10000": {"valid": False},
+            "ISIC2018": {"valid": True},
+        }
+        mock_dl.return_value = {"HAM10000": True}
+        wizard = download_module.DatasetSetupWizard(data_root=tmp_path)
+        wizard.run(auto_download=True)
+        mock_dl.assert_called_once()
+
 
 # =============================================================================
 # Tests for get_data_root

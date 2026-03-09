@@ -21,6 +21,7 @@ from collections import Counter
 
 from src.data.splits import (
     deterministic_train_val_split,
+    deterministic_train_val_test_split,
     create_iid_split,
     create_noniid_split,
     create_label_skew_split,
@@ -70,6 +71,48 @@ def test_train_val_split():
     # Check reproducibility
     train_idx2, _val_idx2 = deterministic_train_val_split(total, val_split=0.2, seed=42)
     assert train_idx == train_idx2, "Same seed should produce same split"
+
+
+def test_train_val_test_split():
+    """Test 3-way train/val/test split."""
+    total = 1000
+    train_idx, val_idx, test_idx = deterministic_train_val_test_split(
+        total, val_split=0.15, test_split=0.15, seed=42
+    )
+
+    # Check no overlap
+    all_sets = [set(train_idx), set(val_idx), set(test_idx)]
+    assert len(all_sets[0] & all_sets[1]) == 0
+    assert len(all_sets[0] & all_sets[2]) == 0
+    assert len(all_sets[1] & all_sets[2]) == 0
+
+    # All indices accounted for
+    assert len(train_idx) + len(val_idx) + len(test_idx) == total
+
+    # Check approximate sizes
+    assert 650 <= len(train_idx) <= 750  # ~70%
+    assert 100 <= len(val_idx) <= 200    # ~15% of remaining
+    assert 100 <= len(test_idx) <= 200   # ~15%
+
+    # Reproducibility
+    t2, v2, te2 = deterministic_train_val_test_split(
+        total, val_split=0.15, test_split=0.15, seed=42
+    )
+    assert train_idx == t2
+    assert val_idx == v2
+    assert test_idx == te2
+
+
+def test_train_val_test_split_zero_test():
+    """With test_split=0, train/val should match deterministic_train_val_split."""
+    total = 500
+    train_2way, val_2way = deterministic_train_val_split(total, val_split=0.15, seed=42)
+    train_3way, val_3way, test_3way = deterministic_train_val_test_split(
+        total, val_split=0.15, test_split=0.0, seed=42
+    )
+    assert len(test_3way) == 0
+    assert train_2way == train_3way
+    assert val_2way == val_3way
 
 
 def test_iid_split():

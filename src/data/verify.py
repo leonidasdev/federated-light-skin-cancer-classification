@@ -217,9 +217,12 @@ class DatasetVerifier:
             "errors": []
         }
 
-        csv_path = dataset_path / "train.csv"
+        csv_path = dataset_path / "ISIC_2020_Training_GroundTruth.csv"
         if not csv_path.exists():
-            result["errors"].append(f"Training CSV not found: {csv_path}")
+            # Fallback to alternate name
+            csv_path = dataset_path / "train.csv"
+        if not csv_path.exists():
+            result["errors"].append(f"Training CSV not found: {dataset_path}")
             return result
 
         try:
@@ -235,9 +238,58 @@ class DatasetVerifier:
                 }
 
             # Count images
-            img_dir = dataset_path / "train"
+            img_dir = dataset_path / "ISIC_2020_Training_JPEG"
+            if not img_dir.exists():
+                img_dir = dataset_path / "train"
             if img_dir.exists():
                 result["total_images"] = len(list(img_dir.glob("*.jpg")))
+
+            result["valid"] = result["total_images"] > 0
+
+        except Exception as e:
+            result["errors"].append(f"Error reading data: {e}")
+
+        return result
+
+    def verify_padufes20(self) -> dict[str, Any]:
+        """Verify PAD-UFES-20 dataset."""
+        dataset_path = self.data_root / "PAD-UFES-20"
+        result: dict[str, Any] = {
+            "name": "PAD-UFES-20",
+            "valid": False,
+            "path": str(dataset_path),
+            "total_images": 0,
+            "class_distribution": {},
+            "metadata_valid": False,
+            "errors": []
+        }
+
+        csv_path = dataset_path / "metadata.csv"
+        if not csv_path.exists():
+            result["errors"].append(f"Metadata CSV not found: {csv_path}")
+            return result
+
+        try:
+            df = pd.read_csv(csv_path)
+            result["metadata_valid"] = True
+            result["metadata_rows"] = len(df)
+
+            # PAD-UFES-20 has a diagnostic column
+            diag_col = None
+            for col in ["diagnostic", "diagnosis", "label"]:
+                if col in df.columns:
+                    diag_col = col
+                    break
+
+            if diag_col:
+                result["class_distribution"] = df[diag_col].value_counts().to_dict()
+
+            # Count images across subdirectories
+            total = 0
+            if dataset_path.exists():
+                for ext in ("*.jpg", "*.png", "*.bmp"):
+                    total += len(list(dataset_path.rglob(ext)))
+            result["total_images"] = total
 
             result["valid"] = result["total_images"] > 0
 
@@ -256,7 +308,8 @@ class DatasetVerifier:
             "HAM10000": self.verify_ham10000(),
             "ISIC2018": self.verify_isic2018(),
             "ISIC2019": self.verify_isic2019(),
-            "ISIC2020": self.verify_isic2020()
+            "ISIC2020": self.verify_isic2020(),
+            "PAD-UFES-20": self.verify_padufes20(),
         }
 
         self.results = results

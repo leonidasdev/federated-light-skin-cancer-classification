@@ -2,10 +2,21 @@
 # Federated Learning Simulation Module
 # =============================================================================
 """
-Federated Learning Simulation Module.
+Federated Learning Simulation Module for DSCATNet.
 
-This module provides the complete FL simulation infrastructure for running
-federated experiments with DSCATNet on dermoscopy datasets.
+Provides the complete FL simulation infrastructure for running federated
+experiments with DSCATNet on dermoscopy datasets. Implements FedAvg
+aggregation with support for natural and Dirichlet non-IID data
+distributions, checkpoint/resume, and early stopping.
+
+Reference papers:
+    - Yadav et al., "DSCATNet: Dual-Scale Cross-Attention Vision Transformer
+      for skin cancer classification", PLOS ONE, Dec 2024.
+      Model architecture adapted for federated training.
+    - Khullar et al., "Evaluating the effectiveness of federated learning [...]",
+      Scientific Reports, Jan 2025. FL methodology reference:
+      FedAvg aggregation, non-IID distribution via Dirichlet sampling,
+      per-round evaluation, communication cost tracking.
 """
 
 # =============================================================================
@@ -43,7 +54,8 @@ from ..data.datasets import (
 )
 from ..data.preprocessing import get_transform_pair
 from ..data.splits import create_noniid_split, deterministic_train_val_split
-from ..utils.helpers import compute_class_weights
+from ..utils.helpers import collect_environment_info, compute_class_weights
+from ..utils.logging_utils import MetricsTracker, TensorBoardLogger
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +180,9 @@ class SimulationConfig:
     # Class weights for handling class imbalance in loss function
     use_class_weights: bool = True
 
+    # Gradient clipping (None = disabled, as in original paper)
+    max_grad_norm: float | None = None
+
     # Parallelism configuration
     # Number of clients to train in parallel (CPU only, for GPU use 1)
     # Set to 0 for auto-detection based on CPU count
@@ -216,7 +231,12 @@ class FLSimulator:
     Federated Learning Simulator for DSCATNet.
 
     Orchestrates the complete FL training process including client setup,
-    data distribution, training rounds, and evaluation.
+    data distribution (natural or Dirichlet non-IID), local training with
+    gradient accumulation, FedAvg aggregation, global evaluation, checkpoint
+    saving/loading, and early stopping.
+
+    Follows the FL methodology described in Khullar et al. (Scientific Reports,
+    2025), adapted from their EfficientNetV2S benchmark to DSCATNet.
     """
 
     def __init__(self, config: SimulationConfig):
@@ -231,6 +251,7 @@ class FLSimulator:
 
         # Initialize model
         self.global_model = create_dscatnet(
+            img_size=config.image_size,
             variant=config.model_variant,
             num_classes=config.num_classes,
             pretrained=config.pretrained,
@@ -268,6 +289,10 @@ class FLSimulator:
         logger.info(f"Initialized FLSimulator with config: {config.experiment_name}")
         logger.info(f"Device: {self.device}")
         logger.info(f"Output directory: {self.output_dir}")
+
+        # Metrics tracking (CSV + optional TensorBoard)
+        self.metrics_tracker = MetricsTracker(self.output_dir, config.experiment_name)
+        self.tb_logger = TensorBoardLogger(self.output_dir / "tensorboard")
 
     def _get_transforms(self) -> tuple[Any, Any]:
         """Get train and validation transforms based on config."""
@@ -373,9 +398,10 @@ class FLSimulator:
                 pin_memory=(self.device.type == "cuda"),
             )
 
-            # Calculate class distribution
-            class_dist = {}
-            for _, label in train_dataset:
+            # Calculate class distribution from labels array (avoids loading images)
+            class_dist: dict[int, int] = {}
+            for idx in train_indices:
+                label = int(full_dataset.labels[idx])
                 class_dist[label] = class_dist.get(label, 0) + 1
 
             self.client_data[client_id] = ClientData(
@@ -388,7 +414,10 @@ class FLSimulator:
                 dataset_name=dataset_name,
             )
 
-            logger.info(f"Client {client_id} ({dataset_name}): {len(train_dataset)} train, {len(val_dataset)} val samples")
+            logger.info(
+                f"Client {client_id} ({dataset_name}): "
+                f"{len(train_dataset)} train, {len(val_dataset)} val samples"
+            )
 
     def setup_clients(self) -> None:
         """Setup client data based on configuration."""
@@ -538,6 +567,7 @@ class FLSimulator:
 
         # Create local model and load parameters
         local_model = create_dscatnet(
+            img_size=self.config.image_size,
             variant=self.config.model_variant,
             num_classes=self.config.num_classes,
             pretrained=False,
@@ -584,7 +614,8 @@ class FLSimulator:
 
                 if (batch_idx + 1) % accum_steps == 0 or (batch_idx + 1) == len(client.train_loader):
                     # Gradient clipping for training stability
-                    torch.nn.utils.clip_grad_norm_(local_model.parameters(), max_norm=1.0)
+                    if self.config.max_grad_norm is not None:
+                        torch.nn.utils.clip_grad_norm_(local_model.parameters(), max_norm=self.config.max_grad_norm)
                     optimizer.step()
                     optimizer.zero_grad()
 
@@ -630,6 +661,7 @@ class FLSimulator:
 
         # Create model and load parameters
         model = create_dscatnet(
+            img_size=self.config.image_size,
             variant=self.config.model_variant,
             num_classes=self.config.num_classes,
             pretrained=False,
@@ -971,7 +1003,8 @@ class FLSimulator:
             Best accuracy: 0.8523
         """
         logger.info("Starting FL simulation")
-        logger.info(f"Configuration: {self.config.num_rounds} rounds, {len(self.client_data) if self.client_data else self.config.num_clients} clients")
+        num_clients = len(self.client_data) if self.client_data else self.config.num_clients
+        logger.info(f"Configuration: {self.config.num_rounds} rounds, {num_clients} clients")
 
         # Setup clients
         self.setup_clients()
@@ -996,7 +1029,10 @@ class FLSimulator:
             print(f"Resuming from round {start_round}")
         print(f"{'='*60}")
         for cid, cdata in self.client_data.items():
-            print(f"  Client {cid}: {cdata.dataset_name} ({cdata.num_train_samples} train, {cdata.num_val_samples} val)")
+            print(
+                f"  Client {cid}: {cdata.dataset_name} "
+                f"({cdata.num_train_samples} train, {cdata.num_val_samples} val)"
+            )
         print(f"{'='*60}\n")
 
         # Save initial config
@@ -1030,6 +1066,25 @@ class FLSimulator:
                 self.history["val_loss"].append(metrics["val_loss"])
                 self.history["val_accuracy"].append(metrics["val_accuracy"])
                 self.history["communication_cost"].append(metrics["communication_cost_mb"])
+
+                # Log to MetricsTracker (CSV) and TensorBoard
+                round_metrics = {
+                    "train_loss": metrics["train_loss"],
+                    "train_accuracy": metrics["train_accuracy"],
+                    "val_loss": metrics["val_loss"],
+                    "val_accuracy": metrics["val_accuracy"],
+                    "communication_cost_mb": metrics["communication_cost_mb"],
+                }
+                self.metrics_tracker.log(round_num, **round_metrics)
+                self.tb_logger.log_scalars(
+                    "loss", {"train": metrics["train_loss"], "val": metrics["val_loss"]}, round_num
+                )
+                self.tb_logger.log_scalars(
+                    "accuracy",
+                    {"train": metrics["train_accuracy"], "val": metrics["val_accuracy"]},
+                    round_num,
+                )
+                self.tb_logger.log_scalar("communication_cost_mb", metrics["communication_cost_mb"], round_num)
 
                 # Check for improvement
                 if metrics["val_accuracy"] > self.best_val_accuracy:
@@ -1065,6 +1120,8 @@ class FLSimulator:
                     break
 
         pbar.close()
+        self.metrics_tracker.save()
+        self.tb_logger.close()
         total_time = time.time() - start_time
 
         # Final results
@@ -1075,6 +1132,7 @@ class FLSimulator:
             "total_time_seconds": total_time,
             "total_communication_mb": sum(self.history["communication_cost"]),
             "config": self.config.to_dict(),
+            "environment": collect_environment_info(),
         }
 
         # Save results

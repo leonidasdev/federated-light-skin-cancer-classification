@@ -50,17 +50,18 @@ data:
   
   # Class Imbalance Handling
   use_weighted_sampling: false
-  use_class_weights: true
+  use_class_weights: false
 
 # =============================================================================
 # Centralized Training Baseline
 # =============================================================================
 centralized:
-  epochs: 100
+  epochs: 200
   batch_size: 8
   learning_rate: 0.001
   weight_decay: 0.0
-  early_stopping_patience: 15
+  early_stopping_patience: 200
+  gradient_accumulation_steps: 4
   pooled_data: true         # Combine all datasets
 
 # =============================================================================
@@ -71,7 +72,7 @@ federated_experiments:
   - name: natural_noniid
     description: "Each client trains on its own dataset"
     num_rounds: 100
-    local_epochs: 3
+    local_epochs: 1
     batch_size: 8
     noniid_type: natural
     
@@ -79,7 +80,7 @@ federated_experiments:
   - name: iid_baseline
     description: "Pooled data uniformly distributed (Dirichlet α=1000)"
     num_rounds: 100
-    local_epochs: 3
+    local_epochs: 1
     batch_size: 8
     noniid_type: dirichlet
     dirichlet_alpha: 1000
@@ -88,7 +89,7 @@ federated_experiments:
   - name: moderate_noniid
     description: "Dirichlet distribution with α=0.5"
     num_rounds: 100
-    local_epochs: 3
+    local_epochs: 1
     batch_size: 8
     noniid_type: dirichlet
     dirichlet_alpha: 0.5
@@ -97,7 +98,7 @@ federated_experiments:
   - name: extreme_noniid
     description: "Dirichlet distribution with α=0.1"
     num_rounds: 100
-    local_epochs: 3
+    local_epochs: 1
     batch_size: 8
     noniid_type: dirichlet
     dirichlet_alpha: 0.1

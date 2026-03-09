@@ -2,6 +2,10 @@
 # Project Configuration
 # =============================================================================
 
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
 [project]
 name = "federated-skin-cancer-classification"
 version = "0.1.0"
@@ -84,6 +88,8 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short -m 'not slow'"
+tmp_path_retention_policy = "none"
+tmp_path_retention_count = 0
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "integration: marks tests as integration tests",
@@ -111,3 +117,4 @@ exclude_lines = [
     "if TYPE_CHECKING:",
 ]
 show_missing = true
+fail_under = 80

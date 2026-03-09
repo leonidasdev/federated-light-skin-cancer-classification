@@ -233,6 +233,7 @@ class ModelEvaluator:
                 # Compute metrics for this class vs all others
                 precision_val = precision_score(binary_labels, binary_preds, zero_division=0)
                 recall_val = recall_score(binary_labels, binary_preds, zero_division=0)
+                f1_val = f1_score(binary_labels, binary_preds, zero_division=0)
                 # Accuracy for samples that are actually this class
                 class_mask = labels == i
                 class_accuracy = float((predictions[class_mask] == i).mean())
@@ -241,6 +242,7 @@ class ModelEvaluator:
                     "accuracy": class_accuracy,
                     "precision": float(precision_val),
                     "recall": float(recall_val),
+                    "f1": float(f1_val),
                     "support": int(class_support),
                 }
             else:
@@ -248,6 +250,7 @@ class ModelEvaluator:
                     "accuracy": 0.0,
                     "precision": 0.0,
                     "recall": 0.0,
+                    "f1": 0.0,
                     "support": 0,
                 }
 
@@ -287,14 +290,14 @@ class ModelEvaluator:
             print(f"  AUC-ROC (macro):   {results.auc_macro:.4f}")
 
         print("\nPer-Class Metrics:")
-        print("-" * 60)
-        print(f"{'Class':<15} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'Support':>10}")
-        print("-" * 60)
+        print("-" * 70)
+        print(f"{'Class':<15} {'Accuracy':>10} {'Precision':>10} {'Recall':>10} {'F1':>10} {'Support':>10}")
+        print("-" * 70)
         for class_name, metrics in results.per_class_metrics.items():
             print(
                 f"{class_name:<15} {metrics['accuracy']:>10.4f} "
                 f"{metrics['precision']:>10.4f} {metrics['recall']:>10.4f} "
-                f"{metrics['support']:>10}"
+                f"{metrics.get('f1', 0.0):>10.4f} {metrics['support']:>10}"
             )
 
         print("\nConfusion Matrix:")

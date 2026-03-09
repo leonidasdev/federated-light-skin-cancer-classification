@@ -121,8 +121,8 @@ The naming convention differs (`val_split` vs `train_val_split`), but both are s
 | Aspect | Centralized | Federated |
 |--------|-------------|-----------|
 | **Default** | 15 epochs | 10 rounds |
-| **Benchmark config** | 15 | 10 |
-| **Impact** | **Low** — FL rounds are much more expensive than centralized epochs, so lower patience is appropriate. The model still has sufficient time to converge. |
+| **Benchmark config** | 200 | 100 |
+| **Impact** | **None** — patience values match total training duration, effectively disabling early stopping to match the paper. |
 
 ### 10. Evaluation Granularity
 
@@ -167,7 +167,7 @@ Where:
 
 ### Why This Matters
 
-Without class weights, models trained on imbalanced datasets (e.g., ISIC2018 where NV is ~67% of samples) tend to collapse to majority-class prediction, producing degenerate constant accuracy. Inverse-frequency weighting prevents this by penalizing majority-class errors less and minority-class errors more.
+Class weighting is available as a configuration option (`use_class_weights: true`) for practical clinical deployments where class imbalance is severe. In paper-aligned benchmark experiments, standard (unweighted) CrossEntropyLoss is used, matching the original DSCATNet evaluation protocol.
 
 ---
 
@@ -188,8 +188,9 @@ centralized:
   augmentation:
     level: none
   evaluation:
-    early_stopping_patience: 15
-    use_class_weights: true
+    early_stopping_patience: 200
+    use_class_weights: false
+    max_grad_norm: null
   splits:
     val_split: 0.15
 ```
@@ -213,8 +214,9 @@ federated:
   augmentation:
     level: none
   evaluation:
-    early_stopping_patience: 10
-    use_class_weights: true
+    early_stopping_patience: 100
+    use_class_weights: false
+    max_grad_norm: null
 ```
 
 ---

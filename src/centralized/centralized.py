@@ -2,9 +2,19 @@
 # Centralized Training Baseline
 # =============================================================================
 """
-Centralized Training Baseline.
+Centralized Training Baseline for DSCATNet.
 
-Provides standard centralized training on pooled data from all datasets.
+Provides standard centralized training on pooled data from all datasets,
+serving as the upper-bound baseline against which federated learning
+performance is compared.
+
+Reference papers:
+    - Yadav et al., "DSCATNet: Dual-Scale Cross-Attention Vision Transformer
+      for skin cancer classification", PLOS ONE, Dec 2024.
+      Training protocol: Adam optimizer, LR=0.001, batch_size=32, 200 epochs,
+      standard cross-entropy loss, no augmentation (HAM10000).
+    - Khullar et al., "Evaluating the effectiveness of federated learning [...]",
+      Scientific Reports, Jan 2025. Reference for centralized vs. FL comparison.
 """
 
 # =============================================================================
@@ -36,8 +46,13 @@ from ..data.datasets import (
     normalize_dataset_name,
 )
 from ..data.preprocessing import get_transform_pair
-from ..data.splits import deterministic_train_val_split
-from ..utils.helpers import autocast, compute_class_weights, count_parameters, create_grad_scaler
+from ..data.splits import deterministic_train_val_split, deterministic_train_val_test_split
+from ..utils.helpers import (
+    autocast, collect_environment_info, compute_class_weights,
+    count_parameters, create_grad_scaler,
+)
+from ..evaluation.metrics import ModelEvaluator
+from ..utils.logging_utils import MetricsTracker, TensorBoardLogger
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +89,7 @@ class CentralizedConfig:
     augmentation_level: str = "medium"
     use_dermoscopy_norm: bool = False
     val_split: float = 0.15
+    test_split: float = 0.0  # Fraction held out for final test-set evaluation
 
     # Classification mode: 'multiclass' (7), 'multiclass_8' (8), or 'binary' (2)
     classification_mode: str = "multiclass"
@@ -92,6 +108,9 @@ class CentralizedConfig:
     output_dir: str = "./outputs"
     checkpoint_interval: int = 10
     early_stopping_patience: int = 15
+
+    # Gradient clipping (None = disabled, as in original paper)
+    max_grad_norm: float | None = None
 
     # Device configuration
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
@@ -135,6 +154,7 @@ class CentralizedTrainer:
 
         # Initialize model
         self.model = create_dscatnet(
+            img_size=config.image_size,
             variant=config.model_variant,
             num_classes=config.num_classes,
             pretrained=config.pretrained,
@@ -165,6 +185,7 @@ class CentralizedTrainer:
         # Data loaders (to be setup)
         self.train_loader: DataLoader | None = None
         self.val_loader: DataLoader | None = None
+        self.test_loader: DataLoader | None = None
 
         # AMP (Automatic Mixed Precision) for faster training
         self.use_amp = config.use_amp and self.device.type == "cuda"
@@ -177,6 +198,10 @@ class CentralizedTrainer:
         logger.info(f"Device: {self.device}")
         logger.info(f"AMP enabled: {self.use_amp}")
         logger.info(f"Model parameters: {count_parameters(self.model, trainable_only=False):,}")
+
+        # Metrics tracking (CSV + optional TensorBoard)
+        self.metrics_tracker = MetricsTracker(self.output_dir, config.experiment_name)
+        self.tb_logger = TensorBoardLogger(self.output_dir / "tensorboard")
 
     def _get_transforms(self) -> tuple[Any, Any]:
         """Get train and validation transforms based on config."""
@@ -196,6 +221,8 @@ class CentralizedTrainer:
         # can be different for train and val (use DatasetSubset).
         datasets_train = []
         datasets_val = []
+        datasets_test = []
+        use_test_split = self.config.test_split > 0
 
         # Determine which datasets to load
         if self.config.datasets:
@@ -246,12 +273,22 @@ class CentralizedTrainer:
                 n, val_split=self.config.val_split
             )
 
+            if use_test_split:
+                train_indices, val_indices, test_indices = deterministic_train_val_test_split(
+                    n, val_split=self.config.val_split, test_split=self.config.test_split
+                )
+                test_ds = DatasetSubset(full_dataset, test_indices, val_transform)
+                datasets_test.append(test_ds)
+
             train_ds = DatasetSubset(full_dataset, train_indices, train_transform)
             val_ds = DatasetSubset(full_dataset, val_indices, val_transform)
 
             datasets_train.append(train_ds)
             datasets_val.append(val_ds)
-            logger.info(f"Loaded {name}: {len(train_ds)} train, {len(val_ds)} val")
+            if use_test_split:
+                logger.info(f"Loaded {name}: {len(train_ds)} train, {len(val_ds)} val, {len(test_ds)} test")
+            else:
+                logger.info(f"Loaded {name}: {len(train_ds)} train, {len(val_ds)} val")
 
         if not datasets_train:
             raise RuntimeError("No datasets found. Please check data paths.")
@@ -277,13 +314,28 @@ class CentralizedTrainer:
             pin_memory=(self.device.type == "cuda"),
         )
 
+        # Test loader (only when test_split > 0)
+        self.test_loader = None
+        if use_test_split and datasets_test:
+            combined_test = ConcatDataset(datasets_test)
+            self.test_loader = DataLoader(
+                combined_test,
+                batch_size=self.config.batch_size,
+                shuffle=False,
+                num_workers=self.config.num_workers,
+                pin_memory=(self.device.type == "cuda"),
+            )
+
         # Compute class weights if needed
         if self.config.use_class_weights:
             self._compute_class_weights(combined_train)
         else:
             self.class_weights = None
 
-        logger.info(f"Combined dataset: {len(combined_train)} train, {len(combined_val)} val")
+        logger.info(
+            f"Combined dataset: {len(combined_train)} train, {len(combined_val)} val"
+            + (f", {len(combined_test)} test" if self.test_loader else "")
+        )
 
     def _compute_class_weights(self, dataset: ConcatDataset) -> None:
         """Compute class weights for handling class imbalance.
@@ -367,7 +419,8 @@ class CentralizedTrainer:
                 if (batch_idx + 1) % accum_steps == 0 or (batch_idx + 1) == len(loader):
                     # Gradient clipping with AMP
                     self.scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    if self.config.max_grad_norm is not None:
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.config.max_grad_norm)
                     self.scaler.step(optimizer)
                     self.scaler.update()
                     optimizer.zero_grad()
@@ -380,7 +433,8 @@ class CentralizedTrainer:
 
                 if (batch_idx + 1) % accum_steps == 0 or (batch_idx + 1) == len(loader):
                     # Gradient clipping
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                    if self.config.max_grad_norm is not None:
+                        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.config.max_grad_norm)
                     optimizer.step()
                     optimizer.zero_grad()
 
@@ -690,6 +744,19 @@ class CentralizedTrainer:
                 self.history["val_accuracy"].append(val_acc)
                 self.history["learning_rate"].append(current_lr)
 
+                # Log to MetricsTracker (CSV) and TensorBoard
+                epoch_metrics = {
+                    "train_loss": train_loss,
+                    "train_accuracy": train_acc,
+                    "val_loss": val_loss,
+                    "val_accuracy": val_acc,
+                    "learning_rate": current_lr,
+                }
+                self.metrics_tracker.log(epoch, **epoch_metrics)
+                self.tb_logger.log_scalars("loss", {"train": train_loss, "val": val_loss}, epoch)
+                self.tb_logger.log_scalars("accuracy", {"train": train_acc, "val": val_acc}, epoch)
+                self.tb_logger.log_scalar("learning_rate", current_lr, epoch)
+
                 # Checkpointing
                 metrics = {
                     "train_loss": float(train_loss),
@@ -733,6 +800,8 @@ class CentralizedTrainer:
                     break
 
         epoch_pbar.close()
+        self.metrics_tracker.save()
+        self.tb_logger.close()
         total_time = time.time() - start_time
 
         # Save final results
@@ -741,7 +810,23 @@ class CentralizedTrainer:
             "best_val_accuracy": float(self.best_val_accuracy),
             "best_epoch": int(self.best_epoch),
             "total_time_seconds": total_time,
+            "environment": collect_environment_info(),
         }
+
+        # Test-set evaluation using best model
+        if self.test_loader is not None:
+            best_ckpt = self.checkpoint_dir / "best_checkpoint.pt"
+            if best_ckpt.exists():
+                self.load_checkpoint(str(best_ckpt))
+            logger.info("Evaluating best model on held-out test set")
+            evaluator = ModelEvaluator(self.model, self.device, num_classes=self.config.num_classes)
+            test_results = evaluator.evaluate(self.test_loader)
+            results["test_metrics"] = test_results.to_dict()
+            logger.info(
+                f"Test set — Acc: {test_results.accuracy:.4f}, "
+                f"Balanced Acc: {test_results.balanced_accuracy:.4f}, "
+                f"F1 (macro): {test_results.f1_macro:.4f}"
+            )
 
         results_path = self.output_dir / "results.json"
         with open(results_path, "w") as f:

@@ -149,6 +149,7 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 |---------|-----------|-------|-------|-------------|
 | `tiny` | 192 | 4 | 3 | ~5M |
 | `small` | 384 | 6 | 6 | ~29.4M (default) |
+| `paper` | 384 | 6 | 12 | ~29.4M (paper-faithful) |
 | `base` | 384 | 8 | 6 | ~39M |
 
 **Pretrained Weight Loading** (`pretrained: true`):

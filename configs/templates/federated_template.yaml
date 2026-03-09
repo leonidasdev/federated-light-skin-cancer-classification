@@ -120,3 +120,22 @@ strategies:
     
   - name: FedNova
     description: "Normalized averaging accounting for local steps"
+
+# =============================================================================
+# Paper-Aligned Settings (DSCATNet, Yadav et al., PLOS ONE 2024)
+# =============================================================================
+# When creating experiment configs for paper-aligned runs, use these settings:
+#
+#   training:
+#     optimizer: adam, lr: 0.001, weight_decay: 0.0
+#     batch_size: 8, gradient_accumulation_steps: 4  (effective BS = 32)
+#     local_epochs: 1, num_rounds: 100
+#
+#   evaluation:
+#     early_stopping_patience: 100  # Train full rounds (no early stopping)
+#     use_class_weights: false      # Paper uses standard CrossEntropy
+#     max_grad_norm: null           # Paper does not use gradient clipping
+#
+#   augmentation:
+#     HAM10000/ISIC*: level: none   # No augmentation
+#     PAD-UFES-20:    level: light  # H/V flips (paper uses flip augmentation)

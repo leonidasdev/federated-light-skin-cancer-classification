@@ -46,6 +46,13 @@ class DSCATNet(nn.Module):
     that captures both fine-grained local features and global contextual information
     through dual-scale patch embeddings and cross-attention mechanisms.
 
+    Note:
+        The original PONE paper (Yadav et al., 2024) reports ~22M parameters for the
+        small variant. This implementation yields ~29.4M parameters due to separate
+        Q/K/V projections in the bidirectional cross-attention (12 linear projections
+        per block) and independent self-attention modules per scale. The architectural
+        behavior follows the paper; the difference is in parameter counting.
+
     Args:
         img_size: Input image size (default: 224)
         in_channels: Number of input channels (default: 3)
@@ -247,13 +254,13 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
 
     Args:
         model: DSCATNet model instance to load weights into.
-        variant: Model variant. Only 'small' is supported.
+        variant: Model variant ('small' or 'paper'). Other variants skip loading.
     """
     logger = logging.getLogger(__name__)
 
-    if variant != 'small':
+    if variant not in ('small', 'paper'):
         logger.warning(
-            "Pretrained ViT weight loading only supported for 'small' variant, "
+            "Pretrained ViT weight loading only supported for 'small' and 'paper' variants, "
             f"got '{variant}'. Skipping."
         )
         return
@@ -345,17 +352,23 @@ def create_dscatnet(
     """
     Factory function to create DSCATNet variants.
 
+    Variants:
+        - tiny: embed_dim=192, depth=4, heads=3 (~5M params) — fast prototyping
+        - small: embed_dim=384, depth=6, heads=6 (~29.4M params) — balanced
+        - paper: embed_dim=384, depth=6, heads=12 (~29.4M params) — matches paper H=12
+        - base: embed_dim=384, depth=8, heads=6 (~39M params) — larger capacity
+
     Args:
         num_classes: Number of output classes
         img_size: Input image size
-        variant: Model variant ('tiny', 'small', 'base')
+        variant: Model variant ('tiny', 'small', 'paper', 'base')
         **kwargs: Additional arguments passed to DSCATNet
 
     Returns:
         Configured DSCATNet model
 
     Raises:
-        ValueError: If variant is not one of 'tiny', 'small', 'base'.
+        ValueError: If variant is not recognized.
     """
     variants = {
         'tiny': {
@@ -368,6 +381,15 @@ def create_dscatnet(
             'embed_dim': 384,
             'depth': 6,
             'num_heads': 6,
+            'mlp_ratio': 4.0
+        },
+        'paper': {
+            # Matches paper Section 5.8: H=12 heads, D=384 (unified adaptation
+            # of paper's asymmetric D=192/768), depth=6, MLP ratio=4.0.
+            # Compatible with ViT-Small (patch16_224) pretrained weights.
+            'embed_dim': 384,
+            'depth': 6,
+            'num_heads': 12,
             'mlp_ratio': 4.0
         },
         'base': {
@@ -436,11 +458,13 @@ def set_model_parameters(model: nn.Module, parameters: list[np.ndarray]) -> None
     """Set model parameters from a list of numpy arrays.
 
     Used by Flower FL framework for parameter deserialization.
+    Ensures tensors are placed on the same device as existing model parameters.
 
     Args:
         model: PyTorch model instance.
         parameters: List of numpy arrays matching the model's state dict.
     """
+    device = next(model.parameters()).device
     params_dict = zip(model.state_dict().keys(), parameters)
-    state_dict = {k: torch.tensor(v) for k, v in params_dict}
+    state_dict = {k: torch.tensor(v, device=device) for k, v in params_dict}
     model.load_state_dict(state_dict, strict=True)

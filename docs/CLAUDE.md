@@ -234,11 +234,12 @@ federated:
 **Variants**:
 - `tiny`: embed_dim=192, depth=4, heads=3 (~5M params)
 - `small`: embed_dim=384, depth=6, heads=6 (~29.4M params) **[DEFAULT]**
+- `paper`: embed_dim=384, depth=6, heads=12 (~29.4M params) — Paper-faithful H=12 heads (Yadav et al.)
 - `base`: embed_dim=384, depth=8, heads=6 (~39M params)
 
 **Pretrained Weight Loading** (`pretrained: true` in config):
 - Loads ViT-Small (ImageNet-21k) weights from `timm` into compatible layers via `load_pretrained_vit_weights()`
-- Only supported for the `small` variant (embed_dim=384, num_heads=6 match `vit_small_patch16_224`)
+- Supported for `small` and `paper` variants (embed_dim=384 matches `vit_small_patch16_224`)
 - Maps ViT blocks 0–5 → fine-scale self-attention + FFN, blocks 6–11 → coarse-scale self-attention + FFN
 - Transfers coarse patch embedding (16×16), positional embedding, CLS token, final LayerNorm
 - Cross-attention, fine-scale embeddings, fusion, and classifier remain randomly initialized
@@ -259,6 +260,8 @@ The training configuration is aligned with the DSCATNet paper (Yadav et al., PLO
 | LR Scheduler | None | `scheduler: none` | Paper uses fixed LR |
 | Epochs | 200 | `epochs: 200` | Full training run |
 | AMP | Not used | `use_amp: false` | Disabled for stability |
+| Gradient Clipping | Not mentioned | `max_grad_norm: null` | Disabled (null). Configurable via config. |
+| Class Weights | Standard CE | `use_class_weights: false` | Paper uses unweighted cross-entropy |
 | Image Size | 224 | `image_size: 224` | Standard ViT input |
 | Augmentation | None | `augmentation: none` (HAM10000) | Paper reports no augmentation |
 
@@ -310,18 +313,28 @@ tests/
 ├── test_centralized.py    # CentralizedConfig, CentralizedTrainer
 ├── test_checkpoints.py    # Checkpoint saving/loading
 ├── test_cli.py            # CLI argument parsing and validation
+├── test_client.py         # SkinCancerClient (Flower NumPyClient)
 ├── test_config_loading.py # YAML config loading and schema validation
+├── test_config_schema.py  # Config schema validation rules
+├── test_configuration.py  # Configuration dataclass tests
 ├── test_datasets.py       # Dataset registry and loading functions
 ├── test_download.py       # Download functionality tests
 ├── test_evaluation.py     # EvaluationResults, metrics computation
 ├── test_helpers.py        # Helpers (set_seed, get_device, etc.)
+├── test_integration.py    # End-to-end centralized + FL integration
+├── test_logging_utils.py  # ExperimentLogger, MetricsTracker
 ├── test_model_evaluator.py# ModelEvaluator integration tests
 ├── test_models.py         # DSCATNet model architecture tests
 ├── test_preprocessing.py  # Transforms, augmentation levels
 ├── test_simulation.py     # SimulationConfig, FLSimulator, FedAvg
 ├── test_splits.py         # IID/Non-IID splitting utilities
-└── test_strategy.py       # DSCATNetFedAvg strategy tests
+├── test_strategy.py       # DSCATNetFedAvg strategy tests
+├── test_verify.py         # DatasetVerifier tests
+└── test_visualization.py  # Visualization/plotting tests
 ```
+
+- **453 tests**, `@slow` tests deselected by default
+- **80% line coverage** (`fail_under = 80` in pyproject.toml)
 
 ### Running Tests
 

@@ -116,6 +116,7 @@ _COMMON_SECTION_MAPPINGS = [
         ("early_stopping_patience", "early_stopping_patience"),
         ("use_class_weights", "use_class_weights"),
         ("checkpoint_interval", "checkpoint_interval"),
+        ("max_grad_norm", "max_grad_norm"),
     ]),
 ]
 
@@ -255,11 +256,17 @@ def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
         csv_path, dataset_root = get_dataset_paths(name, data_root)
 
         if csv_path is None or not csv_path.exists():
-            logger.warning(f"Dataset {name}: CSV file not found at {csv_path}. Run 'python run_download.py --verify' to check setup.")
+            logger.warning(
+                f"Dataset {name}: CSV file not found at {csv_path}. "
+                "Run 'python run_download.py --verify' to check setup."
+            )
             continue
 
         if dataset_root is None or not dataset_root.exists():
-            logger.warning(f"Dataset {name}: Image directory not found at {dataset_root}. Run 'python run_download.py --instructions' for setup help.")
+            logger.warning(
+                f"Dataset {name}: Image directory not found at {dataset_root}. "
+                "Run 'python run_download.py --instructions' for setup help."
+            )
             continue
 
         try:
@@ -345,6 +352,7 @@ def run_centralized(args: argparse.Namespace) -> dict[str, Any]:
     _CENTRALIZED_SECTIONS = [
         ("model", [
             ("num_classes", "num_classes"),
+            ("pretrained", "pretrained"),
         ]),
         ("training", [
             ("batch_size", "batch_size"),
@@ -431,7 +439,16 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
 
     # Federated-specific config section mappings
     _FEDERATED_SECTIONS = [
+        ("model", [
+            ("num_classes", "num_classes"),
+            ("pretrained", "pretrained"),
+        ]),
         ("training", [
+            ("batch_size", "batch_size"),
+            ("lr", "learning_rate"),
+            ("weight_decay", "weight_decay"),
+            ("optimizer", "optimizer_type"),
+            ("gradient_accumulation_steps", "gradient_accumulation_steps"),
             ("local_epochs", "local_epochs"),
             ("num_rounds", "num_rounds"),
             ("rounds", "num_rounds"),
@@ -596,7 +613,9 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Any]:
     logger.info("=" * 60)
     logger.info(f"Centralized Best Accuracy: {cent_acc:.4f}")
     logger.info(f"Federated Best Accuracy:   {fed_acc:.4f}")
-    logger.info(f"Accuracy Gap:              {comparison_summary['accuracy_gap']:.4f} ({comparison_summary['accuracy_gap_pct']:.2f}%)")
+    gap = comparison_summary['accuracy_gap']
+    gap_pct = comparison_summary['accuracy_gap_pct']
+    logger.info(f"Accuracy Gap:              {gap:.4f} ({gap_pct:.2f}%)")
     logger.info("=" * 60)
 
     return comparison_summary
@@ -701,8 +720,8 @@ Examples:
     model_group.add_argument(
         "--model-variant",
         type=str,
-        choices=["tiny", "small", "base"],
-        help="DSCATNet variant: tiny (~5M params), small (~29.4M), base (~39M)"
+        choices=["tiny", "small", "paper", "base"],
+        help="DSCATNet variant: tiny (~5M), small (~29.4M), paper (~29.4M, 12 heads), base (~39M)"
     )
     model_group.add_argument("--num-classes", type=int, help="Number of output classes (default: 7)")
     model_group.add_argument("--image-size", type=int, help="Input image size (default: 224)")
@@ -718,7 +737,10 @@ Examples:
         choices=["none", "light", "medium", "heavy"],
         help="Data augmentation level"
     )
-    train_group.add_argument("--early-stopping", type=int, help="Early stopping patience (epochs/rounds without improvement)")
+    train_group.add_argument(
+        "--early-stopping", type=int,
+        help="Early stopping patience (epochs/rounds without improvement)"
+    )
     train_group.add_argument("--checkpoint-interval", type=int, help="Save checkpoint every N epochs/rounds")
     train_group.add_argument("--num-workers", type=int, help="Number of data loader workers")
 

@@ -92,7 +92,7 @@ Used by `run_experiment.py` for running centralized vs federated comparisons.
 | `num_classes` | int | 7 | 2-10 | Number of output classes |
 | `filter_unknown` | bool | true | - | Filter UNK labels |
 | `use_weighted_sampling` | bool | false | - | Use WeightedRandomSampler |
-| `use_class_weights` | bool | true | - | Use class weights in loss |
+| `use_class_weights` | bool | false | - | Use class weights in loss (paper uses unweighted CE) |
 
 **Note:** `val_split + test_split` must be less than 1.0.
 
@@ -108,7 +108,8 @@ Used by `run_experiment.py` for running centralized vs federated comparisons.
 | `weight_decay` | float | 0.0 | 0-1.0 | L2 regularization |
 | `scheduler` | string | "none" | none, cosine, plateau | LR scheduler |
 | `use_amp` | bool | false | - | Enable automatic mixed precision |
-| `early_stopping_patience` | int | 15 | 1-100 | Early stopping patience |
+| `early_stopping_patience` | int | 15 | 1-1000 | Early stopping patience (set to max epochs to disable) |
+| `max_grad_norm` | float/null | null | >0 or null | Max gradient norm for clipping. `null` disables clipping. |
 | `pooled_data` | bool | true | - | Combine all datasets |
 
 ### federated_experiments
@@ -192,7 +193,8 @@ Each client in `clients` list:
 | Option | Type | Default | Range | Description |
 |--------|------|---------|-------|-------------|
 | `num_rounds` | int | 100 | 1-1000 | FL training rounds |
-| `early_stopping_patience` | int | 20 | 1-100 | Early stopping patience |
+| `early_stopping_patience` | int | 20 | 1-1000 | Early stopping patience (set to max rounds to disable) |
+| `max_grad_norm` | float/null | null | >0 or null | Max gradient norm for clipping. `null` disables clipping. |
 
 #### Client Participation
 
@@ -284,6 +286,8 @@ Used for DSCATNet architecture configuration.
 | Option | Type | Default | Range | Description |
 |--------|------|---------|-------|-------------|
 | `name` | string | "DSCATNet" | - | Model name |
+| `variant` | string | "small" | tiny, small, paper, base | Pre-defined model variant |
+| `pretrained` | bool | false | - | Load pretrained ViT-Small weights (`small` and `paper` variants only) |
 | `img_size` | int | 224 | 32-512 | Input image size |
 | `in_channels` | int | 3 | 1-4 | Input channels |
 | `num_classes` | int | 7 | 2-10 | Output classes |
@@ -337,7 +341,13 @@ Pre-defined model variants:
 |---------|-----------|-------|-----------|-----------|---------|
 | `tiny` | 192 | 4 | 3 | 3.0 | ~5M |
 | `small` | 384 | 6 | 6 | 4.0 | ~29.4M |
+| `paper` | 384 | 6 | 12 | 4.0 | ~29.4M |
 | `base` | 384 | 8 | 6 | 4.0 | ~39M |
+
+**Notes:**
+- `paper` uses H=12 attention heads from the original DSCATNet paper (Yadav et al., PLOS ONE 2024).
+- `small` and `paper` support pretrained ViT-Small weights from `timm` (embed_dim=384).
+- `tiny` and `base` use random initialization only.
 
 ---
 

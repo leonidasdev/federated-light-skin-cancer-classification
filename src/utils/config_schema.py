@@ -168,7 +168,8 @@ class CentralizedConfig(BaseModel):
     batch_size: int = Field(default=8, ge=1, le=256)
     learning_rate: float = Field(default=0.001, gt=0, le=1.0)
     weight_decay: float = Field(default=0.0001, ge=0, le=1.0)
-    early_stopping_patience: int = Field(default=15, ge=1, le=100)
+    early_stopping_patience: int = Field(default=15, ge=1, le=1000)
+    max_grad_norm: float | None = None
     pooled_data: bool = True
 
 
@@ -279,7 +280,7 @@ class FederatedSettings(BaseModel):
     num_clients: int = Field(default=4, ge=1, le=100)
     clients: list[ClientConfig] | None = None
     num_rounds: int = Field(default=100, ge=1, le=1000)
-    early_stopping_patience: int = Field(default=20, ge=1, le=100)
+    early_stopping_patience: int = Field(default=20, ge=1, le=1000)
     fraction_fit: float = Field(default=1.0, gt=0, le=1.0)
     fraction_evaluate: float = Field(default=1.0, gt=0, le=1.0)
     min_fit_clients: int = Field(default=4, ge=1)

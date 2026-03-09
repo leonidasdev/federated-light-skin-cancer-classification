@@ -53,6 +53,7 @@ from .preprocessing import (
 
 from .splits import (
     deterministic_train_val_split,
+    deterministic_train_val_test_split,
     create_iid_split,
     create_noniid_split,
     create_label_skew_split,
@@ -107,6 +108,7 @@ __all__ = [
     "DERMOSCOPY_STD",
     # Splits
     "deterministic_train_val_split",
+    "deterministic_train_val_test_split",
     "create_iid_split",
     "create_noniid_split",
     "create_label_skew_split",
