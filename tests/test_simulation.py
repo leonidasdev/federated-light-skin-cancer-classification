@@ -733,7 +733,7 @@ class TestDirichletSubset:
         subset = DirichletSubset(combined, [0, 2, 4])
 
         assert len(subset) == 3
-        img, label = subset[0]
+        img, _label = subset[0]
         assert img.shape == (3, 32, 32)
 
     def test_different_indices(self):
@@ -887,9 +887,8 @@ class TestRunSimulation:
         simulator = FLSimulator(config)
 
         # setup_clients does nothing, leaving client_data empty
-        with mock_patch.object(simulator, 'setup_clients'):
-            with pytest.raises(RuntimeError, match="No clients available"):
-                simulator.run()
+        with mock_patch.object(simulator, 'setup_clients'), pytest.raises(RuntimeError, match="No clients available"):
+            simulator.run()
 
     def test_run_fl_simulation_convenience(self, tmp_path):
         """Test run_fl_simulation convenience function with mocked run."""

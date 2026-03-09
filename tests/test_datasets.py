@@ -626,7 +626,7 @@ class TestDatasetSubset:
             csv_path=str(ds_path / "HAM10000_metadata.csv"),
         )
         subset = DatasetSubset(ds, [1, 3])
-        img, label = subset[0]
+        img, _label = subset[0]
         assert isinstance(img, torch.Tensor)
         assert img.ndim == 3
 

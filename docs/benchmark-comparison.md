@@ -59,7 +59,7 @@ This is a well-known limitation of FedAvg and is inherent to the protocol. Solut
 | Aspect | Centralized | Federated |
 |--------|-------------|-----------|
 | **Updates** | Direct gradient updates on a single model | Local training → FedAvg weighted averaging of parameters |
-| **Communication** | N/A | ~112 MB per round per client (small variant, fp32) |
+| **Communication** | N/A | ~112 MB per round per client (paper variant, fp32) |
 | **Staleness** | None — always the latest model | Each client trains on a slightly stale model snapshot |
 
 ### 4. Training Granularity

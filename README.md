@@ -38,7 +38,7 @@ This project evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCA
 
 ### Key Features
 
-- **DSCATNet Implementation**: Lightweight ViT with dual-scale cross-attention (~29.4M parameters, small variant)
+- **DSCATNet Implementation**: Lightweight ViT with dual-scale cross-attention (~29.4M parameters, paper variant)
 - **Federated Learning**: Flower-based FL simulation with FedAvg aggregation
 - **Multiple Non-IID Modes**: Natural (dataset-based), Dirichlet, label skew, quantity skew
 - **5 Dermoscopy Datasets**: HAM10000, ISIC 2018/2019/2020, PAD-UFES-20
@@ -177,7 +177,7 @@ Input Image (224×224×3)
          ▼
 ┌─────────────────────────────────┐
 │  Cross-Scale Attention Blocks   │
-│  (6 blocks, 6 heads, dim=384)   │
+│  (6 blocks, 12 heads, dim=384)  │
 │  Fine ←→ Coarse attention       │
 └─────────────────────────────────┘
          │
@@ -199,7 +199,8 @@ Input Image (224×224×3)
 | Variant | Embed Dim | Depth | Heads | Parameters | Use Case |
 |---------|-----------|-------|-------|------------|----------|
 | `tiny`  | 192       | 4     | 3     | ~5M        | Resource-constrained FL clients |
-| `small` | 384       | 6     | 6     | ~29.4M     | **Default** - balanced performance |
+| `small` | 384       | 6     | 6     | ~29.4M     | Balanced performance |
+| `paper` | 384       | 6     | 12    | ~29.4M     | **Default** - paper-faithful (Yadav et al.) |
 | `base`  | 384       | 8     | 6     | ~39M       | Maximum accuracy |
 
 ---
@@ -379,7 +380,7 @@ federated:
 
   # Model
   model:
-    variant: small        # tiny, small, base
+    variant: paper        # tiny, small, paper, base
     image_size: 224
     num_classes: 7
 
@@ -463,7 +464,7 @@ python run_experiment.py --mode federated \
     --config configs/dscatnet_federated_ham10000.yaml \
     --rounds 50 \
     --batch-size 16 \
-    --model-variant small
+    --model-variant paper
 ```
 
 #### Centralized Training (Baseline)
@@ -595,7 +596,7 @@ import torch
 from src.models.dscatnet import create_dscatnet
 
 # Create model
-model = create_dscatnet(variant="small", num_classes=7)
+model = create_dscatnet(variant="paper", num_classes=7)
 
 # Load checkpoint
 checkpoint = torch.load("outputs/experiment/checkpoints/best_model.pt")
@@ -641,7 +642,7 @@ import torch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Load model
-model = create_dscatnet(variant="small", num_classes=7)
+model = create_dscatnet(variant="paper", num_classes=7)
 checkpoint = torch.load("outputs/experiment/checkpoints/best_model.pt")
 model.load_state_dict(checkpoint["model_state_dict"])
 model.to(device)
@@ -730,7 +731,7 @@ python run_experiment.py --mode <MODE> [OPTIONS]
 
 | Argument | Type | Description |
 |----------|------|-------------|
-| `--model-variant` | string | DSCATNet variant: `tiny` (~5M), `small` (~29.4M), `base` (~39M) |
+| `--model-variant` | string | DSCATNet variant: `tiny` (~5M), `small` (~29.4M), `paper` (~29.4M, default), `base` (~39M) |
 | `--num-classes` | int | Number of output classes (default: 7) |
 | `--image-size` | int | Input image size (default: 224) |
 

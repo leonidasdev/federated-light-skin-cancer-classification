@@ -35,7 +35,7 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 │                      │   └─ strategy.py     │       - train_epoch()         │
 │   DSCATNet Model     │   FLSimulator        │       - evaluate()            │
 │   ~29.4M params      │   FedAvg aggregation │       - save/load_checkpoint()│
-│   (small variant)    │                      │                               │
+│   (paper variant)    │                      │                               │
 └──────────────────────┴──────────────────────┴───────────────────────────────┘
                                     │
                                     ▼
@@ -148,12 +148,12 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 | Variant | embed_dim | depth | heads | ~Parameters |
 |---------|-----------|-------|-------|-------------|
 | `tiny` | 192 | 4 | 3 | ~5M |
-| `small` | 384 | 6 | 6 | ~29.4M (default) |
-| `paper` | 384 | 6 | 12 | ~29.4M (paper-faithful) |
+| `small` | 384 | 6 | 6 | ~29.4M |
+| `paper` | 384 | 6 | 12 | ~29.4M (default) |
 | `base` | 384 | 8 | 6 | ~39M |
 
 **Pretrained Weight Loading** (`pretrained: true`):
-When `pretrained=True` and `variant='small'`, calls `load_pretrained_vit_weights()` to transfer compatible ViT-Small (ImageNet) weights from `timm` into self-attention, FFN, and coarse-scale embedding layers. Cross-attention and classifier layers remain randomly initialized.
+When `pretrained=True` and `variant='small'` or `variant='paper'`, calls `load_pretrained_vit_weights()` to transfer compatible ViT-Small (ImageNet) weights from `timm` into self-attention, FFN, and coarse-scale embedding layers. Cross-attention and classifier layers remain randomly initialized.
 
 ---
 
@@ -262,7 +262,7 @@ else:
 
 ### Memory Management
 
-- `batch_size=8` default (fits 4GB VRAM with small variant)
+- `batch_size=8` default (fits 4GB VRAM with paper variant)
 - Gradient accumulation (`gradient_accumulation_steps=4`) for effective BS=32
 - `num_workers=4` for data loading (Windows: may need `num_workers=0`)
 - AMP disabled by default for training stability
@@ -270,5 +270,5 @@ else:
 ### Bottlenecks
 
 1. **Data Loading**: Large datasets → use SSD
-2. **FL Communication**: ~112MB model params per round (small variant, fp32)
+2. **FL Communication**: ~112MB model params per round (paper variant, fp32)
 3. **Evaluation**: Full dataset inference → batch processing

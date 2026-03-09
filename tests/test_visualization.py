@@ -22,7 +22,7 @@ from src.evaluation.visualization import (
 # Use non-interactive backend for all tests
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
+import matplotlib.pyplot as plt
 
 
 # =============================================================================

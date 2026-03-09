@@ -148,20 +148,20 @@ The DSCATNet architecture consists of four main components:
 
 4. **Classification Head**: $\text{LayerNorm} \rightarrow \text{Dropout} \rightarrow \text{Linear}(D \rightarrow C)$ where $C$ is the number of classes.
 
-**Small Variant Configuration** (used in this work):
+**Paper Variant Configuration** (used in this work):
 
 | Parameter | Value |
 |-----------|-------|
 | Embedding dimension ($D$) | 384 |
 | Depth ($L$) | 6 blocks |
-| Attention heads | 6 |
+| Attention heads | 12 |
 | MLP ratio ($r$) | 4.0 |
 | Fine patch size | 8 × 8 |
 | Coarse patch size | 16 × 16 |
 | Dropout rate | 0.1 |
 | Total parameters | ~29.4M |
 
-**Note on Parameter Count**: The original paper reports approximately 22M parameters for the small variant. Our implementation yields 29.4M parameters. This discrepancy arises from the cross-attention mechanism: our implementation uses 12 separate linear projections per cross-attention layer (6 for fine→coarse, 6 for coarse→fine), while the paper may use a shared or reduced projection scheme. The architectural behavior is equivalent; the additional parameters provide more capacity in the cross-attention layers.
+**Note on Parameter Count**: The original paper reports approximately 22M parameters. Our implementation yields 29.4M parameters. This discrepancy arises from the cross-attention mechanism: our implementation uses 12 separate linear projections per cross-attention layer (6 for fine→coarse, 6 for coarse→fine), while the paper may use a shared or reduced projection scheme. The architectural behavior is equivalent; the additional parameters provide more capacity in the cross-attention layers.
 
 ### 2.3 Federated Learning
 
@@ -232,7 +232,7 @@ Key differentiators of this work:
 
 ### 3.1 Model Architecture
 
-We implement DSCATNet as described in Section 2.2.2, using the **small variant** with the following configuration:
+We implement DSCATNet as described in Section 2.2.2, using the **paper variant** (H=12 attention heads) with the following configuration:
 
 ```
 Input: (B, 3, 224, 224)
@@ -767,7 +767,7 @@ centralized:
   datasets:
     - HAM10000
   model:
-    variant: small
+    variant: paper
     image_size: 224
     num_classes: 7
     pretrained: true
@@ -802,7 +802,7 @@ federated:
   datasets:
     - HAM10000
   model:
-    variant: small
+    variant: paper
     image_size: 224
     num_classes: 7
     pretrained: true

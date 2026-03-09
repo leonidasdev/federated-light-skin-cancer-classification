@@ -34,7 +34,7 @@ federated:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small
+    variant: paper  # Paper-faithful: embed_dim=384, depth=6, H=12 heads
     image_size: 224
     num_classes: 7      # Use 7 for standard mapping; change to 8 to include SCC
     pretrained: true

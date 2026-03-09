@@ -421,7 +421,7 @@ class TestFederatedServer:
         """Server should create checkpoint and log directories."""
         ckpt_dir = tmp_path / "ckpts"
         log_dir = tmp_path / "logs"
-        server = FederatedServer(
+        FederatedServer(
             model=tiny_model,
             num_rounds=5,
             checkpoint_dir=str(ckpt_dir),

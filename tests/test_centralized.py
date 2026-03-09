@@ -327,7 +327,7 @@ class TestCentralizedTrainer:
         optimizer = torch.optim.Adam(trainer.model.parameters(), lr=1e-3)
         criterion = torch.nn.CrossEntropyLoss()
 
-        loss, acc = trainer.train_epoch(optimizer, criterion)
+        loss, _acc = trainer.train_epoch(optimizer, criterion)
         assert isinstance(loss, float)
 
     def test_run_with_synthetic_data(self, tmp_path):

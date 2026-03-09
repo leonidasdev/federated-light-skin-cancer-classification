@@ -42,7 +42,7 @@ class TestDataConfigValidation:
 
     def test_splits_sum_to_one_raises(self):
         """val_split + test_split == 1.0 should raise ValueError."""
-        with pytest.raises(ValidationError, match="must be less than 1.0"):
+        with pytest.raises(ValidationError, match=r"must be less than 1\.0"):
             DataConfig(val_split=0.5, test_split=0.5)
 
     def test_splits_exceed_one_raises(self):
@@ -75,7 +75,7 @@ class TestFederatedSettingsValidation:
 
     def test_min_fit_clients_exceeds_num_clients(self):
         """min_fit_clients > num_clients should raise ValueError."""
-        with pytest.raises(ValidationError, match="min_fit_clients.*cannot exceed"):
+        with pytest.raises(ValidationError, match=r"min_fit_clients.*cannot exceed"):
             FederatedSettings(
                 num_clients=2,
                 min_fit_clients=5,
@@ -84,7 +84,7 @@ class TestFederatedSettingsValidation:
 
     def test_min_evaluate_clients_exceeds_num_clients(self):
         """min_evaluate_clients > num_clients should raise ValueError."""
-        with pytest.raises(ValidationError, match="min_evaluate_clients.*cannot exceed"):
+        with pytest.raises(ValidationError, match=r"min_evaluate_clients.*cannot exceed"):
             FederatedSettings(
                 num_clients=2,
                 min_fit_clients=1,

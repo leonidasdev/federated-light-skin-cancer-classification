@@ -415,7 +415,7 @@ class TestISICArchiveClient:
         out.write_bytes(b"existing")
 
         client = ISICArchiveClient()
-        image_id, success = client._download_worker(("ISIC_0000001", out))
+        _image_id, success = client._download_worker(("ISIC_0000001", out))
         assert success is True
 
     @patch('requests.Session.get')

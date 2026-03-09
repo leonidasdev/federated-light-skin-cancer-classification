@@ -7,7 +7,7 @@
 #
 # Description:
 #   Federated learning on ISIC2018 (~10,015 dermoscopy images, 7 classes)
-#   with Dirichlet-based non-IID data distribution across 4 clients.
+#   with non-IID data distribution (Dirichlet alpha=0.5) across 4 clients.
 #
 # =============================================================================
 
@@ -17,7 +17,7 @@ federated:
   # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_federated_isic2018
-    description: "FL training on ISIC2018 with FedAvg"
+    description: "FL training on ISIC2018 with FedAvg (non-IID)"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
@@ -32,7 +32,7 @@ federated:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small
+    variant: paper  # Paper-faithful: embed_dim=384, depth=6, H=12 heads
     image_size: 224
     num_classes: 7
     pretrained: true
@@ -58,7 +58,7 @@ federated:
     aggregation: FedAvg
     participation: 1.0
     noniid_type: dirichlet
-    dirichlet_alpha: 0.5
+    dirichlet_alpha: 0.5  # Low alpha = heterogeneous class distribution across clients
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration

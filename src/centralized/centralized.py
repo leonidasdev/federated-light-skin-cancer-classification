@@ -66,7 +66,7 @@ class CentralizedConfig:
     """Configuration for centralized training."""
 
     # Model configuration
-    model_variant: str = "small"
+    model_variant: str = "paper"
     num_classes: int = 7
     pretrained: bool = True
 

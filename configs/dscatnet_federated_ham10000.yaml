@@ -7,7 +7,7 @@
 #
 # Description:
 #   Federated learning on HAM10000 (10,015 dermoscopy images, 7 classes)
-#   with Dirichlet-based non-IID data distribution across 4 clients.
+#   with non-IID data distribution (Dirichlet alpha=0.5) across 4 clients.
 #
 # =============================================================================
 
@@ -17,7 +17,7 @@ federated:
   # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_federated_ham10000
-    description: "FL training on HAM10000 with FedAvg"
+    description: "FL training on HAM10000 with FedAvg (non-IID)"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
@@ -33,7 +33,7 @@ federated:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small
+    variant: paper  # Paper-faithful: embed_dim=384, depth=6, H=12 heads
     image_size: 224
     num_classes: 7
     pretrained: true
@@ -59,7 +59,7 @@ federated:
     aggregation: FedAvg
     participation: 1.0
     noniid_type: dirichlet
-    dirichlet_alpha: 0.5  # Lower = more heterogeneous; 0.1=extreme, 1.0=moderate
+    dirichlet_alpha: 0.5  # Low alpha = heterogeneous class distribution across clients
 
   # ---------------------------------------------------------------------------
   # Augmentation Configuration

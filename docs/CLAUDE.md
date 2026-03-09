@@ -68,7 +68,7 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 │                      │   └─ strategy.py     │       - train_epoch()         │
 │   DSCATNet Model     │   FLSimulator        │       - evaluate()            │
 │   ~29.4M params      │   FedAvg aggregation │       - save/load_checkpoint()│
-│   (small variant)    │                      │                               │
+│   (paper variant)    │                      │                               │
 └──────────────────────┴──────────────────────┴───────────────────────────────┘
                                     │
                                     ▼
@@ -164,7 +164,7 @@ federated:
   experiment:
     name: experiment_name
   model:
-    variant: small
+    variant: paper
     image_size: 224
   training:
     batch_size: 8
@@ -233,8 +233,8 @@ federated:
 
 **Variants**:
 - `tiny`: embed_dim=192, depth=4, heads=3 (~5M params)
-- `small`: embed_dim=384, depth=6, heads=6 (~29.4M params) **[DEFAULT]**
-- `paper`: embed_dim=384, depth=6, heads=12 (~29.4M params) — Paper-faithful H=12 heads (Yadav et al.)
+- `small`: embed_dim=384, depth=6, heads=6 (~29.4M params)
+- `paper`: embed_dim=384, depth=6, heads=12 (~29.4M params) **[DEFAULT]** — Paper-faithful H=12 heads (Yadav et al.)
 - `base`: embed_dim=384, depth=8, heads=6 (~39M params)
 
 **Pretrained Weight Loading** (`pretrained: true` in config):
@@ -497,7 +497,7 @@ else:
 
 ### Memory Management
 
-- `batch_size=8` default (fits 4GB VRAM with small variant)
+- `batch_size=8` default (fits 4GB VRAM with paper variant)
 - Gradient accumulation (`gradient_accumulation_steps=4`) for effective BS=32
 - `num_workers=4` for data loading (Windows: may need `num_workers=0`)
 - AMP disabled by default for training stability
@@ -505,7 +505,7 @@ else:
 ### Bottlenecks
 
 1. **Data Loading**: Large datasets → use SSD
-2. **FL Communication**: ~112MB model params per round (small variant, fp32)
+2. **FL Communication**: ~112MB model params per round (paper variant, fp32)
 3. **Evaluation**: Full dataset inference → batch processing
 
 ---
@@ -560,7 +560,7 @@ python run_download.py --verify
 1. **No Multi-GPU**: Single GPU training only
 2. **Limited Aggregation**: Only FedAvg implemented (no FedProx, SCAFFOLD, etc.)
 3. **No Differential Privacy**: No DP-SGD or noise mechanisms
-4. **Pretrained Weights**: Only available for the `small` variant (ViT-Small from `timm`). Other variants use random initialization.
+4. **Pretrained Weights**: Available for `small` and `paper` variants (ViT-Small from `timm`, embed_dim=384). Other variants use random initialization.
 
 ### Client Participation Options
 

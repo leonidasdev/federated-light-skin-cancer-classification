@@ -286,7 +286,7 @@ Used for DSCATNet architecture configuration.
 | Option | Type | Default | Range | Description |
 |--------|------|---------|-------|-------------|
 | `name` | string | "DSCATNet" | - | Model name |
-| `variant` | string | "small" | tiny, small, paper, base | Pre-defined model variant |
+| `variant` | string | "paper" | tiny, small, paper, base | Pre-defined model variant |
 | `pretrained` | bool | false | - | Load pretrained ViT-Small weights (`small` and `paper` variants only) |
 | `img_size` | int | 224 | 32-512 | Input image size |
 | `in_channels` | int | 3 | 1-4 | Input channels |
