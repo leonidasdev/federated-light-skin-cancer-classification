@@ -211,29 +211,29 @@ class TestDualScalePatchEmbedding:
 def _make_fake_vit_state_dict(embed_dim=384, depth=12, mlp_ratio=4.0, num_heads=6):
     """Create a fake ViT-Small state dict with correct shapes for testing."""
     sd = {}
-    sd['cls_token'] = torch.randn(1, 1, embed_dim)
-    sd['pos_embed'] = torch.randn(1, 197, embed_dim)  # 196 patches + 1 CLS
-    sd['patch_embed.proj.weight'] = torch.randn(embed_dim, 3, 16, 16)
-    sd['patch_embed.proj.bias'] = torch.randn(embed_dim)
-    sd['norm.weight'] = torch.ones(embed_dim)
-    sd['norm.bias'] = torch.zeros(embed_dim)
-    sd['head.weight'] = torch.randn(1000, embed_dim)
-    sd['head.bias'] = torch.randn(1000)
+    sd["cls_token"] = torch.randn(1, 1, embed_dim)
+    sd["pos_embed"] = torch.randn(1, 197, embed_dim)  # 196 patches + 1 CLS
+    sd["patch_embed.proj.weight"] = torch.randn(embed_dim, 3, 16, 16)
+    sd["patch_embed.proj.bias"] = torch.randn(embed_dim)
+    sd["norm.weight"] = torch.ones(embed_dim)
+    sd["norm.bias"] = torch.zeros(embed_dim)
+    sd["head.weight"] = torch.randn(1000, embed_dim)
+    sd["head.bias"] = torch.randn(1000)
 
     mlp_hidden = int(embed_dim * mlp_ratio)
     for i in range(depth):
-        sd[f'blocks.{i}.norm1.weight'] = torch.ones(embed_dim)
-        sd[f'blocks.{i}.norm1.bias'] = torch.zeros(embed_dim)
-        sd[f'blocks.{i}.attn.qkv.weight'] = torch.randn(embed_dim * 3, embed_dim)
-        sd[f'blocks.{i}.attn.qkv.bias'] = torch.randn(embed_dim * 3)
-        sd[f'blocks.{i}.attn.proj.weight'] = torch.randn(embed_dim, embed_dim)
-        sd[f'blocks.{i}.attn.proj.bias'] = torch.randn(embed_dim)
-        sd[f'blocks.{i}.norm2.weight'] = torch.ones(embed_dim)
-        sd[f'blocks.{i}.norm2.bias'] = torch.zeros(embed_dim)
-        sd[f'blocks.{i}.mlp.fc1.weight'] = torch.randn(mlp_hidden, embed_dim)
-        sd[f'blocks.{i}.mlp.fc1.bias'] = torch.randn(mlp_hidden)
-        sd[f'blocks.{i}.mlp.fc2.weight'] = torch.randn(embed_dim, mlp_hidden)
-        sd[f'blocks.{i}.mlp.fc2.bias'] = torch.randn(embed_dim)
+        sd[f"blocks.{i}.norm1.weight"] = torch.ones(embed_dim)
+        sd[f"blocks.{i}.norm1.bias"] = torch.zeros(embed_dim)
+        sd[f"blocks.{i}.attn.qkv.weight"] = torch.randn(embed_dim * 3, embed_dim)
+        sd[f"blocks.{i}.attn.qkv.bias"] = torch.randn(embed_dim * 3)
+        sd[f"blocks.{i}.attn.proj.weight"] = torch.randn(embed_dim, embed_dim)
+        sd[f"blocks.{i}.attn.proj.bias"] = torch.randn(embed_dim)
+        sd[f"blocks.{i}.norm2.weight"] = torch.ones(embed_dim)
+        sd[f"blocks.{i}.norm2.bias"] = torch.zeros(embed_dim)
+        sd[f"blocks.{i}.mlp.fc1.weight"] = torch.randn(mlp_hidden, embed_dim)
+        sd[f"blocks.{i}.mlp.fc1.bias"] = torch.randn(mlp_hidden)
+        sd[f"blocks.{i}.mlp.fc2.weight"] = torch.randn(embed_dim, mlp_hidden)
+        sd[f"blocks.{i}.mlp.fc2.bias"] = torch.randn(embed_dim)
 
     return sd
 
@@ -249,12 +249,12 @@ class TestPretrainedViTWeightLoading:
 
     def test_loads_correct_number_of_tensors(self):
         """Should load 150 of 286 parameter tensors for small variant."""
-        model = create_dscatnet(num_classes=7, variant='small')
+        model = create_dscatnet(num_classes=7, variant="small")
         vit_sd = _make_fake_vit_state_dict()
 
-        with patch('src.models.dscatnet.timm') as mock_timm:
+        with patch("src.models.dscatnet.timm") as mock_timm:
             mock_timm.create_model.return_value = self._mock_timm_create(vit_sd)
-            load_pretrained_vit_weights(model, variant='small')
+            load_pretrained_vit_weights(model, variant="small")
 
         # 6 blocks × 12 params/scale × 2 scales + 6 embedding params = 150
         # Verify the model can still do a forward pass
@@ -265,71 +265,65 @@ class TestPretrainedViTWeightLoading:
 
     def test_fine_self_attention_weights_transferred(self):
         """Fine-scale self-attention should receive ViT block 0 weights."""
-        model = create_dscatnet(num_classes=7, variant='small')
+        model = create_dscatnet(num_classes=7, variant="small")
         vit_sd = _make_fake_vit_state_dict()
 
-        with patch('src.models.dscatnet.timm') as mock_timm:
+        with patch("src.models.dscatnet.timm") as mock_timm:
             mock_timm.create_model.return_value = self._mock_timm_create(vit_sd)
-            load_pretrained_vit_weights(model, variant='small')
+            load_pretrained_vit_weights(model, variant="small")
 
         # Block 0 fine self-attn QKV should match ViT block 0
         assert torch.equal(
-            model.state_dict()['blocks.0.fine_self_attn.in_proj_weight'],
-            vit_sd['blocks.0.attn.qkv.weight']
+            model.state_dict()["blocks.0.fine_self_attn.in_proj_weight"], vit_sd["blocks.0.attn.qkv.weight"]
         )
 
     def test_coarse_self_attention_weights_transferred(self):
         """Coarse-scale self-attention should receive ViT block 6+ weights."""
-        model = create_dscatnet(num_classes=7, variant='small')
+        model = create_dscatnet(num_classes=7, variant="small")
         vit_sd = _make_fake_vit_state_dict()
 
-        with patch('src.models.dscatnet.timm') as mock_timm:
+        with patch("src.models.dscatnet.timm") as mock_timm:
             mock_timm.create_model.return_value = self._mock_timm_create(vit_sd)
-            load_pretrained_vit_weights(model, variant='small')
+            load_pretrained_vit_weights(model, variant="small")
 
         # Block 0 coarse self-attn QKV should match ViT block 6
         assert torch.equal(
-            model.state_dict()['blocks.0.coarse_self_attn.in_proj_weight'],
-            vit_sd['blocks.6.attn.qkv.weight']
+            model.state_dict()["blocks.0.coarse_self_attn.in_proj_weight"], vit_sd["blocks.6.attn.qkv.weight"]
         )
 
     def test_coarse_patch_embedding_transferred(self):
         """Coarse-scale patch embedding (16x16) should receive ViT patch_embed."""
-        model = create_dscatnet(num_classes=7, variant='small')
+        model = create_dscatnet(num_classes=7, variant="small")
         vit_sd = _make_fake_vit_state_dict()
 
-        with patch('src.models.dscatnet.timm') as mock_timm:
+        with patch("src.models.dscatnet.timm") as mock_timm:
             mock_timm.create_model.return_value = self._mock_timm_create(vit_sd)
-            load_pretrained_vit_weights(model, variant='small')
+            load_pretrained_vit_weights(model, variant="small")
 
         assert torch.equal(
-            model.state_dict()['patch_embed.coarse_embedding.projection.weight'],
-            vit_sd['patch_embed.proj.weight']
+            model.state_dict()["patch_embed.coarse_embedding.projection.weight"], vit_sd["patch_embed.proj.weight"]
         )
 
     def test_cross_attention_not_transferred(self):
         """Cross-attention layers should remain randomly initialized."""
-        model = create_dscatnet(num_classes=7, variant='small')
+        model = create_dscatnet(num_classes=7, variant="small")
         # Save a copy of the cross-attention weights before loading
-        original_cross_q = model.state_dict()['blocks.0.cross_attn.fine_q.weight'].clone()
+        original_cross_q = model.state_dict()["blocks.0.cross_attn.fine_q.weight"].clone()
 
         vit_sd = _make_fake_vit_state_dict()
-        with patch('src.models.dscatnet.timm') as mock_timm:
+        with patch("src.models.dscatnet.timm") as mock_timm:
             mock_timm.create_model.return_value = self._mock_timm_create(vit_sd)
-            load_pretrained_vit_weights(model, variant='small')
+            load_pretrained_vit_weights(model, variant="small")
 
         # Cross-attention weights should be unchanged (still random init)
-        assert torch.equal(
-            model.state_dict()['blocks.0.cross_attn.fine_q.weight'],
-            original_cross_q
-        )
+        assert torch.equal(model.state_dict()["blocks.0.cross_attn.fine_q.weight"], original_cross_q)
 
     def test_non_small_variant_skips_loading(self):
         """Non-small variants should skip weight loading without error."""
-        model = create_dscatnet(num_classes=7, variant='tiny')
+        model = create_dscatnet(num_classes=7, variant="tiny")
         original_sd = {k: v.clone() for k, v in model.state_dict().items()}
 
-        load_pretrained_vit_weights(model, variant='tiny')
+        load_pretrained_vit_weights(model, variant="tiny")
 
         # All weights should be unchanged
         for k, orig_v in original_sd.items():
@@ -339,30 +333,28 @@ class TestPretrainedViTWeightLoading:
         """create_dscatnet with pretrained=True should call load_pretrained_vit_weights."""
         vit_sd = _make_fake_vit_state_dict()
 
-        with patch('src.models.dscatnet.timm') as mock_timm:
+        with patch("src.models.dscatnet.timm") as mock_timm:
             mock_timm.create_model.return_value = self._mock_timm_create(vit_sd)
-            model = create_dscatnet(num_classes=7, variant='small', pretrained=True)
+            model = create_dscatnet(num_classes=7, variant="small", pretrained=True)
 
-        mock_timm.create_model.assert_called_once_with(
-            'vit_small_patch16_224', pretrained=True
-        )
+        mock_timm.create_model.assert_called_once_with("vit_small_patch16_224", pretrained=True)
         assert isinstance(model, DSCATNet)
 
     def test_pretrained_false_does_not_load(self):
         """create_dscatnet with pretrained=False should not call timm."""
-        with patch('src.models.dscatnet.timm') as mock_timm:
-            model = create_dscatnet(num_classes=7, variant='small', pretrained=False)
+        with patch("src.models.dscatnet.timm") as mock_timm:
+            model = create_dscatnet(num_classes=7, variant="small", pretrained=False)
 
         mock_timm.create_model.assert_not_called()
         assert isinstance(model, DSCATNet)
 
     def test_timm_none_skips_loading(self):
         """When timm is None, load_pretrained_vit_weights should skip."""
-        model = create_dscatnet(num_classes=7, variant='small')
+        model = create_dscatnet(num_classes=7, variant="small")
         original_sd = {k: v.clone() for k, v in model.state_dict().items()}
 
-        with patch('src.models.dscatnet.timm', None):
-            load_pretrained_vit_weights(model, variant='small')
+        with patch("src.models.dscatnet.timm", None):
+            load_pretrained_vit_weights(model, variant="small")
 
         # All weights should be unchanged
         for k, orig_v in original_sd.items():
@@ -370,7 +362,7 @@ class TestPretrainedViTWeightLoading:
 
     def test_create_dscatnet_custom_img_size(self):
         """create_dscatnet with custom img_size should pass it through."""
-        model = create_dscatnet(num_classes=7, variant='tiny', img_size=32)
+        model = create_dscatnet(num_classes=7, variant="tiny", img_size=32)
         assert model.img_size == 32
         x = torch.randn(1, 3, 32, 32)
         out = model(x)

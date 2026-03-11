@@ -129,8 +129,11 @@ class TestCentralizedIntegration:
         optimizer = torch.optim.Adam(trainer.model.parameters(), lr=1e-3)
 
         path = trainer.save_checkpoint(
-            epoch=3, optimizer=optimizer, scheduler=None,
-            metrics={"val_accuracy": 0.75}, is_best=True,
+            epoch=3,
+            optimizer=optimizer,
+            scheduler=None,
+            metrics={"val_accuracy": 0.75},
+            is_best=True,
         )
 
         # Load into a fresh trainer

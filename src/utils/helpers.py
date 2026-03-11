@@ -56,6 +56,7 @@ def set_seed(seed: int = 42) -> None:
         torch.backends.cudnn.benchmark = False
     logger.debug("Random seed set to %d", seed)
 
+
 # =============================================================================
 # Device Utilities
 # =============================================================================
@@ -116,7 +117,9 @@ def create_grad_scaler() -> Any:
             return scaler_cls()
 
     from torch.cuda.amp import GradScaler as _GradScaler  # type: ignore[attr-defined]
+
     return _GradScaler()
+
 
 # =============================================================================
 # Model Utilities
@@ -162,6 +165,7 @@ def compute_class_weights(
         elif 0 <= cls < num_classes and count == 0:
             logger.warning("Class %d has 0 samples; weight set to 0.0", cls)
     return weights
+
 
 # =============================================================================
 # Formatting Utilities
@@ -231,19 +235,19 @@ def collect_environment_info() -> dict[str, Any]:
     if torch.cuda.is_available():
         info["cuda_version"] = torch.version.cuda
         info["gpu_name"] = torch.cuda.get_device_name(0)
-        info["gpu_memory_mb"] = round(
-            torch.cuda.get_device_properties(0).total_memory / (1024 * 1024)
-        )
+        info["gpu_memory_mb"] = round(torch.cuda.get_device_properties(0).total_memory / (1024 * 1024))
         info["cudnn_version"] = str(torch.backends.cudnn.version())
 
     try:
         import timm as _timm
+
         info["timm_version"] = _timm.__version__
     except (ImportError, AttributeError):
         pass
 
     try:
         import flwr
+
         info["flower_version"] = flwr.__version__
     except (ImportError, AttributeError):
         pass

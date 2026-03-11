@@ -72,12 +72,7 @@ class DirichletSubset(torch.utils.data.Dataset):
     indexing for samples assigned to a specific client.
     """
 
-    def __init__(
-        self,
-        combined_images: list[tuple[Any, int]],
-        indices: list[int],
-        transform: Any | None = None
-    ):
+    def __init__(self, combined_images: list[tuple[Any, int]], indices: list[int], transform: Any | None = None):
         """
         Initialize DirichletSubset.
 
@@ -102,12 +97,12 @@ class DirichletSubset(torch.utils.data.Dataset):
         image, label = dataset[original_idx]
 
         # Apply transform if different from dataset's transform
-        if self.transform is not None and hasattr(dataset, 'transform'):
+        if self.transform is not None and hasattr(dataset, "transform"):
             # Re-load the raw image and apply our transform
             # This handles the case where we need val transforms
-            if hasattr(dataset, 'img_paths'):
+            if hasattr(dataset, "img_paths"):
                 img_path = dataset.img_paths[original_idx]
-                image = Image.open(img_path).convert('RGB')
+                image = Image.open(img_path).convert("RGB")
                 image = self.transform(image)
 
         return image, label
@@ -302,9 +297,7 @@ class FLSimulator:
             use_dermoscopy_norm=self.config.use_dermoscopy_norm,
         )
 
-    def _resolve_datasets(
-        self, transform: Any
-    ) -> list[tuple[str, Any]]:
+    def _resolve_datasets(self, transform: Any) -> list[tuple[str, Any]]:
         """Resolve and load datasets from the registry.
 
         Returns a list of (dataset_name, full_dataset) tuples for every
@@ -315,9 +308,7 @@ class FLSimulator:
             valid_names = get_available_datasets()
             invalid = [n for n in dataset_names if n not in valid_names]
             if invalid:
-                raise ValueError(
-                    f"Unknown datasets: {invalid}. Valid options: {valid_names}"
-                )
+                raise ValueError(f"Unknown datasets: {invalid}. Valid options: {valid_names}")
         else:
             dataset_names = get_available_datasets()
 
@@ -415,8 +406,7 @@ class FLSimulator:
             )
 
             logger.info(
-                f"Client {client_id} ({dataset_name}): "
-                f"{len(train_dataset)} train, {len(val_dataset)} val samples"
+                f"Client {client_id} ({dataset_name}): {len(train_dataset)} train, {len(val_dataset)} val samples"
             )
 
     def setup_clients(self) -> None:
@@ -448,10 +438,9 @@ class FLSimulator:
             for cls, count in client.class_distribution.items():
                 global_counts[int(cls)] += count
 
-        self.class_weights = compute_class_weights(
-            dict(global_counts), self.config.num_classes
-        ).to(self.device)
+        self.class_weights = compute_class_weights(dict(global_counts), self.config.num_classes).to(self.device)
         logger.info(f"Class weights: {dict(enumerate(self.class_weights.tolist()))}")
+
     def setup_dirichlet_noniid(self) -> None:
         """
         Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.
@@ -740,10 +729,7 @@ class FLSimulator:
             return all_client_ids
 
         # Calculate number of clients to select
-        n_selected = max(
-            self.config.min_fit_clients,
-            int(n_clients * self.config.client_selection_fraction)
-        )
+        n_selected = max(self.config.min_fit_clients, int(n_clients * self.config.client_selection_fraction))
         n_selected = min(n_selected, n_clients)
 
         # Use round number as seed for reproducibility
@@ -808,10 +794,7 @@ class FLSimulator:
             # PyTorch operations release the GIL. For true multiprocessing, we'd need
             # to serialize models which adds overhead.
             with ThreadPoolExecutor(max_workers=n_workers) as executor:
-                futures = {
-                    executor.submit(self.train_client, cid, global_params): cid
-                    for cid in selected_clients
-                }
+                futures = {executor.submit(self.train_client, cid, global_params): cid for cid in selected_clients}
                 for future in as_completed(futures):
                     client_id = futures[future]
                     try:
@@ -819,8 +802,7 @@ class FLSimulator:
                         fit_results.append((params, num_samples))
                         client_train_metrics.append(metrics)
                         logger.debug(
-                            f"Client {client_id}: loss={metrics['train_loss']:.4f}, "
-                            f"acc={metrics['train_accuracy']:.4f}"
+                            f"Client {client_id}: loss={metrics['train_loss']:.4f}, acc={metrics['train_accuracy']:.4f}"
                         )
                     except Exception as e:
                         logger.error(f"Client {client_id} training failed: {e}")
@@ -834,8 +816,7 @@ class FLSimulator:
                 fit_results.append((params, num_samples))
                 client_train_metrics.append(metrics)
                 logger.debug(
-                    f"Client {client_id}: loss={metrics['train_loss']:.4f}, "
-                    f"acc={metrics['train_accuracy']:.4f}"
+                    f"Client {client_id}: loss={metrics['train_loss']:.4f}, acc={metrics['train_accuracy']:.4f}"
                 )
 
         if not fit_results:
@@ -860,16 +841,16 @@ class FLSimulator:
         total_train_samples = sum(r[1] for r in fit_results)
         total_val_samples = sum(r[1] for r in eval_results)
 
-        avg_train_loss = sum(
-            m["train_loss"] * r[1] for m, r in zip(client_train_metrics, fit_results)
-        ) / total_train_samples
-        avg_train_acc = sum(
-            m["train_accuracy"] * r[1] for m, r in zip(client_train_metrics, fit_results)
-        ) / total_train_samples
+        avg_train_loss = (
+            sum(m["train_loss"] * r[1] for m, r in zip(client_train_metrics, fit_results)) / total_train_samples
+        )
+        avg_train_acc = (
+            sum(m["train_accuracy"] * r[1] for m, r in zip(client_train_metrics, fit_results)) / total_train_samples
+        )
         avg_val_loss = sum(r[0] * r[1] for r in eval_results) / total_val_samples
-        avg_val_acc = sum(
-            m["val_accuracy"] * r[1] for m, r in zip(client_val_metrics, eval_results)
-        ) / total_val_samples
+        avg_val_acc = (
+            sum(m["val_accuracy"] * r[1] for m, r in zip(client_val_metrics, eval_results)) / total_val_samples
+        )
 
         round_time = time.time() - start_time
 
@@ -955,6 +936,7 @@ class FLSimulator:
         # Restore training state
         if "history" in checkpoint:
             self.history = checkpoint["history"]
+            self.metrics_tracker.restore_from_history(self.history)
         if "best_val_accuracy" in checkpoint:
             self.best_val_accuracy = checkpoint["best_val_accuracy"]
         elif "metrics" in checkpoint and "val_accuracy" in checkpoint["metrics"]:
@@ -967,7 +949,6 @@ class FLSimulator:
         round_num = checkpoint.get("round", 0)
         logger.info(f"Resumed from round {round_num}, best accuracy: {self.best_val_accuracy:.4f}")
         return round_num
-
 
     def run(self) -> dict[str, Any]:
         """
@@ -1023,17 +1004,16 @@ class FLSimulator:
                 logger.warning(f"Checkpoint not found at {resume_path}, starting from scratch")
 
         # Print client info
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"FL Simulation: {self.config.num_rounds} rounds, {len(self.client_data)} clients")
         if start_round > 1:
             print(f"Resuming from round {start_round}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         for cid, cdata in self.client_data.items():
             print(
-                f"  Client {cid}: {cdata.dataset_name} "
-                f"({cdata.num_train_samples} train, {cdata.num_val_samples} val)"
+                f"  Client {cid}: {cdata.dataset_name} ({cdata.num_train_samples} train, {cdata.num_val_samples} val)"
             )
-        print(f"{'='*60}\n")
+        print(f"{'=' * 60}\n")
 
         # Save initial config
         config_path = self.output_dir / "config.json"
@@ -1100,11 +1080,13 @@ class FLSimulator:
                     self.save_checkpoint(round_num, metrics)
 
                 # Update progress bar AFTER best tracking so 'best' is current
-                pbar.set_postfix({
-                    'loss': f'{metrics["train_loss"]:.4f}',
-                    'val': f'{metrics["val_accuracy"]:.4f}',
-                    'best': f'{self.best_val_accuracy:.4f}'
-                })
+                pbar.set_postfix(
+                    {
+                        "loss": f"{metrics['train_loss']:.4f}",
+                        "val": f"{metrics['val_accuracy']:.4f}",
+                        "best": f"{self.best_val_accuracy:.4f}",
+                    }
+                )
                 pbar.update(1)
 
                 logger.info(
@@ -1141,7 +1123,7 @@ class FLSimulator:
             json.dump(results, f, indent=2)
 
         logger.info(f"Simulation complete. Best accuracy: {self.best_val_accuracy:.4f} at round {self.best_round}")
-        logger.info(f"Total time: {total_time/60:.2f} minutes")
+        logger.info(f"Total time: {total_time / 60:.2f} minutes")
         logger.info(f"Results saved to: {results_path}")
 
         return results

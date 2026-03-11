@@ -154,10 +154,7 @@ class DataConfig(BaseModel):
     def validate_splits(self) -> DataConfig:
         """Ensure total splits don't exceed 1.0."""
         if self.val_split + self.test_split >= 1.0:
-            raise ValueError(
-                f"val_split ({self.val_split}) + test_split ({self.test_split}) "
-                "must be less than 1.0"
-            )
+            raise ValueError(f"val_split ({self.val_split}) + test_split ({self.test_split}) must be less than 1.0")
         return self
 
 
@@ -303,14 +300,10 @@ class FederatedSettings(BaseModel):
     def validate_client_counts(self) -> FederatedSettings:
         """Ensure client counts are consistent."""
         if self.min_fit_clients > self.num_clients:
-            raise ValueError(
-                f"min_fit_clients ({self.min_fit_clients}) cannot exceed "
-                f"num_clients ({self.num_clients})"
-            )
+            raise ValueError(f"min_fit_clients ({self.min_fit_clients}) cannot exceed num_clients ({self.num_clients})")
         if self.min_evaluate_clients > self.num_clients:
             raise ValueError(
-                f"min_evaluate_clients ({self.min_evaluate_clients}) cannot exceed "
-                f"num_clients ({self.num_clients})"
+                f"min_evaluate_clients ({self.min_evaluate_clients}) cannot exceed num_clients ({self.num_clients})"
             )
         return self
 
@@ -342,19 +335,14 @@ class ModelSettings(BaseModel):
         """Ensure patch sizes divide image size evenly."""
         if self.img_size % self.fine_patch_size != 0:
             raise ValueError(
-                f"img_size ({self.img_size}) must be divisible by "
-                f"fine_patch_size ({self.fine_patch_size})"
+                f"img_size ({self.img_size}) must be divisible by fine_patch_size ({self.fine_patch_size})"
             )
         if self.img_size % self.coarse_patch_size != 0:
             raise ValueError(
-                f"img_size ({self.img_size}) must be divisible by "
-                f"coarse_patch_size ({self.coarse_patch_size})"
+                f"img_size ({self.img_size}) must be divisible by coarse_patch_size ({self.coarse_patch_size})"
             )
         if self.embed_dim % self.num_heads != 0:
-            raise ValueError(
-                f"embed_dim ({self.embed_dim}) must be divisible by "
-                f"num_heads ({self.num_heads})"
-            )
+            raise ValueError(f"embed_dim ({self.embed_dim}) must be divisible by num_heads ({self.num_heads})")
         return self
 
 
@@ -425,9 +413,7 @@ def detect_config_type(config: dict[str, Any]) -> ConfigType:
         return ConfigType.FEDERATED
     if "model" in config and "embed_dim" in config.get("model", {}):
         return ConfigType.MODEL
-    raise ValueError(
-        "Cannot auto-detect config type. Please specify ConfigType explicitly."
-    )
+    raise ValueError("Cannot auto-detect config type. Please specify ConfigType explicitly.")
 
 
 def validate_config(

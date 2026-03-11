@@ -45,15 +45,13 @@ def test_transform_output_shape():
     train_tf = get_train_transforms(img_size=224)
     result = train_tf(image=dummy_img)
 
-    assert result['image'].shape == torch.Size([3, 224, 224]), \
-        f"Expected (3, 224, 224), got {result['image'].shape}"
+    assert result["image"].shape == torch.Size([3, 224, 224]), f"Expected (3, 224, 224), got {result['image'].shape}"
 
     # Test validation transform
     val_tf = get_val_transforms(img_size=224)
     result = val_tf(image=dummy_img)
 
-    assert result['image'].shape == torch.Size([3, 224, 224]), \
-        f"Expected (3, 224, 224), got {result['image'].shape}"
+    assert result["image"].shape == torch.Size([3, 224, 224]), f"Expected (3, 224, 224), got {result['image'].shape}"
 
 
 def test_normalization():
@@ -65,7 +63,7 @@ def test_normalization():
     result = val_tf(image=solid_img)
 
     # After normalization, values should be around 0 for middle gray
-    tensor = result['image']
+    tensor = result["image"]
 
     # Check that values are normalized (not in 0-255 range)
     assert tensor.min() < 1.0, "Values should be normalized"
@@ -77,12 +75,11 @@ def test_augmentation_levels():
     dummy_img = np.random.randint(0, 255, (300, 300, 3), dtype=np.uint8)
 
     # Test all augmentation levels including 'none' (matches original DSCATNet paper)
-    for level in ['none', 'light', 'medium', 'heavy']:
+    for level in ["none", "light", "medium", "heavy"]:
         tf = get_train_transforms(img_size=224, augmentation_level=level)
         result = tf(image=dummy_img)
 
-        assert result['image'].shape == torch.Size([3, 224, 224]), \
-            f"Failed for augmentation level: {level}"
+        assert result["image"].shape == torch.Size([3, 224, 224]), f"Failed for augmentation level: {level}"
 
 
 def test_dermoscopy_normalization():
@@ -98,8 +95,9 @@ def test_dermoscopy_normalization():
     result_derm = tf_derm(image=dummy_img)
 
     # Results should be different
-    assert not torch.allclose(result_imagenet['image'], result_derm['image']), \
+    assert not torch.allclose(result_imagenet["image"], result_derm["image"]), (
         "ImageNet and dermoscopy normalization should produce different results"
+    )
 
 
 def test_standardized_transforms():
@@ -107,18 +105,14 @@ def test_standardized_transforms():
     dummy_img = np.random.randint(0, 255, (400, 400, 3), dtype=np.uint8)
 
     # Training mode
-    tf_train = get_standardized_transforms(
-        img_size=224, is_training=True, augmentation_level='medium'
-    )
+    tf_train = get_standardized_transforms(img_size=224, is_training=True, augmentation_level="medium")
     result_train = tf_train(image=dummy_img)
 
     # Validation mode
-    tf_val = get_standardized_transforms(
-        img_size=224, is_training=False
-    )
+    tf_val = get_standardized_transforms(img_size=224, is_training=False)
     result_val = tf_val(image=dummy_img)
 
-    assert result_train['image'].shape == result_val['image'].shape
+    assert result_train["image"].shape == result_val["image"].shape
 
 
 def test_with_real_image():
@@ -142,19 +136,19 @@ def test_with_real_image():
     if sample_image_path is None:
         pytest.skip("No sample image available - download a dataset first")
 
-    img = Image.open(sample_image_path).convert('RGB')
+    img = Image.open(sample_image_path).convert("RGB")
     img_array = np.array(img)
 
     # Apply transforms
-    train_tf = get_train_transforms(img_size=224, augmentation_level='medium')
+    train_tf = get_train_transforms(img_size=224, augmentation_level="medium")
     val_tf = get_val_transforms(img_size=224)
 
     train_result = train_tf(image=img_array)
     val_result = val_tf(image=img_array)
 
     # Verify dtype
-    assert train_result['image'].dtype == torch.float32
-    assert val_result['image'].dtype == torch.float32
+    assert train_result["image"].dtype == torch.float32
+    assert val_result["image"].dtype == torch.float32
 
 
 # =============================================================================

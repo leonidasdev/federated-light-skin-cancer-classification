@@ -39,10 +39,7 @@ class TestSimulationConfig:
         """Test config serialization."""
         from src.federated.simulation import SimulationConfig
 
-        config = SimulationConfig(
-            num_rounds=10,
-            experiment_name="test_exp"
-        )
+        config = SimulationConfig(num_rounds=10, experiment_name="test_exp")
 
         config_dict = config.to_dict()
 
@@ -128,14 +125,8 @@ class TestFLSimulator:
         aggregated = simulator.aggregate_parameters(results)
 
         # With equal samples, should be simple average
-        np.testing.assert_array_almost_equal(
-            aggregated[0],
-            np.array([1.5, 3.0, 4.5])
-        )
-        np.testing.assert_array_almost_equal(
-            aggregated[1],
-            np.array([6.0, 7.5])
-        )
+        np.testing.assert_array_almost_equal(aggregated[0], np.array([1.5, 3.0, 4.5]))
+        np.testing.assert_array_almost_equal(aggregated[1], np.array([6.0, 7.5]))
 
     def test_aggregate_parameters_weighted(self, tmp_path):
         """Test weighted FedAvg aggregation."""
@@ -161,10 +152,7 @@ class TestFLSimulator:
         aggregated = simulator.aggregate_parameters(results)
 
         # Weighted average: 0.75 * [1,1] + 0.25 * [4,4] = [1.75, 1.75]
-        np.testing.assert_array_almost_equal(
-            aggregated[0],
-            np.array([1.75, 1.75])
-        )
+        np.testing.assert_array_almost_equal(aggregated[0], np.array([1.75, 1.75]))
 
 
 class TestClientSelection:
@@ -437,15 +425,21 @@ class TestClassWeights:
 
         # Client 0: mostly class 0
         simulator.client_data[0] = ClientData(
-            client_id=0, train_loader=dummy_loader, val_loader=dummy_loader,
-            num_train_samples=100, num_val_samples=20,
+            client_id=0,
+            train_loader=dummy_loader,
+            val_loader=dummy_loader,
+            num_train_samples=100,
+            num_val_samples=20,
             class_distribution={0: 80, 1: 10, 2: 10},
             dataset_name="client_0",
         )
         # Client 1: mostly class 1
         simulator.client_data[1] = ClientData(
-            client_id=1, train_loader=dummy_loader, val_loader=dummy_loader,
-            num_train_samples=100, num_val_samples=20,
+            client_id=1,
+            train_loader=dummy_loader,
+            val_loader=dummy_loader,
+            num_train_samples=100,
+            num_val_samples=20,
             class_distribution={0: 10, 1: 80, 2: 10},
             dataset_name="client_1",
         )
@@ -551,6 +545,7 @@ class TestTrainAndEvaluateClient:
 
     def test_train_client(self, simulator_with_client):
         from src.models.dscatnet import get_model_parameters
+
         params = get_model_parameters(simulator_with_client.global_model)
         updated, n_samples, metrics = simulator_with_client.train_client(0, params)
         assert isinstance(updated, list)
@@ -560,12 +555,14 @@ class TestTrainAndEvaluateClient:
 
     def test_train_client_invalid_id(self, simulator_with_client):
         from src.models.dscatnet import get_model_parameters
+
         params = get_model_parameters(simulator_with_client.global_model)
         with pytest.raises(ValueError, match="Client 99 not found"):
             simulator_with_client.train_client(99, params)
 
     def test_evaluate_client(self, simulator_with_client):
         from src.models.dscatnet import get_model_parameters
+
         params = get_model_parameters(simulator_with_client.global_model)
         loss, n_samples, metrics = simulator_with_client.evaluate_client(0, params)
         assert isinstance(loss, float)
@@ -574,6 +571,7 @@ class TestTrainAndEvaluateClient:
 
     def test_evaluate_client_invalid_id(self, simulator_with_client):
         from src.models.dscatnet import get_model_parameters
+
         params = get_model_parameters(simulator_with_client.global_model)
         with pytest.raises(ValueError, match="Client 99 not found"):
             simulator_with_client.evaluate_client(99, params)
@@ -598,9 +596,13 @@ class TestTrainAndEvaluateClient:
         labels = torch.randint(0, 7, (8,))
         loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         simulator.client_data[0] = ClientData(
-            client_id=0, train_loader=loader, val_loader=loader,
-            num_train_samples=8, num_val_samples=8,
-            class_distribution={0: 4, 1: 4}, dataset_name="test",
+            client_id=0,
+            train_loader=loader,
+            val_loader=loader,
+            num_train_samples=8,
+            num_val_samples=8,
+            class_distribution={0: 4, 1: 4},
+            dataset_name="test",
         )
 
         params = get_model_parameters(simulator.global_model)
@@ -627,9 +629,13 @@ class TestTrainAndEvaluateClient:
         labels = torch.randint(0, 7, (8,))
         loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         simulator.client_data[0] = ClientData(
-            client_id=0, train_loader=loader, val_loader=loader,
-            num_train_samples=8, num_val_samples=8,
-            class_distribution={0: 4, 1: 4}, dataset_name="test",
+            client_id=0,
+            train_loader=loader,
+            val_loader=loader,
+            num_train_samples=8,
+            num_val_samples=8,
+            class_distribution={0: 4, 1: 4},
+            dataset_name="test",
         )
 
         params = get_model_parameters(simulator.global_model)
@@ -643,6 +649,7 @@ class TestSimulatorCheckpoints:
     @pytest.fixture
     def simulator(self, tmp_path):
         from src.federated.simulation import SimulationConfig, FLSimulator
+
         config = SimulationConfig(
             output_dir=str(tmp_path),
             experiment_name="ckpt_test",
@@ -664,12 +671,15 @@ class TestSimulatorCheckpoints:
 
         # Load into fresh simulator
         from src.federated.simulation import SimulationConfig, FLSimulator
-        sim2 = FLSimulator(SimulationConfig(
-            output_dir=str(simulator.output_dir.parent),
-            experiment_name="ckpt_test2",
-            pretrained=False,
-            model_variant="tiny",
-        ))
+
+        sim2 = FLSimulator(
+            SimulationConfig(
+                output_dir=str(simulator.output_dir.parent),
+                experiment_name="ckpt_test2",
+                pretrained=False,
+                model_variant="tiny",
+            )
+        )
         ckpt_path = str(simulator.checkpoint_dir / "checkpoint_round_1.pt")
         resumed = sim2.load_checkpoint(ckpt_path)
         assert resumed == 1
@@ -705,9 +715,13 @@ class TestRunRound:
         loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
 
         simulator.client_data[0] = ClientData(
-            client_id=0, train_loader=loader, val_loader=loader,
-            num_train_samples=8, num_val_samples=8,
-            class_distribution={0: 4, 1: 4}, dataset_name="test_ds",
+            client_id=0,
+            train_loader=loader,
+            val_loader=loader,
+            num_train_samples=8,
+            num_val_samples=8,
+            class_distribution={0: 4, 1: 4},
+            dataset_name="test_ds",
         )
 
         metrics = simulator.run_round(round_num=1)
@@ -785,7 +799,7 @@ class TestSetupClients:
         )
         simulator = FLSimulator(config)
 
-        with mock_patch.object(simulator, 'setup_natural_noniid') as mock_natural:
+        with mock_patch.object(simulator, "setup_natural_noniid") as mock_natural:
             simulator.setup_clients()
             mock_natural.assert_called_once()
 
@@ -819,13 +833,17 @@ class TestRunSimulation:
         loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
 
         simulator.client_data[0] = ClientData(
-            client_id=0, train_loader=loader, val_loader=loader,
-            num_train_samples=8, num_val_samples=8,
-            class_distribution={0: 4, 1: 4}, dataset_name="test_ds",
+            client_id=0,
+            train_loader=loader,
+            val_loader=loader,
+            num_train_samples=8,
+            num_val_samples=8,
+            class_distribution={0: 4, 1: 4},
+            dataset_name="test_ds",
         )
 
         # Patch setup_clients to not load real data (we already set client_data)
-        with mock_patch.object(simulator, 'setup_clients'):
+        with mock_patch.object(simulator, "setup_clients"):
             results = simulator.run()
 
         assert "history" in results
@@ -862,12 +880,16 @@ class TestRunSimulation:
         loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
 
         simulator.client_data[0] = ClientData(
-            client_id=0, train_loader=loader, val_loader=loader,
-            num_train_samples=8, num_val_samples=8,
-            class_distribution={0: 4, 1: 4}, dataset_name="test_ds",
+            client_id=0,
+            train_loader=loader,
+            val_loader=loader,
+            num_train_samples=8,
+            num_val_samples=8,
+            class_distribution={0: 4, 1: 4},
+            dataset_name="test_ds",
         )
 
-        with mock_patch.object(simulator, 'setup_clients'):
+        with mock_patch.object(simulator, "setup_clients"):
             results = simulator.run()
 
         # Should stop early (well before 100 rounds)
@@ -887,7 +909,7 @@ class TestRunSimulation:
         simulator = FLSimulator(config)
 
         # setup_clients does nothing, leaving client_data empty
-        with mock_patch.object(simulator, 'setup_clients'), pytest.raises(RuntimeError, match="No clients available"):
+        with mock_patch.object(simulator, "setup_clients"), pytest.raises(RuntimeError, match="No clients available"):
             simulator.run()
 
     def test_run_fl_simulation_convenience(self, tmp_path):
@@ -946,6 +968,7 @@ class TestFLSimulatorIntegration:
     def check_datasets(self):
         """Skip if no datasets available."""
         from pathlib import Path
+
         data_root = Path(__file__).parent.parent / "data"
         ham_csv = data_root / "HAM10000" / "HAM10000_metadata.csv"
         if not ham_csv.exists():

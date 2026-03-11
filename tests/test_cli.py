@@ -29,9 +29,7 @@ import pytest
 @pytest.fixture
 def mock_run_experiment_parser():
     """Create a mock parser matching run_experiment.py structure."""
-    parser = argparse.ArgumentParser(
-        description="Run DSCATNet Federated Learning Experiments"
-    )
+    parser = argparse.ArgumentParser(description="Run DSCATNet Federated Learning Experiments")
 
     parser.add_argument(
         "--mode",
@@ -108,31 +106,23 @@ class TestDatasetArguments:
 
     def test_single_dataset(self, mock_run_experiment_parser):
         """Test single dataset specification."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "centralized", "--datasets", "HAM10000"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "centralized", "--datasets", "HAM10000"])
         assert args.datasets == ["HAM10000"]
 
     def test_multiple_datasets(self, mock_run_experiment_parser):
         """Test multiple datasets specification."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "federated", "--datasets", "HAM10000", "ISIC2019"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "federated", "--datasets", "HAM10000", "ISIC2019"])
         assert args.datasets == ["HAM10000", "ISIC2019"]
 
     def test_invalid_dataset_raises(self, mock_run_experiment_parser):
         """Test that invalid dataset name raises error."""
         with pytest.raises(SystemExit):
-            mock_run_experiment_parser.parse_args(
-                ["--mode", "centralized", "--datasets", "InvalidDataset"]
-            )
+            mock_run_experiment_parser.parse_args(["--mode", "centralized", "--datasets", "InvalidDataset"])
 
     def test_all_datasets(self, mock_run_experiment_parser):
         """Test all valid datasets can be specified."""
         all_datasets = ["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"]
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "federated", "--datasets"] + all_datasets
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "federated", "--datasets"] + all_datasets)
         assert args.datasets == all_datasets
 
 
@@ -146,31 +136,23 @@ class TestModelVariantArguments:
 
     def test_tiny_variant(self, mock_run_experiment_parser):
         """Test tiny model variant."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "centralized", "--model-variant", "tiny"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "centralized", "--model-variant", "tiny"])
         assert args.model_variant == "tiny"
 
     def test_small_variant(self, mock_run_experiment_parser):
         """Test small model variant."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "centralized", "--model-variant", "small"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "centralized", "--model-variant", "small"])
         assert args.model_variant == "small"
 
     def test_base_variant(self, mock_run_experiment_parser):
         """Test base model variant."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "centralized", "--model-variant", "base"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "centralized", "--model-variant", "base"])
         assert args.model_variant == "base"
 
     def test_invalid_variant_raises(self, mock_run_experiment_parser):
         """Test that invalid model variant raises error."""
         with pytest.raises(SystemExit):
-            mock_run_experiment_parser.parse_args(
-                ["--mode", "centralized", "--model-variant", "large"]
-            )
+            mock_run_experiment_parser.parse_args(["--mode", "centralized", "--model-variant", "large"])
 
 
 # =============================================================================
@@ -183,37 +165,27 @@ class TestNumericArguments:
 
     def test_epochs_integer(self, mock_run_experiment_parser):
         """Test epochs accepts integer."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "centralized", "--epochs", "100"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "centralized", "--epochs", "100"])
         assert args.epochs == 100
 
     def test_rounds_integer(self, mock_run_experiment_parser):
         """Test rounds accepts integer."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "federated", "--rounds", "50"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "federated", "--rounds", "50"])
         assert args.rounds == 50
 
     def test_learning_rate_float(self, mock_run_experiment_parser):
         """Test learning rate accepts float."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "centralized", "--lr", "0.001"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "centralized", "--lr", "0.001"])
         assert args.lr == pytest.approx(0.001)
 
     def test_participation_rate(self, mock_run_experiment_parser):
         """Test participation rate accepts float."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "federated", "--participation", "0.75"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "federated", "--participation", "0.75"])
         assert args.participation == pytest.approx(0.75)
 
     def test_dirichlet_alpha(self, mock_run_experiment_parser):
         """Test Dirichlet alpha accepts float."""
-        args = mock_run_experiment_parser.parse_args(
-            ["--mode", "federated", "--dirichlet-alpha", "0.3"]
-        )
+        args = mock_run_experiment_parser.parse_args(["--mode", "federated", "--dirichlet-alpha", "0.3"])
         assert args.dirichlet_alpha == pytest.approx(0.3)
 
 
@@ -244,13 +216,20 @@ class TestArgumentCombinations:
 
     def test_centralized_with_all_common_args(self, mock_run_experiment_parser):
         """Test centralized mode with common arguments."""
-        args = mock_run_experiment_parser.parse_args([
-            "--mode", "centralized",
-            "--epochs", "50",
-            "--lr", "0.0001",
-            "--datasets", "HAM10000",
-            "--model-variant", "small",
-        ])
+        args = mock_run_experiment_parser.parse_args(
+            [
+                "--mode",
+                "centralized",
+                "--epochs",
+                "50",
+                "--lr",
+                "0.0001",
+                "--datasets",
+                "HAM10000",
+                "--model-variant",
+                "small",
+            ]
+        )
         assert args.mode == "centralized"
         assert args.epochs == 50
         assert args.lr == pytest.approx(0.0001)
@@ -259,13 +238,21 @@ class TestArgumentCombinations:
 
     def test_federated_with_all_fl_args(self, mock_run_experiment_parser):
         """Test federated mode with FL-specific arguments."""
-        args = mock_run_experiment_parser.parse_args([
-            "--mode", "federated",
-            "--rounds", "30",
-            "--participation", "0.5",
-            "--dirichlet-alpha", "0.1",
-            "--datasets", "HAM10000", "ISIC2018",
-        ])
+        args = mock_run_experiment_parser.parse_args(
+            [
+                "--mode",
+                "federated",
+                "--rounds",
+                "30",
+                "--participation",
+                "0.5",
+                "--dirichlet-alpha",
+                "0.1",
+                "--datasets",
+                "HAM10000",
+                "ISIC2018",
+            ]
+        )
         assert args.mode == "federated"
         assert args.rounds == 30
         assert args.participation == pytest.approx(0.5)
@@ -273,18 +260,27 @@ class TestArgumentCombinations:
 
     def test_config_with_override(self, mock_run_experiment_parser):
         """Test config file with CLI override."""
-        args = mock_run_experiment_parser.parse_args([
-            "--mode", "federated",
-            "--config", "configs/fl_config.yaml",
-            "--rounds", "20",  # Override config
-        ])
+        args = mock_run_experiment_parser.parse_args(
+            [
+                "--mode",
+                "federated",
+                "--config",
+                "configs/fl_config.yaml",
+                "--rounds",
+                "20",  # Override config
+            ]
+        )
         assert args.config == "configs/fl_config.yaml"
         assert args.rounds == 20
 
     def test_resume_argument(self, mock_run_experiment_parser):
         """Test resume checkpoint argument."""
-        args = mock_run_experiment_parser.parse_args([
-            "--mode", "centralized",
-            "--resume", "outputs/exp/checkpoints/best_model.pt",
-        ])
+        args = mock_run_experiment_parser.parse_args(
+            [
+                "--mode",
+                "centralized",
+                "--resume",
+                "outputs/exp/checkpoints/best_model.pt",
+            ]
+        )
         assert args.resume == "outputs/exp/checkpoints/best_model.pt"

@@ -128,9 +128,7 @@ class TestSkinCancerClientFit:
 
     def test_fit_returns_correct_shape(self, client):
         params = client.get_parameters({})
-        updated, num_examples, metrics = client.fit(
-            params, {"local_epochs": 1, "current_round": 1}
-        )
+        updated, num_examples, metrics = client.fit(params, {"local_epochs": 1, "current_round": 1})
         assert isinstance(updated, list)
         assert len(updated) == len(params)
         assert num_examples == 16  # synthetic dataset size

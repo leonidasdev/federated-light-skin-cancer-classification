@@ -152,9 +152,7 @@ class TestEvaluateModel:
         model = _make_dummy_model(num_classes=3)
         model.eval()
         dl = _make_dummy_dataloader(n_samples=10, num_classes=3)
-        evaluate_model(
-            model, dl, device=torch.device("cpu"), num_classes=3, print_report=True
-        )
+        evaluate_model(model, dl, device=torch.device("cpu"), num_classes=3, print_report=True)
         captured = capsys.readouterr()
         assert "EVALUATION REPORT" in captured.out
 
@@ -170,18 +168,32 @@ class TestPrintComparison:
     def test_print_comparison_output(self, capsys):
         """print_comparison should print a formatted table."""
         r1 = EvaluationResults(
-            accuracy=0.9, balanced_accuracy=0.88, precision_macro=0.87,
-            recall_macro=0.86, f1_macro=0.86, f1_weighted=0.89,
-            auc_macro=0.95, confusion_matrix=np.eye(2),
-            per_class_metrics={}, predictions=np.array([]),
-            labels=np.array([]), probabilities=None,
+            accuracy=0.9,
+            balanced_accuracy=0.88,
+            precision_macro=0.87,
+            recall_macro=0.86,
+            f1_macro=0.86,
+            f1_weighted=0.89,
+            auc_macro=0.95,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
         )
         r2 = EvaluationResults(
-            accuracy=0.85, balanced_accuracy=0.83, precision_macro=0.82,
-            recall_macro=0.81, f1_macro=0.81, f1_weighted=0.84,
-            auc_macro=0.92, confusion_matrix=np.eye(2),
-            per_class_metrics={}, predictions=np.array([]),
-            labels=np.array([]), probabilities=None,
+            accuracy=0.85,
+            balanced_accuracy=0.83,
+            precision_macro=0.82,
+            recall_macro=0.81,
+            f1_macro=0.81,
+            f1_weighted=0.84,
+            auc_macro=0.92,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
         )
         comparison = compare_results(r1, r2)
         print_comparison(comparison)

@@ -37,6 +37,7 @@ __all__ = [
 try:
     import matplotlib.pyplot as plt
     import seaborn as sns
+
     HAS_PLOTTING = True
 except ImportError:
     HAS_PLOTTING = False
@@ -53,6 +54,7 @@ def check_plotting_available() -> bool:
         logger.warning("Plotting not available. Install matplotlib and seaborn.")
         return False
     return True
+
 
 # =============================================================================
 # Plotting Functions

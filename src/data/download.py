@@ -65,12 +65,8 @@ DATASET_INFO = {
         "download_url": "https://www.kaggle.com/datasets/kmader/skin-cancer-mnist-ham10000",
         "classes": 7,
         "approx_images": 10015,
-        "expected_files": [
-            "HAM10000_metadata.csv",
-            "HAM10000_images_part_1/",
-            "HAM10000_images_part_2/"
-        ],
-        "client_id": 1
+        "expected_files": ["HAM10000_metadata.csv", "HAM10000_images_part_1/", "HAM10000_images_part_2/"],
+        "client_id": 1,
     },
     "ISIC2018": {
         "description": "ISIC 2018 Challenge - Task 3: Lesion Diagnosis",
@@ -80,11 +76,8 @@ DATASET_INFO = {
         "download_url": "https://challenge.isic-archive.com/data/#2018",
         "classes": 7,
         "approx_images": 10015,
-        "expected_files": [
-            "ISIC2018_Task3_Training_GroundTruth.csv",
-            "ISIC2018_Task3_Training_Input/"
-        ],
-        "client_id": 2
+        "expected_files": ["ISIC2018_Task3_Training_GroundTruth.csv", "ISIC2018_Task3_Training_Input/"],
+        "client_id": 2,
     },
     "ISIC2019": {
         "description": "ISIC 2019 Challenge - Dermoscopic Image Classification",
@@ -94,11 +87,8 @@ DATASET_INFO = {
         "download_url": "https://challenge.isic-archive.com/data/#2019",
         "classes": 8,
         "approx_images": 25331,
-        "expected_files": [
-            "ISIC_2019_Training_GroundTruth.csv",
-            "ISIC_2019_Training_Input/"
-        ],
-        "client_id": 3
+        "expected_files": ["ISIC_2019_Training_GroundTruth.csv", "ISIC_2019_Training_Input/"],
+        "client_id": 3,
     },
     "ISIC2020": {
         "description": "ISIC 2020 Challenge - Melanoma Classification (SIIM-ISIC)",
@@ -108,11 +98,8 @@ DATASET_INFO = {
         "download_url": "https://challenge.isic-archive.com/data/#2020",
         "classes": 2,
         "approx_images": 33126,
-        "expected_files": [
-            "ISIC_2020_Training_GroundTruth.csv",
-            "ISIC_2020_Training_JPEG/"
-        ],
-        "client_id": 4
+        "expected_files": ["ISIC_2020_Training_GroundTruth.csv", "ISIC_2020_Training_JPEG/"],
+        "client_id": 4,
     },
     "PAD-UFES-20": {
         "description": "PAD-UFES-20: Brazilian clinical skin lesion images",
@@ -123,14 +110,9 @@ DATASET_INFO = {
         "download_url": "https://data.mendeley.com/datasets/zr7vgbcyr2/1",
         "classes": 6,
         "approx_images": 2298,
-        "expected_files": [
-            "metadata.csv",
-            "imgs_part_1/",
-            "imgs_part_2/",
-            "imgs_part_3/"
-        ],
-        "client_id": 5
-    }
+        "expected_files": ["metadata.csv", "imgs_part_1/", "imgs_part_2/", "imgs_part_3/"],
+        "client_id": 5,
+    },
 }
 
 
@@ -178,6 +160,7 @@ def create_directory_structure(data_root: Path | None = None) -> dict[str, Path]
 # Kaggle API Download (for HAM10000)
 # =============================================================================
 
+
 def check_kaggle_available() -> bool:
     """Check if Kaggle CLI is available and configured."""
     import shutil
@@ -197,10 +180,7 @@ def check_kaggle_available() -> bool:
     return True
 
 
-def download_ham10000_kaggle(
-    data_root: Path | None = None,
-    force_redownload: bool = False
-) -> bool:
+def download_ham10000_kaggle(data_root: Path | None = None, force_redownload: bool = False) -> bool:
     """
     Download HAM10000 dataset from Kaggle.
 
@@ -227,11 +207,11 @@ def download_ham10000_kaggle(
 
     info = DATASET_INFO["HAM10000"]
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Downloading: HAM10000 from Kaggle")
     print(f"Dataset: {info['kaggle_dataset']}")
     print(f"Expected images: ~{info['approx_images']:,}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Check if already downloaded
     if not force_redownload:
@@ -258,12 +238,7 @@ def download_ham10000_kaggle(
 
         print("\nStep 1: Downloading from Kaggle...")
         # Download dataset
-        cmd = [
-            "kaggle", "datasets", "download",
-            "-d", info["kaggle_dataset"],
-            "-p", str(temp_dir),
-            "--unzip"
-        ]
+        cmd = ["kaggle", "datasets", "download", "-d", info["kaggle_dataset"], "-p", str(temp_dir), "--unzip"]
         result = subprocess.run(cmd, capture_output=True, text=True, check=False)
         if result.returncode != 0:
             print(f"Kaggle download failed: {result.stderr}")
@@ -307,11 +282,11 @@ def download_ham10000_kaggle(
         part2_dir = dataset_path / "HAM10000_images_part_2"
         total_images = len(list(part1_dir.glob("*.jpg"))) + len(list(part2_dir.glob("*.jpg")))
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("HAM10000 Download Summary:")
         print(f"  Total images: {total_images:,}")
         print(f"  Location: {dataset_path}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         return total_images >= info["approx_images"] * VERIFICATION_COMPLETION_THRESHOLD
 
@@ -325,10 +300,8 @@ def download_ham10000_kaggle(
 # Mendeley Data Download (for PAD-UFES-20)
 # =============================================================================
 
-def download_padufes20_mendeley(
-    data_root: Path | None = None,
-    force_redownload: bool = False
-) -> bool:
+
+def download_padufes20_mendeley(data_root: Path | None = None, force_redownload: bool = False) -> bool:
     """
     Download PAD-UFES-20 dataset from Mendeley Data.
 
@@ -353,11 +326,11 @@ def download_padufes20_mendeley(
 
     info = DATASET_INFO["PAD-UFES-20"]
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("Downloading: PAD-UFES-20 from Mendeley Data")
     print(f"DOI: {info['mendeley_doi']}")
     print(f"Expected images: ~{info['approx_images']:,}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Check if already downloaded
     if not force_redownload:
@@ -397,12 +370,12 @@ def download_padufes20_mendeley(
         response = session.get(download_url, stream=True, timeout=300)
         response.raise_for_status()
 
-        total_size = int(response.headers.get('content-length', 0))
+        total_size = int(response.headers.get("content-length", 0))
         block_size = 8192
 
         with (
-            open(zip_path, 'wb') as f,
-            tqdm(total=total_size, unit='iB', unit_scale=True, desc="  Downloading") as pbar,
+            open(zip_path, "wb") as f,
+            tqdm(total=total_size, unit="iB", unit_scale=True, desc="  Downloading") as pbar,
         ):
             for data in response.iter_content(block_size):
                 size = f.write(data)
@@ -412,7 +385,7 @@ def download_padufes20_mendeley(
 
         print("\nStep 2: Extracting archive...")
         # Extract ZIP
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             # List contents to find the structure
             namelist = zip_ref.namelist()
 
@@ -484,11 +457,11 @@ def download_padufes20_mendeley(
             if part_dir.exists():
                 total_images += len(list(part_dir.glob("*.png")))
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print("PAD-UFES-20 Download Summary:")
         print(f"  Total images: {total_images:,}")
         print(f"  Location: {dataset_path}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         return total_images >= info["approx_images"] * VERIFICATION_COMPLETION_THRESHOLD
 
@@ -502,12 +475,13 @@ def download_padufes20_mendeley(
 # Unified Download Function
 # =============================================================================
 
+
 def download_dataset(
     dataset_name: str,
     data_root: Path | None = None,
     max_workers: int = 8,
     force_redownload: bool = False,
-    prefer_source: str | None = None
+    prefer_source: str | None = None,
 ) -> bool:
     """
     Download a dataset using the appropriate source.
@@ -549,8 +523,6 @@ def download_dataset(
     return download_dataset_isic(dataset_name, data_root, max_workers, force_redownload)
 
 
-
-
 class ISICArchiveClient:
     """
     Client for ISIC Archive API v2.
@@ -567,7 +539,7 @@ class ISICArchiveClient:
         max_retries: int = 5,
         backoff_factor: float = 1.0,
         timeout: int = 30,
-        max_workers: int = 8
+        max_workers: int = 8,
     ):
         """
         Initialize ISIC Archive API client.
@@ -589,23 +561,18 @@ class ISICArchiveClient:
             total=max_retries,
             backoff_factor=backoff_factor,
             status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["HEAD", "GET", "OPTIONS"]
+            allowed_methods=["HEAD", "GET", "OPTIONS"],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
         # Set headers
-        self.session.headers.update({
-            "Accept": "application/json",
-            "User-Agent": "ISIC-Downloader/1.0 (Federated Learning Research)"
-        })
+        self.session.headers.update(
+            {"Accept": "application/json", "User-Agent": "ISIC-Downloader/1.0 (Federated Learning Research)"}
+        )
 
-    def _make_request(
-        self,
-        endpoint: str,
-        params: dict | None = None
-    ) -> requests.Response:
+    def _make_request(self, endpoint: str, params: dict | None = None) -> requests.Response:
         """Make API request with error handling."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         try:
@@ -618,10 +585,7 @@ class ISICArchiveClient:
             raise
 
     def get_image_list(
-        self,
-        collection: str | None = None,
-        limit: int = 10000,
-        offset: int = 0
+        self, collection: str | None = None, limit: int = 10000, offset: int = 0
     ) -> list[dict[str, Any]]:
         """
         Get list of images from ISIC Archive.
@@ -634,10 +598,7 @@ class ISICArchiveClient:
         Returns:
             List of image metadata dictionaries
         """
-        params: dict[str, Any] = {
-            "limit": limit,
-            "offset": offset
-        }
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
         if collection:
             # ISIC API may expect either 'collection' or 'collections' depending on version/usage.
             # Include both keys defensively so the server receives the intended filter.
@@ -647,11 +608,7 @@ class ISICArchiveClient:
         response = self._make_request("/images/", params=params)
         return response.json().get("results", [])
 
-    def get_all_images_for_collection(
-        self,
-        collection: str,
-        batch_size: int = 1000
-    ) -> list[dict[str, Any]]:
+    def get_all_images_for_collection(self, collection: str, batch_size: int = 1000) -> list[dict[str, Any]]:
         """
         Get all images from a specific collection with pagination.
 
@@ -711,12 +668,7 @@ class ISICArchiveClient:
 
         return all_images
 
-    def download_image(
-        self,
-        image_id: str,
-        output_path: Path,
-        size: str = "full"
-    ) -> bool:
+    def download_image(self, image_id: str, output_path: Path, size: str = "full") -> bool:
         """
         Download a single image from ISIC Archive.
 
@@ -736,16 +688,16 @@ class ISICArchiveClient:
 
         except requests.exceptions.HTTPError as e:
             # If the API endpoint returns 404, try retrieving the file URL from image metadata
-            status = getattr(e.response, 'status_code', None)
+            status = getattr(e.response, "status_code", None)
             if status == 404:
                 try:
                     meta_url = f"{self.base_url}/images/{image_id}"
                     meta_resp = self.session.get(meta_url, timeout=self.timeout)
                     meta_resp.raise_for_status()
-                    files = meta_resp.json().get('files', {})
-                    file_info = files.get(size) or files.get('full')
+                    files = meta_resp.json().get("files", {})
+                    file_info = files.get(size) or files.get("full")
                     if file_info and isinstance(file_info, dict):
-                        file_url = file_info.get('url')
+                        file_url = file_info.get("url")
                         if not file_url:
                             logger.warning(f"No file URL available in metadata for {image_id}")
                             return False
@@ -773,10 +725,7 @@ class ISICArchiveClient:
             logger.warning(f"Failed to save {image_id}: {e}")
             return False
 
-    def _download_worker(
-        self,
-        task: tuple[str, Path]
-    ) -> tuple[str, bool]:
+    def _download_worker(self, task: tuple[str, Path]) -> tuple[str, bool]:
         """Worker function for parallel downloads."""
         image_id, output_path = task
 
@@ -787,10 +736,7 @@ class ISICArchiveClient:
         return (image_id, success)
 
     def download_images_parallel(
-        self,
-        images: list[dict[str, Any]],
-        output_dir: Path,
-        max_workers: int | None = None
+        self, images: list[dict[str, Any]], output_dir: Path, max_workers: int | None = None
     ) -> dict[str, Any]:
         """
         Download multiple images in parallel.
@@ -831,10 +777,7 @@ class ISICArchiveClient:
         failed_count = 0
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {
-                executor.submit(self._download_worker, task): task
-                for task in to_download
-            }
+            futures = {executor.submit(self._download_worker, task): task for task in to_download}
 
             with tqdm(total=len(to_download), desc="  Downloading images", unit=" img") as pbar:
                 for future in concurrent.futures.as_completed(futures):
@@ -845,18 +788,9 @@ class ISICArchiveClient:
                         failed_count += 1
                     pbar.update(1)
 
-        return {
-            "total": len(tasks),
-            "success": success_count,
-            "failed": failed_count,
-            "skipped": existing
-        }
+        return {"total": len(tasks), "success": success_count, "failed": failed_count, "skipped": existing}
 
-    def save_metadata_csv(
-        self,
-        images: list[dict[str, Any]],
-        output_path: Path
-    ) -> None:
+    def save_metadata_csv(self, images: list[dict[str, Any]], output_path: Path) -> None:
         """
         Save image metadata to CSV file.
 
@@ -885,16 +819,11 @@ class ISICArchiveClient:
             clinical = metadata.get("clinical", {})
 
             row["diagnosis"] = (
-                metadata.get("diagnosis", "") or
-                clinical.get("diagnosis", "") or
-                img.get("diagnosis", "")
+                metadata.get("diagnosis", "") or clinical.get("diagnosis", "") or img.get("diagnosis", "")
             )
             row["diagnosis_confirm_type"] = clinical.get("diagnosis_confirm_type", "")
             row["melanocytic"] = clinical.get("melanocytic", "")
-            row["benign_malignant"] = (
-                metadata.get("benign_malignant", "") or
-                clinical.get("benign_malignant", "")
-            )
+            row["benign_malignant"] = metadata.get("benign_malignant", "") or clinical.get("benign_malignant", "")
 
             # Patient/acquisition info
             row["age_approx"] = clinical.get("age_approx", "")
@@ -922,11 +851,9 @@ class ISICArchiveClient:
 # Dataset Download Functions
 # =============================================================================
 
+
 def download_dataset_isic(
-    dataset_name: str,
-    data_root: Path | None = None,
-    max_workers: int = 8,
-    force_redownload: bool = False
+    dataset_name: str, data_root: Path | None = None, max_workers: int = 8, force_redownload: bool = False
 ) -> bool:
     """
     Download a dataset from ISIC Archive.
@@ -956,11 +883,11 @@ def download_dataset_isic(
     info = DATASET_INFO[dataset_name]
     isic_collection = info.get("isic_dataset", dataset_name)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Downloading: {dataset_name}")
     print(f"Collection: {isic_collection}")
     print(f"Expected images: ~{info['approx_images']:,}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Check if already downloaded
     if not force_redownload:
@@ -994,13 +921,13 @@ def download_dataset_isic(
         print("\nStep 3: Downloading images...")
         stats = client.download_images_parallel(images, images_dir, max_workers)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Download Summary for {dataset_name}:")
         print(f"  Total images: {stats['total']:,}")
         print(f"  Successfully downloaded: {stats['success']:,}")
         print(f"  Failed: {stats['failed']:,}")
         print(f"  Skipped (existing): {stats['skipped']:,}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
         return stats["failed"] == 0
 
@@ -1014,7 +941,7 @@ def download_all_datasets(
     data_root: Path | None = None,
     datasets: list[str] | None = None,
     max_workers: int = 8,
-    force_redownload: bool = False
+    force_redownload: bool = False,
 ) -> dict[str, bool]:
     """
     Download all (or specified) datasets using the appropriate source.
@@ -1052,10 +979,7 @@ def download_all_datasets(
 
     for dataset_name in datasets:
         results[dataset_name] = download_dataset(
-            dataset_name,
-            data_root=data_root,
-            max_workers=max_workers,
-            force_redownload=force_redownload
+            dataset_name, data_root=data_root, max_workers=max_workers, force_redownload=force_redownload
         )
 
     # Print final summary
@@ -1076,6 +1000,7 @@ def download_all_datasets(
 # =============================================================================
 # Verification Functions
 # =============================================================================
+
 
 def verify_dataset(dataset_name: str, data_root: Path | None = None) -> dict[str, Any]:
     """
@@ -1109,7 +1034,7 @@ def verify_dataset(dataset_name: str, data_root: Path | None = None) -> dict[str
         "image_count": 0,
         "csv_found": False,
         "completeness": 0.0,
-        "source": info.get("source", "unknown")
+        "source": info.get("source", "unknown"),
     }
 
     # Check expected files
@@ -1331,6 +1256,7 @@ Total: ~80,785 dermoscopy images
 # Dataset Setup Wizard
 # =============================================================================
 
+
 class DatasetSetupWizard:
     """Interactive wizard for setting up datasets."""
 
@@ -1392,44 +1318,29 @@ Examples:
   python run_download.py --download HAM10000
   python run_download.py --download PAD-UFES-20
   python run_download.py --setup
-        """
+        """,
     )
+    parser.add_argument("--data-root", type=str, default=None, help="Root directory for datasets (default: ./data)")
+    parser.add_argument("--verify", action="store_true", help="Verify existing datasets")
+    parser.add_argument("--instructions", action="store_true", help="Print download instructions")
+    parser.add_argument("--setup", action="store_true", help="Run interactive setup wizard")
     parser.add_argument(
-        "--data-root", type=str, default=None,
-        help="Root directory for datasets (default: ./data)"
-    )
-    parser.add_argument(
-        "--verify", action="store_true",
-        help="Verify existing datasets"
-    )
-    parser.add_argument(
-        "--instructions", action="store_true",
-        help="Print download instructions"
-    )
-    parser.add_argument(
-        "--setup", action="store_true",
-        help="Run interactive setup wizard"
-    )
-    parser.add_argument(
-        "--download", type=str, metavar="DATASET",
+        "--download",
+        type=str,
+        metavar="DATASET",
         choices=list(DATASET_INFO.keys()),
-        help="Download a specific dataset (auto-selects best source)"
+        help="Download a specific dataset (auto-selects best source)",
     )
+    parser.add_argument("--download-all", action="store_true", help="Download all datasets")
     parser.add_argument(
-        "--download-all", action="store_true",
-        help="Download all datasets"
+        "--workers", type=int, default=8, help="Number of parallel download workers for ISIC (default: 8)"
     )
+    parser.add_argument("--force", action="store_true", help="Force redownload even if files exist")
     parser.add_argument(
-        "--workers", type=int, default=8,
-        help="Number of parallel download workers for ISIC (default: 8)"
-    )
-    parser.add_argument(
-        "--force", action="store_true",
-        help="Force redownload even if files exist"
-    )
-    parser.add_argument(
-        "--source", type=str, choices=["kaggle", "isic", "mendeley"],
-        help="Override automatic source selection for download"
+        "--source",
+        type=str,
+        choices=["kaggle", "isic", "mendeley"],
+        help="Override automatic source selection for download",
     )
 
     args = parser.parse_args()
@@ -1444,15 +1355,11 @@ Examples:
             data_root=data_root,
             max_workers=args.workers,
             force_redownload=args.force,
-            prefer_source=args.source
+            prefer_source=args.source,
         )
     elif args.download_all:
         # Download all datasets
-        download_all_datasets(
-            data_root=data_root,
-            max_workers=args.workers,
-            force_redownload=args.force
-        )
+        download_all_datasets(data_root=data_root, max_workers=args.workers, force_redownload=args.force)
     elif args.verify:
         results = verify_all_datasets(data_root)
         print_verification_report(results)

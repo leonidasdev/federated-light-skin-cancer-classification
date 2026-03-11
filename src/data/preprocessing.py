@@ -45,9 +45,7 @@ DERMOSCOPY_STD = (0.1409, 0.1520, 0.1693)
 
 
 def get_train_transforms(
-    img_size: int = 224,
-    use_dermoscopy_norm: bool = False,
-    augmentation_level: str = 'medium'
+    img_size: int = 224, use_dermoscopy_norm: bool = False, augmentation_level: str = "medium"
 ) -> A.Compose:
     """
     Get training transforms with configurable data augmentation.
@@ -86,81 +84,75 @@ def get_train_transforms(
     ]
 
     # Augmentation based on level
-    if augmentation_level == 'none':
+    if augmentation_level == "none":
         aug_transforms = []
-    elif augmentation_level == 'light':
+    elif augmentation_level == "light":
         aug_transforms = [
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Rotate(limit=15, p=0.5),
         ]
-    elif augmentation_level == 'medium':
+    elif augmentation_level == "medium":
         aug_transforms = [
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Rotate(limit=30, p=0.5),
-            A.RandomBrightnessContrast(
-                brightness_limit=0.2,
-                contrast_limit=0.2,
-                p=0.5
-            ),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
             A.Affine(
                 translate_percent=0.1,
                 scale=(0.9, 1.1),
                 rotate=(-15, 15),
                 p=0.5,
             ),
-            A.OneOf([
-                A.GaussianBlur(blur_limit=3, p=1.0),
-                A.MedianBlur(blur_limit=3, p=1.0),
-            ], p=0.3),
+            A.OneOf(
+                [
+                    A.GaussianBlur(blur_limit=3, p=1.0),
+                    A.MedianBlur(blur_limit=3, p=1.0),
+                ],
+                p=0.3,
+            ),
         ]
-    elif augmentation_level == 'heavy':
+    elif augmentation_level == "heavy":
         aug_transforms = [
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
             A.Rotate(limit=45, p=0.7),
-            A.RandomBrightnessContrast(
-                brightness_limit=0.3,
-                contrast_limit=0.3,
-                p=0.6
-            ),
+            A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.6),
             A.Affine(
                 translate_percent=0.15,
                 scale=(0.85, 1.15),
                 rotate=(-30, 30),
                 p=0.6,
             ),
-            A.OneOf([
-                A.GaussianBlur(blur_limit=5, p=1.0),
-                A.MedianBlur(blur_limit=5, p=1.0),
-                A.MotionBlur(blur_limit=5, p=1.0),
-            ], p=0.4),
-            A.OneOf([
-                A.OpticalDistortion(distort_limit=0.05, p=1.0),
-                A.GridDistortion(distort_limit=0.05, p=1.0),
-                A.ElasticTransform(alpha=1, sigma=50, p=1.0),
-            ], p=0.3),
-            A.OneOf([
-                A.HueSaturationValue(
-                    hue_shift_limit=20,
-                    sat_shift_limit=30,
-                    val_shift_limit=20,
-                    p=1.0
-                ),
-                A.RGBShift(
-                    r_shift_limit=20,
-                    g_shift_limit=20,
-                    b_shift_limit=20,
-                    p=1.0
-                ),
-            ], p=0.4),
+            A.OneOf(
+                [
+                    A.GaussianBlur(blur_limit=5, p=1.0),
+                    A.MedianBlur(blur_limit=5, p=1.0),
+                    A.MotionBlur(blur_limit=5, p=1.0),
+                ],
+                p=0.4,
+            ),
+            A.OneOf(
+                [
+                    A.OpticalDistortion(distort_limit=0.05, p=1.0),
+                    A.GridDistortion(distort_limit=0.05, p=1.0),
+                    A.ElasticTransform(alpha=1, sigma=50, p=1.0),
+                ],
+                p=0.3,
+            ),
+            A.OneOf(
+                [
+                    A.HueSaturationValue(hue_shift_limit=20, sat_shift_limit=30, val_shift_limit=20, p=1.0),
+                    A.RGBShift(r_shift_limit=20, g_shift_limit=20, b_shift_limit=20, p=1.0),
+                ],
+                p=0.4,
+            ),
             A.CoarseDropout(
                 num_holes_range=(1, 8),
                 hole_height_range=(img_size // 16, img_size // 8),
                 hole_width_range=(img_size // 16, img_size // 8),
                 fill=0,
-                p=0.3
+                p=0.3,
             ),
         ]
     else:
@@ -178,10 +170,7 @@ def get_train_transforms(
     return A.Compose(cast(Any, transforms))
 
 
-def get_val_transforms(
-    img_size: int = 224,
-    use_dermoscopy_norm: bool = False
-) -> A.Compose:
+def get_val_transforms(img_size: int = 224, use_dermoscopy_norm: bool = False) -> A.Compose:
     """
     Get validation/test transforms (no augmentation).
 
@@ -195,18 +184,17 @@ def get_val_transforms(
     mean = DERMOSCOPY_MEAN if use_dermoscopy_norm else IMAGENET_MEAN
     std = DERMOSCOPY_STD if use_dermoscopy_norm else IMAGENET_STD
 
-    return A.Compose([
-        A.Resize(img_size, img_size),
-        A.Normalize(mean=mean, std=std),
-        ToTensorV2(),
-    ])
+    return A.Compose(
+        [
+            A.Resize(img_size, img_size),
+            A.Normalize(mean=mean, std=std),
+            ToTensorV2(),
+        ]
+    )
 
 
 def get_standardized_transforms(
-    img_size: int = 224,
-    is_training: bool = True,
-    use_dermoscopy_norm: bool = False,
-    augmentation_level: str = 'medium'
+    img_size: int = 224, is_training: bool = True, use_dermoscopy_norm: bool = False, augmentation_level: str = "medium"
 ) -> A.Compose:
     """
     Get standardized transforms for all datasets.
@@ -225,14 +213,9 @@ def get_standardized_transforms(
     """
     if is_training:
         return get_train_transforms(
-            img_size=img_size,
-            use_dermoscopy_norm=use_dermoscopy_norm,
-            augmentation_level=augmentation_level
+            img_size=img_size, use_dermoscopy_norm=use_dermoscopy_norm, augmentation_level=augmentation_level
         )
-    return get_val_transforms(
-        img_size=img_size,
-        use_dermoscopy_norm=use_dermoscopy_norm
-    )
+    return get_val_transforms(img_size=img_size, use_dermoscopy_norm=use_dermoscopy_norm)
 
 
 def get_transform_pair(

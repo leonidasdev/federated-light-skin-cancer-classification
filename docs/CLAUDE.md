@@ -344,13 +344,12 @@ tests/
 ├── test_client.py         # SkinCancerClient (Flower NumPyClient)
 ├── test_config_loading.py # YAML config loading and schema validation
 ├── test_config_schema.py  # Config schema validation rules
-├── test_configuration.py  # Configuration dataclass tests
 ├── test_datasets.py       # Dataset registry and loading functions
 ├── test_download.py       # Download functionality tests
 ├── test_evaluation.py     # EvaluationResults, metrics computation
 ├── test_helpers.py        # Helpers (set_seed, get_device, etc.)
 ├── test_integration.py    # End-to-end centralized + FL integration
-├── test_logging_utils.py  # ExperimentLogger, MetricsTracker
+├── test_logging_utils.py  # MetricsTracker, CSV logging, resume safety
 ├── test_model_evaluator.py# ModelEvaluator integration tests
 ├── test_models.py         # DSCATNet model architecture tests
 ├── test_preprocessing.py  # Transforms, augmentation levels
@@ -361,8 +360,8 @@ tests/
 └── test_visualization.py  # Visualization/plotting tests
 ```
 
-- **453 tests**, `@slow` tests deselected by default
-- **80% line coverage** (`fail_under = 80` in pyproject.toml)
+- **457 tests**, `@slow` tests deselected by default
+- **≥80% line coverage** (`fail_under = 80` in pyproject.toml)
 
 ### Running Tests
 
@@ -451,14 +450,15 @@ if "new_field" in checkpoint:
 
 ```
 outputs/
-└── {mode}_{timestamp}/
+└── {experiment_name}/
     ├── checkpoints/
     │   ├── best_model.pt           # Weights only
     │   ├── best_checkpoint.pt      # Full state (centralized)
     │   └── checkpoint_{epoch/round}_N.pt
     ├── config.json                 # Serialized config
-    ├── results.json                # Final metrics
-    ├── history.json                # Training curves data
+    ├── results.json                # Final metrics + training history
+    ├── metrics/                    # Real-time CSV metrics
+    │   └── {name}_metrics.csv
     └── experiment.log              # Full logs
 ```
 

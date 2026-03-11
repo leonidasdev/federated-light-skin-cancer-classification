@@ -44,28 +44,28 @@ logger = logging.getLogger(__name__)
 
 # ISIC2019: 8 classes + UNK (adds SCC, uses AK not AKIEC)
 ISIC2019_CLASSES = {
-    'MEL': 4,    # Melanoma
-    'NV': 5,     # Melanocytic nevus
-    'BCC': 1,    # Basal cell carcinoma
-    'AK': 0,     # Actinic keratosis
-    'BKL': 2,    # Benign keratosis
-    'DF': 3,     # Dermatofibroma
-    'VASC': 6,   # Vascular lesion
-    'SCC': 7,    # Squamous cell carcinoma (added in ISIC 2019)
-    'UNK': -1,   # Unknown (to be filtered or handled specially)
+    "MEL": 4,  # Melanoma
+    "NV": 5,  # Melanocytic nevus
+    "BCC": 1,  # Basal cell carcinoma
+    "AK": 0,  # Actinic keratosis
+    "BKL": 2,  # Benign keratosis
+    "DF": 3,  # Dermatofibroma
+    "VASC": 6,  # Vascular lesion
+    "SCC": 7,  # Squamous cell carcinoma (added in ISIC 2019)
+    "UNK": -1,  # Unknown (to be filtered or handled specially)
 }
 
 # Mapping ISIC2020 diagnosis to unified 7-class (when not using binary mode)
 ISIC2020_DIAGNOSIS_TO_UNIFIED = {
-    'nevus': 5,                           # NV - Melanocytic nevi
-    'melanoma': 4,                        # MEL - Melanoma
-    'seborrheic keratosis': 2,            # BKL - Benign keratosis
-    'lentigo NOS': 2,                     # BKL - Benign keratosis (lentigo)
-    'lichenoid keratosis': 2,             # BKL - Benign keratosis
-    'solar lentigo': 2,                   # BKL - Benign keratosis
-    'cafe-au-lait macule': 5,             # NV - Benign pigmented lesion
-    'atypical melanocytic proliferation': 4,  # MEL - Potential melanoma
-    'unknown': -1,                        # Unknown - needs special handling
+    "nevus": 5,  # NV - Melanocytic nevi
+    "melanoma": 4,  # MEL - Melanoma
+    "seborrheic keratosis": 2,  # BKL - Benign keratosis
+    "lentigo NOS": 2,  # BKL - Benign keratosis (lentigo)
+    "lichenoid keratosis": 2,  # BKL - Benign keratosis
+    "solar lentigo": 2,  # BKL - Benign keratosis
+    "cafe-au-lait macule": 5,  # NV - Benign pigmented lesion
+    "atypical melanocytic proliferation": 4,  # MEL - Potential melanoma
+    "unknown": -1,  # Unknown - needs special handling
 }
 
 # =============================================================================
@@ -76,70 +76,96 @@ ISIC2020_DIAGNOSIS_TO_UNIFIED = {
 # Maps all dataset-specific labels to common indices
 UNIFIED_CLASSES_7 = {
     # HAM10000 labels (lowercase)
-    'akiec': 0, 'bcc': 1, 'bkl': 2, 'df': 3, 'mel': 4, 'nv': 5, 'vasc': 6,
+    "akiec": 0,
+    "bcc": 1,
+    "bkl": 2,
+    "df": 3,
+    "mel": 4,
+    "nv": 5,
+    "vasc": 6,
     # ISIC2018 labels (uppercase, uses AKIEC)
-    'AKIEC': 0, 'BCC': 1, 'BKL': 2, 'DF': 3, 'MEL': 4, 'NV': 5, 'VASC': 6,
+    "AKIEC": 0,
+    "BCC": 1,
+    "BKL": 2,
+    "DF": 3,
+    "MEL": 4,
+    "NV": 5,
+    "VASC": 6,
     # ISIC2019 labels (uppercase, uses AK)
-    'AK': 0,
+    "AK": 0,
     # ISIC2019 SCC -> mapped to BCC (both are carcinomas)
-    'SCC': 1,
+    "SCC": 1,
     # PAD-UFES-20 labels
-    'ACK': 0,  # Actinic keratosis -> same as AK/AKIEC
-    'SEK': 2,  # Seborrheic keratosis -> maps to BKL
-    'NEV': 5,  # Nevus -> same as NV
+    "ACK": 0,  # Actinic keratosis -> same as AK/AKIEC
+    "SEK": 2,  # Seborrheic keratosis -> maps to BKL
+    "NEV": 5,  # Nevus -> same as NV
     # Unknown handling
-    'UNK': -1,
-    'unknown': -1,
+    "UNK": -1,
+    "unknown": -1,
 }
 
 # Unified binary mapping (benign=0, malignant=1)
 UNIFIED_CLASSES_BINARY = {
     # Malignant classes
-    'mel': 1, 'MEL': 1, 'melanoma': 1, 'malignant': 1,
-    'bcc': 1, 'BCC': 1,           # Basal cell carcinoma
-    'akiec': 0, 'AKIEC': 0, 'AK': 0,  # Actinic keratosis (pre-cancerous, often benign)
-    'SCC': 1,                      # Squamous cell carcinoma
+    "mel": 1,
+    "MEL": 1,
+    "melanoma": 1,
+    "malignant": 1,
+    "bcc": 1,
+    "BCC": 1,  # Basal cell carcinoma
+    "akiec": 0,
+    "AKIEC": 0,
+    "AK": 0,  # Actinic keratosis (pre-cancerous, often benign)
+    "SCC": 1,  # Squamous cell carcinoma
     # Benign classes
-    'nv': 0, 'NV': 0, 'nevus': 0, 'benign': 0,
-    'bkl': 0, 'BKL': 0, 'seborrheic keratosis': 0,
-    'df': 0, 'DF': 0,
-    'vasc': 0, 'VASC': 0,
-    'lentigo NOS': 0,
-    'lichenoid keratosis': 0,
-    'solar lentigo': 0,
-    'cafe-au-lait macule': 0,
-    'atypical melanocytic proliferation': 1,  # Potentially malignant
+    "nv": 0,
+    "NV": 0,
+    "nevus": 0,
+    "benign": 0,
+    "bkl": 0,
+    "BKL": 0,
+    "seborrheic keratosis": 0,
+    "df": 0,
+    "DF": 0,
+    "vasc": 0,
+    "VASC": 0,
+    "lentigo NOS": 0,
+    "lichenoid keratosis": 0,
+    "solar lentigo": 0,
+    "cafe-au-lait macule": 0,
+    "atypical melanocytic proliferation": 1,  # Potentially malignant
     # PAD-UFES-20 labels
-    'ACK': 0,  # Actinic keratosis (pre-cancerous)
-    'SEK': 0,  # Seborrheic keratosis (benign)
-    'NEV': 0,  # Nevus (benign)
+    "ACK": 0,  # Actinic keratosis (pre-cancerous)
+    "SEK": 0,  # Seborrheic keratosis (benign)
+    "NEV": 0,  # Nevus (benign)
     # Unknown
-    'UNK': -1, 'unknown': -1,
+    "UNK": -1,
+    "unknown": -1,
 }
 
 # Class names for 7-class
 CLASS_NAMES_7 = [
-    'Actinic Keratosis',      # 0
-    'Basal Cell Carcinoma',   # 1
-    'Benign Keratosis',       # 2
-    'Dermatofibroma',         # 3
-    'Melanoma',               # 4
-    'Melanocytic Nevus',      # 5
-    'Vascular Lesion'         # 6
+    "Actinic Keratosis",  # 0
+    "Basal Cell Carcinoma",  # 1
+    "Benign Keratosis",  # 2
+    "Dermatofibroma",  # 3
+    "Melanoma",  # 4
+    "Melanocytic Nevus",  # 5
+    "Vascular Lesion",  # 6
 ]
 
 # Class names for 8-class (includes SCC)
-CLASS_NAMES_8 = CLASS_NAMES_7 + ['Squamous Cell Carcinoma']  # 7
+CLASS_NAMES_8 = CLASS_NAMES_7 + ["Squamous Cell Carcinoma"]  # 7
 
 # Class names for binary
-CLASS_NAMES_BINARY = ['Benign', 'Malignant']
+CLASS_NAMES_BINARY = ["Benign", "Malignant"]
 
 # Aliases for the default (7-class) constants
 UNIFIED_CLASSES = UNIFIED_CLASSES_7
 CLASS_NAMES = CLASS_NAMES_7
 
 # Type for classification mode
-ClassificationMode = Literal['multiclass', 'multiclass_8', 'binary']
+ClassificationMode = Literal["multiclass", "multiclass_8", "binary"]
 
 
 class BaseDermoscopyDataset(Dataset):
@@ -164,7 +190,7 @@ class BaseDermoscopyDataset(Dataset):
         csv_path: str,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
-        classification_mode: ClassificationMode = 'multiclass',
+        classification_mode: ClassificationMode = "multiclass",
         filter_unknown: bool = True,
     ):
         self.root_dir = Path(root_dir)
@@ -175,10 +201,10 @@ class BaseDermoscopyDataset(Dataset):
         self.filter_unknown = filter_unknown
 
         # Determine number of classes based on mode
-        if classification_mode == 'binary':
+        if classification_mode == "binary":
             self.num_classes = 2
             self.class_names = CLASS_NAMES_BINARY
-        elif classification_mode == 'multiclass_8':
+        elif classification_mode == "multiclass_8":
             self.num_classes = 8
             self.class_names = CLASS_NAMES_8
         else:  # multiclass (default 7)
@@ -201,9 +227,9 @@ class BaseDermoscopyDataset(Dataset):
 
     def _map_label(self, label: str) -> int:
         """Map string label to integer class based on classification mode."""
-        if self.classification_mode == 'binary':
+        if self.classification_mode == "binary":
             return UNIFIED_CLASSES_BINARY.get(label, -1)
-        if self.classification_mode == 'multiclass_8':
+        if self.classification_mode == "multiclass_8":
             # For 8-class, use ISIC2019 mapping with fallback
             return ISIC2019_CLASSES.get(label, UNIFIED_CLASSES_7.get(label, -1))
         # multiclass (7)
@@ -216,7 +242,7 @@ class BaseDermoscopyDataset(Dataset):
         """Load and return (image, label) for the given index."""
         # Load image
         img_path = self.image_paths[idx]
-        image = Image.open(img_path).convert('RGB')
+        image = Image.open(img_path).convert("RGB")
         image = np.array(image)
 
         # Get label
@@ -225,7 +251,7 @@ class BaseDermoscopyDataset(Dataset):
         # Apply transforms
         if self.transform:
             transformed = self.transform(image=image)
-            image = transformed['image']
+            image = transformed["image"]
 
         # Ensure return type is a torch.Tensor in CHW float format
         if not isinstance(image, torch.Tensor):
@@ -283,11 +309,11 @@ class HAM10000Dataset(BaseDermoscopyDataset):
 
         for _, row in self.metadata.iterrows():
             # HAM10000 has images in multiple folders
-            img_id = row['image_id']
-            label_str = row['dx']
+            img_id = row["image_id"]
+            label_str = row["dx"]
 
             # Try different possible paths
-            for subdir in ['HAM10000_images_part_1', 'HAM10000_images_part_2', 'images']:
+            for subdir in ["HAM10000_images_part_1", "HAM10000_images_part_2", "images"]:
                 img_path = self.root_dir / subdir / f"{img_id}.jpg"
                 if img_path.exists():
                     break
@@ -325,10 +351,10 @@ class ISIC2018Dataset(BaseDermoscopyDataset):
 
         # ISIC 2018 Task 3 ground truth format
         # Columns: image, MEL, NV, BCC, AKIEC, BKL, DF, VASC (one-hot)
-        label_cols = ['MEL', 'NV', 'BCC', 'AKIEC', 'BKL', 'DF', 'VASC']
+        label_cols = ["MEL", "NV", "BCC", "AKIEC", "BKL", "DF", "VASC"]
 
         for _, row in self.metadata.iterrows():
-            img_id = row['image']
+            img_id = row["image"]
             img_path = self.root_dir / f"{img_id}.jpg"
 
             if img_path.exists():
@@ -374,10 +400,10 @@ class ISIC2019Dataset(BaseDermoscopyDataset):
         labels = []
 
         # ISIC 2019 ground truth format (includes UNK)
-        label_cols = ['MEL', 'NV', 'BCC', 'AK', 'BKL', 'DF', 'VASC', 'SCC', 'UNK']
+        label_cols = ["MEL", "NV", "BCC", "AK", "BKL", "DF", "VASC", "SCC", "UNK"]
 
         for _, row in self.metadata.iterrows():
-            img_id = row['image']
+            img_id = row["image"]
             img_path = self.root_dir / f"{img_id}.jpg"
 
             if img_path.exists():
@@ -423,27 +449,26 @@ class ISIC2020Dataset(BaseDermoscopyDataset):
         labels = []
 
         for _, row in self.metadata.iterrows():
-            img_id = row['image_name']
+            img_id = row["image_name"]
 
             img_path = self.root_dir / f"{img_id}.jpg"
 
             if img_path.exists():
                 # Choose label based on classification mode
-                if self.classification_mode == 'binary':
+                if self.classification_mode == "binary":
                     # Direct binary: use target column
-                    label = int(row['target'])
+                    label = int(row["target"])
                     image_paths.append(str(img_path))
                     labels.append(label)
                 else:
                     # Multiclass: use diagnosis field for richer mapping
-                    diagnosis = row.get('diagnosis', 'unknown')
+                    diagnosis = row.get("diagnosis", "unknown")
                     if pd.isna(diagnosis):
-                        diagnosis = 'unknown'
+                        diagnosis = "unknown"
 
                     # Use diagnosis-to-unified mapping for better granularity
                     mapped_label = ISIC2020_DIAGNOSIS_TO_UNIFIED.get(
-                        diagnosis,
-                        self._map_label(row['benign_malignant'])
+                        diagnosis, self._map_label(row["benign_malignant"])
                     )
 
                     # Filter unknown labels if requested
@@ -490,12 +515,12 @@ class PADUFES20Dataset(BaseDermoscopyDataset):
         labels = []
 
         for _, row in self.metadata.iterrows():
-            img_id = row['img_id']  # e.g., PAT_1516_1765_530.png
-            label_str = row['diagnostic']  # BCC, SCC, ACK, SEK, MEL, NEV
+            img_id = row["img_id"]  # e.g., PAT_1516_1765_530.png
+            label_str = row["diagnostic"]  # BCC, SCC, ACK, SEK, MEL, NEV
 
             # Images are split across 3 folders
             img_path = None
-            for part_dir in ['imgs_part_1', 'imgs_part_2', 'imgs_part_3']:
+            for part_dir in ["imgs_part_1", "imgs_part_2", "imgs_part_3"]:
                 candidate = self.root_dir / part_dir / img_id
                 if candidate.exists():
                     img_path = candidate
@@ -548,13 +573,13 @@ class DatasetSubset(Dataset):
         label = self.dataset.labels[real_idx]
 
         # Load image
-        image = Image.open(img_path).convert('RGB')
+        image = Image.open(img_path).convert("RGB")
         image = np.array(image)
 
         # Apply transform
         if self.transform:
             transformed = self.transform(image=image)
-            image = transformed['image']
+            image = transformed["image"]
 
         # Ensure torch.Tensor CHW float
         if not isinstance(image, torch.Tensor):
@@ -574,9 +599,11 @@ class DatasetSubset(Dataset):
 # DATASET REGISTRY - Centralized configuration for all datasets
 # =============================================================================
 
+
 @dataclass
 class DatasetConfig:
     """Configuration for a single dataset."""
+
     dataset_class: type
     csv_filename: str
     image_subdir: str | None = None  # None means images are in root
@@ -695,7 +722,7 @@ def load_dataset(
     dataset_name: str,
     data_root: str | Path,
     transform: Callable | None = None,
-    classification_mode: ClassificationMode = 'multiclass',
+    classification_mode: ClassificationMode = "multiclass",
     filter_unknown: bool = True,
 ) -> BaseDermoscopyDataset | None:
     """

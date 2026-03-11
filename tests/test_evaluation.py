@@ -201,26 +201,37 @@ class TestMetricsCalculation:
         from src.evaluation.metrics import EvaluationResults, compute_federated_metrics
 
         client1 = EvaluationResults(
-            accuracy=0.80, balanced_accuracy=0.0, precision_macro=0.0,
-            recall_macro=0.0, f1_macro=0.80, f1_weighted=0.0,
-            auc_macro=None, confusion_matrix=np.eye(2),
-            per_class_metrics={}, predictions=np.array([]),
-            labels=np.array([]), probabilities=None,
+            accuracy=0.80,
+            balanced_accuracy=0.0,
+            precision_macro=0.0,
+            recall_macro=0.0,
+            f1_macro=0.80,
+            f1_weighted=0.0,
+            auc_macro=None,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
         )
 
         client2 = EvaluationResults(
-            accuracy=0.90, balanced_accuracy=0.0, precision_macro=0.0,
-            recall_macro=0.0, f1_macro=0.90, f1_weighted=0.0,
-            auc_macro=None, confusion_matrix=np.eye(2),
-            per_class_metrics={}, predictions=np.array([]),
-            labels=np.array([]), probabilities=None,
+            accuracy=0.90,
+            balanced_accuracy=0.0,
+            precision_macro=0.0,
+            recall_macro=0.0,
+            f1_macro=0.90,
+            f1_weighted=0.0,
+            auc_macro=None,
+            confusion_matrix=np.eye(2),
+            per_class_metrics={},
+            predictions=np.array([]),
+            labels=np.array([]),
+            probabilities=None,
         )
 
         # Client 2 has more weight (3:1)
-        aggregated = compute_federated_metrics(
-            [client1, client2],
-            client_weights=[1.0, 3.0]
-        )
+        aggregated = compute_federated_metrics([client1, client2], client_weights=[1.0, 3.0])
 
         # Weighted: (0.8 * 0.25) + (0.9 * 0.75) = 0.875
         assert aggregated["accuracy"] == pytest.approx(0.875, rel=0.01)

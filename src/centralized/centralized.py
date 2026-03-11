@@ -48,8 +48,11 @@ from ..data.datasets import (
 from ..data.preprocessing import get_transform_pair
 from ..data.splits import deterministic_train_val_split, deterministic_train_val_test_split
 from ..utils.helpers import (
-    autocast, collect_environment_info, compute_class_weights,
-    count_parameters, create_grad_scaler,
+    autocast,
+    collect_environment_info,
+    compute_class_weights,
+    count_parameters,
+    create_grad_scaler,
 )
 from ..evaluation.metrics import ModelEvaluator
 from ..utils.logging_utils import MetricsTracker, TensorBoardLogger
@@ -231,9 +234,7 @@ class CentralizedTrainer:
             valid_names = get_available_datasets()
             invalid = [n for n in dataset_names if n not in valid_names]
             if invalid:
-                raise ValueError(
-                    f"Unknown datasets: {invalid}. Valid options: {valid_names}"
-                )
+                raise ValueError(f"Unknown datasets: {invalid}. Valid options: {valid_names}")
             logger.info(f"Using selected datasets: {dataset_names}")
         else:
             dataset_names = get_available_datasets()
@@ -258,7 +259,7 @@ class CentralizedTrainer:
                     csv_path=str(csv_path),
                     transform=train_transform,
                     classification_mode=self.config.classification_mode,
-                    filter_unknown=self.config.filter_unknown
+                    filter_unknown=self.config.filter_unknown,
                 )
             except Exception as e:
                 logger.warning(f"Failed loading dataset {name}: {e}")
@@ -269,9 +270,7 @@ class CentralizedTrainer:
                 logger.warning(f"Dataset {name} contains 0 samples")
                 continue
 
-            train_indices, val_indices = deterministic_train_val_split(
-                n, val_split=self.config.val_split
-            )
+            train_indices, val_indices = deterministic_train_val_split(n, val_split=self.config.val_split)
 
             if use_test_split:
                 train_indices, val_indices, test_indices = deterministic_train_val_test_split(
@@ -348,13 +347,11 @@ class CentralizedTrainer:
         for sub_ds in dataset.datasets:
             if isinstance(sub_ds, DatasetSubset):
                 all_labels.extend(sub_ds.dataset.labels[idx] for idx in sub_ds.indices)
-            elif hasattr(sub_ds, 'labels'):
+            elif hasattr(sub_ds, "labels"):
                 all_labels.extend(sub_ds.labels)
 
         label_counts = Counter(all_labels)
-        self.class_weights = compute_class_weights(
-            dict(label_counts), self.config.num_classes
-        ).to(self.device)
+        self.class_weights = compute_class_weights(dict(label_counts), self.config.num_classes).to(self.device)
         logger.info(f"Class weights: {dict(enumerate(self.class_weights.tolist()))}")
 
     def train_epoch(
@@ -522,8 +519,7 @@ class CentralizedTrainer:
         accuracy = correct / total if total > 0 else 0.0
 
         per_class = {
-            f"class_{k}_acc": (class_correct[k] / class_total[k]) if class_total[k] > 0 else 0.0
-            for k in class_total
+            f"class_{k}_acc": (class_correct[k] / class_total[k]) if class_total[k] > 0 else 0.0 for k in class_total
         }
 
         return avg_loss, accuracy, per_class
@@ -610,6 +606,7 @@ class CentralizedTrainer:
         # Restore training state
         if "history" in checkpoint:
             self.history = checkpoint["history"]
+            self.metrics_tracker.restore_from_history(self.history)
         if "best_val_accuracy" in checkpoint:
             self.best_val_accuracy = checkpoint["best_val_accuracy"]
         if "best_epoch" in checkpoint:
@@ -780,11 +777,9 @@ class CentralizedTrainer:
                     self.epochs_without_improvement += 1
 
                 # Update epoch progress bar AFTER best tracking so 'best' is current
-                epoch_pbar.set_postfix({
-                    'loss': f'{train_loss:.4f}',
-                    'val': f'{val_acc:.4f}',
-                    'best': f'{self.best_val_accuracy:.4f}'
-                })
+                epoch_pbar.set_postfix(
+                    {"loss": f"{train_loss:.4f}", "val": f"{val_acc:.4f}", "best": f"{self.best_val_accuracy:.4f}"}
+                )
                 epoch_pbar.update(1)
 
                 logger.info(
@@ -833,7 +828,7 @@ class CentralizedTrainer:
             json.dump(results, f, indent=2)
 
         logger.info(f"Training complete. Best accuracy: {self.best_val_accuracy:.4f} at epoch {self.best_epoch}")
-        logger.info(f"Total time: {total_time/60:.2f} minutes")
+        logger.info(f"Total time: {total_time / 60:.2f} minutes")
 
         return results
 

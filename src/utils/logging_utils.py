@@ -70,6 +70,7 @@ def setup_logging(
 
     return logger
 
+
 # =============================================================================
 # Metrics Tracking
 # =============================================================================
@@ -123,16 +124,47 @@ class MetricsTracker:
         self._write_csv_row(step, kwargs)
 
     def _write_csv_row(self, step: int, metrics: dict[str, float]) -> None:
-        """Write a row to the CSV file."""
+        """Write a row to the CSV file.
+
+        On the first call, checks for an existing CSV and preserves prior
+        rows whose step is strictly less than ``step`` (resume-safe).
+        Rows at or after ``step`` are discarded so that crash-recovery
+        and checkpoint-resume never produce duplicate entries.
+        """
         if self.csv_file is None:
-            self.csv_file = open(self.csv_path, "w", newline="")
-            headers = ["step"] + list(metrics.keys())
-            self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=headers)
-            self.csv_writer.writeheader()
+            expected_keys = ["step"] + list(metrics.keys())
+
+            if self.csv_path.exists() and self.csv_path.stat().st_size > 0:
+                existing_data = self._read_existing_csv()
+                if existing_data:
+                    # Keep only rows before the current step (handles resume
+                    # from an earlier checkpoint and crash recovery).
+                    filtered_data = [row for row in existing_data if int(float(row.get("step", 0))) < step]
+
+                    # Merge headers from retained rows and new metrics
+                    all_headers: set[str] = {"step"}
+                    for row in filtered_data:
+                        all_headers.update(row.keys())
+                    all_headers.update(metrics.keys())
+                    sorted_headers = sorted(all_headers)
+
+                    self.csv_file = open(self.csv_path, "w", newline="")
+                    self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=sorted_headers)
+                    self.csv_writer.writeheader()
+                    for row in filtered_data:
+                        self.csv_writer.writerow(row)
+                else:
+                    self.csv_file = open(self.csv_path, "w", newline="")
+                    self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=expected_keys)
+                    self.csv_writer.writeheader()
+            else:
+                self.csv_file = open(self.csv_path, "w", newline="")
+                self.csv_writer = csv.DictWriter(self.csv_file, fieldnames=expected_keys)
+                self.csv_writer.writeheader()
 
         row = {"step": step, **metrics}
 
-        # Check if headers match (ensure writer exists before accessing attributes)
+        # Check if headers match (when new columns appear mid-run)
         if self.csv_writer is None or set(row.keys()) != set(self.csv_writer.fieldnames):
             # Reopen with updated headers
             try:
@@ -174,6 +206,23 @@ class MetricsTracker:
         except FileNotFoundError:
             pass
         return data
+
+    def restore_from_history(self, history: dict[str, list]) -> None:
+        """Restore in-memory metrics from checkpoint history.
+
+        Populates the internal metrics dictionary so that ``get_best()``
+        and ``get_summary()`` reflect the full training history, not just
+        the epochs/rounds logged after a resume.
+
+        Args:
+            history: Training history dict with metric names as keys and
+                     lists of values.  Step-identifier keys (``epochs``,
+                     ``rounds``) are skipped automatically.
+        """
+        step_keys = {"epochs", "rounds"}
+        for key, values in history.items():
+            if key not in step_keys and isinstance(values, list):
+                self.metrics[key] = list(values)
 
     def get_best(self, metric_name: str, mode: str = "max") -> tuple:
         """
@@ -354,6 +403,7 @@ class TensorBoardLogger:
         if enabled:
             try:
                 from torch.utils.tensorboard import SummaryWriter
+
                 self.writer = SummaryWriter(log_dir=str(log_dir))
             except ImportError:
                 logging.warning("TensorBoard not available. Install with: pip install tensorboard")

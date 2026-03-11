@@ -128,8 +128,13 @@ class TestDSCATNetFedAvg:
         """metrics_history should have the expected keys."""
         strategy = DSCATNetFedAvg()
         expected_keys = {
-            "round", "train_loss", "train_accuracy",
-            "val_loss", "val_accuracy", "num_clients", "client_metrics",
+            "round",
+            "train_loss",
+            "train_accuracy",
+            "val_loss",
+            "val_accuracy",
+            "num_clients",
+            "client_metrics",
         }
         assert set(strategy.metrics_history.keys()) == expected_keys
 
@@ -166,9 +171,7 @@ class TestDSCATNetFedAvg:
         strategy = DSCATNetFedAvg(
             save_path=str(tmp_path),
             save_every=100,  # don't trigger checkpoint
-            initial_parameters=ndarrays_to_parameters(
-                [np.zeros((4, 3), dtype=np.float32)]
-            ),
+            initial_parameters=ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)]),
         )
 
         results = _make_fit_results(n_clients=2, num_examples=100)
@@ -195,9 +198,7 @@ class TestDSCATNetFedAvg:
         strategy = DSCATNetFedAvg(
             save_path=str(tmp_path),
             save_every=1,  # save every round
-            initial_parameters=ndarrays_to_parameters(
-                [np.zeros((4, 3), dtype=np.float32)]
-            ),
+            initial_parameters=ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)]),
         )
         results = _make_fit_results(n_clients=1)
         strategy.aggregate_fit(1, results, [])
@@ -206,9 +207,7 @@ class TestDSCATNetFedAvg:
     def test_aggregate_evaluate_computes_accuracy(self):
         """aggregate_evaluate should compute weighted average accuracy."""
         strategy = DSCATNetFedAvg(
-            initial_parameters=ndarrays_to_parameters(
-                [np.zeros((4, 3), dtype=np.float32)]
-            ),
+            initial_parameters=ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)]),
         )
         results = _make_eval_results(n_clients=2, accuracy=0.8)
         loss, metrics = strategy.aggregate_evaluate(1, results, [])
@@ -230,9 +229,7 @@ class TestDSCATNetFedAvg:
         strategy = DSCATNetFedAvg(
             early_stopping_patience=2,
             min_delta=0.01,
-            initial_parameters=ndarrays_to_parameters(
-                [np.zeros((4, 3), dtype=np.float32)]
-            ),
+            initial_parameters=ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)]),
         )
         # Round 1: accuracy 0.8 → best
         strategy.aggregate_evaluate(1, _make_eval_results(accuracy=0.8), [])
@@ -252,9 +249,7 @@ class TestDSCATNetFedAvg:
         strategy = DSCATNetFedAvg(
             early_stopping_patience=5,
             min_delta=0.001,
-            initial_parameters=ndarrays_to_parameters(
-                [np.zeros((4, 3), dtype=np.float32)]
-            ),
+            initial_parameters=ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)]),
         )
         strategy.aggregate_evaluate(1, _make_eval_results(accuracy=0.7), [])
         strategy.aggregate_evaluate(2, _make_eval_results(accuracy=0.7), [])
@@ -268,9 +263,7 @@ class TestDSCATNetFedAvg:
         """configure_fit should add current_round and total_rounds to config."""
         strategy = DSCATNetFedAvg(
             total_rounds=50,
-            initial_parameters=ndarrays_to_parameters(
-                [np.zeros((4, 3), dtype=np.float32)]
-            ),
+            initial_parameters=ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)]),
             min_fit_clients=1,
             min_available_clients=1,
         )
@@ -292,9 +285,7 @@ class TestDSCATNetFedAvg:
 
     def test_early_stopping_saves_best_checkpoint(self, tmp_path):
         """When accuracy improves, best model checkpoint should be saved."""
-        initial_params = ndarrays_to_parameters(
-            [np.zeros((4, 3), dtype=np.float32)]
-        )
+        initial_params = ndarrays_to_parameters([np.zeros((4, 3), dtype=np.float32)])
         strategy = DSCATNetFedAvg(
             save_path=str(tmp_path),
             early_stopping_patience=10,
@@ -387,6 +378,7 @@ class TestCreateFedAvgStrategy:
 
     def test_custom_evaluate_metrics_aggregation(self):
         """Custom aggregation fn should be used when provided."""
+
         def custom_fn(metrics):
             return {"custom": 1.0}
 
@@ -410,6 +402,7 @@ class TestFederatedServer:
     def tiny_model(self):
         """Create a tiny DSCATNet for server tests."""
         from src.models.dscatnet import create_dscatnet
+
         return create_dscatnet(num_classes=7, variant="tiny")
 
     def test_init(self, tiny_model, tmp_path):
@@ -517,14 +510,17 @@ class TestFederatedServer:
 class TestCreateServer:
     def test_returns_config_and_strategy(self):
         from src.models.dscatnet import create_dscatnet
+
         model = create_dscatnet(num_classes=7, variant="tiny")
-        config, strategy = create_server(model, num_rounds=5, min_fit_clients=2,
-                                          min_evaluate_clients=2, min_available_clients=2)
+        config, strategy = create_server(
+            model, num_rounds=5, min_fit_clients=2, min_evaluate_clients=2, min_available_clients=2
+        )
         assert config.num_rounds == 5
         assert isinstance(strategy, DSCATNetFedAvg)
 
     def test_custom_strategy_used(self):
         from src.models.dscatnet import create_dscatnet
+
         model = create_dscatnet(num_classes=7, variant="tiny")
         custom = DSCATNetFedAvg(total_rounds=99)
         _, strategy = create_server(model, num_rounds=5, strategy=custom)

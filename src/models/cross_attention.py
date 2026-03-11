@@ -45,17 +45,16 @@ class CrossScaleAttention(nn.Module):
         num_heads: int = 6,
         qkv_bias: bool = True,
         attn_drop: float = 0.0,
-        proj_drop: float = 0.0
+        proj_drop: float = 0.0,
     ):
         super().__init__()
 
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.head_dim = embed_dim // num_heads
-        self.scale = self.head_dim ** -0.5
+        self.scale = self.head_dim**-0.5
 
-        assert embed_dim % num_heads == 0, \
-            f"embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})"
+        assert embed_dim % num_heads == 0, f"embed_dim ({embed_dim}) must be divisible by num_heads ({num_heads})"
 
         # Projections for fine-scale tokens
         self.fine_q = nn.Linear(embed_dim, embed_dim, bias=qkv_bias)
@@ -81,12 +80,7 @@ class CrossScaleAttention(nn.Module):
         # (B, N, C) -> (B, num_heads, N, head_dim)
         return x.reshape(B, N, self.num_heads, self.head_dim).permute(0, 2, 1, 3)
 
-    def _cross_attention(
-        self,
-        query: torch.Tensor,
-        key: torch.Tensor,
-        value: torch.Tensor
-    ) -> torch.Tensor:
+    def _cross_attention(self, query: torch.Tensor, key: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
         """
         Compute cross-attention.
 
@@ -113,11 +107,7 @@ class CrossScaleAttention(nn.Module):
 
         return out
 
-    def forward(
-        self,
-        fine_tokens: torch.Tensor,
-        coarse_tokens: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, fine_tokens: torch.Tensor, coarse_tokens: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Bidirectional cross-attention between scales.
 
@@ -172,7 +162,7 @@ class CrossScaleAttentionBlock(nn.Module):
         mlp_ratio: float = 4.0,
         qkv_bias: bool = True,
         drop: float = 0.0,
-        attn_drop: float = 0.0
+        attn_drop: float = 0.0,
     ):
         super().__init__()
 
@@ -182,11 +172,7 @@ class CrossScaleAttentionBlock(nn.Module):
 
         # Cross-scale attention
         self.cross_attn = CrossScaleAttention(
-            embed_dim=embed_dim,
-            num_heads=num_heads,
-            qkv_bias=qkv_bias,
-            attn_drop=attn_drop,
-            proj_drop=drop
+            embed_dim=embed_dim, num_heads=num_heads, qkv_bias=qkv_bias, attn_drop=attn_drop, proj_drop=drop
         )
 
         # Layer norms for self-attention
@@ -195,16 +181,10 @@ class CrossScaleAttentionBlock(nn.Module):
 
         # Self-attention for each scale
         self.fine_self_attn = nn.MultiheadAttention(
-            embed_dim=embed_dim,
-            num_heads=num_heads,
-            dropout=attn_drop,
-            batch_first=True
+            embed_dim=embed_dim, num_heads=num_heads, dropout=attn_drop, batch_first=True
         )
         self.coarse_self_attn = nn.MultiheadAttention(
-            embed_dim=embed_dim,
-            num_heads=num_heads,
-            dropout=attn_drop,
-            batch_first=True
+            embed_dim=embed_dim, num_heads=num_heads, dropout=attn_drop, batch_first=True
         )
 
         # Layer norms for FFN
@@ -218,21 +198,17 @@ class CrossScaleAttentionBlock(nn.Module):
             nn.GELU(),
             nn.Dropout(drop),
             nn.Linear(mlp_hidden_dim, embed_dim),
-            nn.Dropout(drop)
+            nn.Dropout(drop),
         )
         self.coarse_ffn = nn.Sequential(
             nn.Linear(embed_dim, mlp_hidden_dim),
             nn.GELU(),
             nn.Dropout(drop),
             nn.Linear(mlp_hidden_dim, embed_dim),
-            nn.Dropout(drop)
+            nn.Dropout(drop),
         )
 
-    def forward(
-        self,
-        fine_tokens: torch.Tensor,
-        coarse_tokens: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, fine_tokens: torch.Tensor, coarse_tokens: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Forward pass through the cross-scale attention block.
 

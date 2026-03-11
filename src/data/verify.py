@@ -53,7 +53,7 @@ class DatasetVerifier:
             "class_distribution": {},
             "metadata_valid": False,
             "image_stats": {},
-            "errors": []
+            "errors": [],
         }
 
         # Check metadata
@@ -75,7 +75,7 @@ class DatasetVerifier:
             image_dirs = [
                 dataset_path / "HAM10000_images_part_1",
                 dataset_path / "HAM10000_images_part_2",
-                dataset_path / "images"
+                dataset_path / "images",
             ]
 
             found_images = set()
@@ -93,13 +93,9 @@ class DatasetVerifier:
                 extra_images = found_images - metadata_ids
 
                 if missing_images:
-                    result["errors"].append(
-                        f"Images in metadata but not found: {len(missing_images)}"
-                    )
+                    result["errors"].append(f"Images in metadata but not found: {len(missing_images)}")
                 if extra_images:
-                    result["errors"].append(
-                        f"Images found but not in metadata: {len(extra_images)}"
-                    )
+                    result["errors"].append(f"Images found but not in metadata: {len(extra_images)}")
 
             result["valid"] = len(result["errors"]) == 0 and result["total_images"] > 0
 
@@ -118,13 +114,13 @@ class DatasetVerifier:
             "total_images": 0,
             "class_distribution": {},
             "metadata_valid": False,
-            "errors": []
+            "errors": [],
         }
 
         # Check for ground truth file
         csv_candidates = [
             dataset_path / "ISIC2018_Task3_Training_GroundTruth.csv",
-            dataset_path / "ISIC2018_Task3_Training_GroundTruth" / "ISIC2018_Task3_Training_GroundTruth.csv"
+            dataset_path / "ISIC2018_Task3_Training_GroundTruth" / "ISIC2018_Task3_Training_GroundTruth.csv",
         ]
 
         csv_path = None
@@ -143,7 +139,7 @@ class DatasetVerifier:
             result["metadata_rows"] = len(df)
 
             # ISIC 2018 has one-hot encoded labels
-            label_cols = ['MEL', 'NV', 'BCC', 'AKIEC', 'BKL', 'DF', 'VASC']
+            label_cols = ["MEL", "NV", "BCC", "AKIEC", "BKL", "DF", "VASC"]
             existing_cols = [col for col in label_cols if col in df.columns]
 
             if existing_cols:
@@ -173,7 +169,7 @@ class DatasetVerifier:
             "total_images": 0,
             "class_distribution": {},
             "metadata_valid": False,
-            "errors": []
+            "errors": [],
         }
 
         csv_path = dataset_path / "ISIC_2019_Training_GroundTruth.csv"
@@ -187,7 +183,7 @@ class DatasetVerifier:
             result["metadata_rows"] = len(df)
 
             # ISIC 2019 classes (8 classes including SCC)
-            label_cols = ['MEL', 'NV', 'BCC', 'AK', 'BKL', 'DF', 'VASC', 'SCC']
+            label_cols = ["MEL", "NV", "BCC", "AK", "BKL", "DF", "VASC", "SCC"]
             for col in label_cols:
                 if col in df.columns:
                     result["class_distribution"][col] = int(df[col].sum())
@@ -214,7 +210,7 @@ class DatasetVerifier:
             "total_images": 0,
             "class_distribution": {},
             "metadata_valid": False,
-            "errors": []
+            "errors": [],
         }
 
         csv_path = dataset_path / "ISIC_2020_Training_GroundTruth.csv"
@@ -234,7 +230,7 @@ class DatasetVerifier:
             if "target" in df.columns:
                 result["class_distribution"] = {
                     "benign": int((df["target"] == 0).sum()),
-                    "malignant": int((df["target"] == 1).sum())
+                    "malignant": int((df["target"] == 1).sum()),
                 }
 
             # Count images
@@ -261,7 +257,7 @@ class DatasetVerifier:
             "total_images": 0,
             "class_distribution": {},
             "metadata_valid": False,
-            "errors": []
+            "errors": [],
         }
 
         csv_path = dataset_path / "metadata.csv"
@@ -364,10 +360,8 @@ class DatasetVerifier:
             "total_datasets": len(self.results),
             "valid_datasets": sum(1 for r in self.results.values() if r["valid"]),
             "total_images": sum(r["total_images"] for r in self.results.values()),
-            "images_per_dataset": {
-                name: r["total_images"] for name, r in self.results.items()
-            },
-            "all_valid": all(r["valid"] for r in self.results.values())
+            "images_per_dataset": {name: r["total_images"] for name, r in self.results.items()},
+            "all_valid": all(r["valid"] for r in self.results.values()),
         }
 
 

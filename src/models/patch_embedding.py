@@ -34,13 +34,7 @@ class PatchEmbedding(nn.Module):
         embed_dim: Embedding dimension for each patch
     """
 
-    def __init__(
-        self,
-        img_size: int = 224,
-        patch_size: int = 16,
-        in_channels: int = 3,
-        embed_dim: int = 384
-    ):
+    def __init__(self, img_size: int = 224, patch_size: int = 16, in_channels: int = 3, embed_dim: int = 384):
         super().__init__()
         self.img_size = img_size
         self.patch_size = patch_size
@@ -48,12 +42,7 @@ class PatchEmbedding(nn.Module):
         self.embed_dim = embed_dim
 
         # Convolutional projection to create patch embeddings
-        self.projection = nn.Conv2d(
-            in_channels,
-            embed_dim,
-            kernel_size=patch_size,
-            stride=patch_size
-        )
+        self.projection = nn.Conv2d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)
 
         # Layer normalization for stable training
         self.norm = nn.LayerNorm(embed_dim)
@@ -71,12 +60,13 @@ class PatchEmbedding(nn.Module):
         x = self.projection(x)
 
         # (B, embed_dim, H/P, W/P) -> (B, num_patches, embed_dim)
-        x = rearrange(x, 'b e h w -> b (h w) e')
+        x = rearrange(x, "b e h w -> b (h w) e")
 
         # Apply layer normalization
         x = self.norm(x)
 
         return x
+
 
 # =============================================================================
 # Dual-Scale Patch Embedding
@@ -105,7 +95,7 @@ class DualScalePatchEmbedding(nn.Module):
         fine_patch_size: int = 8,
         coarse_patch_size: int = 16,
         in_channels: int = 3,
-        embed_dim: int = 384
+        embed_dim: int = 384,
     ):
         super().__init__()
 
@@ -115,23 +105,17 @@ class DualScalePatchEmbedding(nn.Module):
         self.embed_dim = embed_dim
 
         # Calculate number of patches for each scale
-        self.num_fine_patches = (img_size // fine_patch_size) ** 2    # 784 for 224/8
+        self.num_fine_patches = (img_size // fine_patch_size) ** 2  # 784 for 224/8
         self.num_coarse_patches = (img_size // coarse_patch_size) ** 2  # 196 for 224/16
 
         # Fine-scale embedding (8×8 patches)
         self.fine_embedding = PatchEmbedding(
-            img_size=img_size,
-            patch_size=fine_patch_size,
-            in_channels=in_channels,
-            embed_dim=embed_dim
+            img_size=img_size, patch_size=fine_patch_size, in_channels=in_channels, embed_dim=embed_dim
         )
 
         # Coarse-scale embedding (16×16 patches)
         self.coarse_embedding = PatchEmbedding(
-            img_size=img_size,
-            patch_size=coarse_patch_size,
-            in_channels=in_channels,
-            embed_dim=embed_dim
+            img_size=img_size, patch_size=coarse_patch_size, in_channels=in_channels, embed_dim=embed_dim
         )
 
         # Learnable class tokens for each scale
@@ -139,12 +123,8 @@ class DualScalePatchEmbedding(nn.Module):
         self.coarse_cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
 
         # Positional embeddings for each scale (+1 for CLS token)
-        self.fine_pos_embed = nn.Parameter(
-            torch.zeros(1, self.num_fine_patches + 1, embed_dim)
-        )
-        self.coarse_pos_embed = nn.Parameter(
-            torch.zeros(1, self.num_coarse_patches + 1, embed_dim)
-        )
+        self.fine_pos_embed = nn.Parameter(torch.zeros(1, self.num_fine_patches + 1, embed_dim))
+        self.coarse_pos_embed = nn.Parameter(torch.zeros(1, self.num_coarse_patches + 1, embed_dim))
 
         # Initialize parameters
         self._init_weights()
@@ -171,7 +151,7 @@ class DualScalePatchEmbedding(nn.Module):
         batch_size = x.shape[0]
 
         # Create patch embeddings at both scales
-        fine_patches = self.fine_embedding(x)    # (B, 784, embed_dim)
+        fine_patches = self.fine_embedding(x)  # (B, 784, embed_dim)
         coarse_patches = self.coarse_embedding(x)  # (B, 196, embed_dim)
 
         # Expand class tokens for batch

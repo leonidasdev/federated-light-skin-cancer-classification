@@ -37,11 +37,7 @@ class TestCentralizedConfig:
         """Test config to/from dict."""
         from src.centralized.centralized import CentralizedConfig
 
-        config = CentralizedConfig(
-            num_epochs=50,
-            batch_size=64,
-            experiment_name="test_cent"
-        )
+        config = CentralizedConfig(num_epochs=50, batch_size=64, experiment_name="test_cent")
 
         config_dict = config.to_dict()
         restored = CentralizedConfig.from_dict(config_dict)
@@ -135,7 +131,7 @@ class TestCentralizedTrainer:
 
         # Create a corrupted checkpoint file
         corrupt_path = tmp_path / "corrupted_checkpoint.pt"
-        with open(corrupt_path, 'w') as f:
+        with open(corrupt_path, "w") as f:
             f.write("This is not a valid PyTorch checkpoint")
 
         with pytest.raises((RuntimeError, EOFError, OSError, _pickle.UnpicklingError)):
@@ -166,11 +162,7 @@ class TestCentralizedTrainer:
 
         # Save checkpoint using the trainer's save method
         checkpoint_path = trainer.save_checkpoint(
-            epoch=5,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            metrics=metrics,
-            is_best=True
+            epoch=5, optimizer=optimizer, scheduler=scheduler, metrics=metrics, is_best=True
         )
 
         # Create new trainer and load
@@ -273,8 +265,11 @@ class TestCentralizedTrainer:
         optimizer = torch.optim.Adam(trainer.model.parameters(), lr=1e-3)
 
         trainer.save_checkpoint(
-            epoch=1, optimizer=optimizer, scheduler=None,
-            metrics={"val_loss": 0.5}, is_best=True,
+            epoch=1,
+            optimizer=optimizer,
+            scheduler=None,
+            metrics={"val_loss": 0.5},
+            is_best=True,
         )
         assert (trainer.checkpoint_dir / "best_checkpoint.pt").exists()
         assert (trainer.checkpoint_dir / "best_model.pt").exists()
@@ -293,14 +288,18 @@ class TestCentralizedTrainer:
         optimizer = torch.optim.Adam(trainer.model.parameters(), lr=1e-3)
 
         path = trainer.save_checkpoint(
-            epoch=10, optimizer=optimizer, scheduler=None,
-            metrics={}, is_best=False,
+            epoch=10,
+            optimizer=optimizer,
+            scheduler=None,
+            metrics={},
+            is_best=False,
         )
         assert "checkpoint_epoch_10" in path
 
     def test_config_from_dict_ignores_unknown_keys(self):
         """from_dict should silently ignore unknown keys."""
         from src.centralized.centralized import CentralizedConfig
+
         d = {"num_epochs": 5, "unknown_key": "ignored"}
         config = CentralizedConfig.from_dict(d)
         assert config.num_epochs == 5
@@ -350,9 +349,7 @@ class TestCentralizedTrainer:
 
         images = torch.randn(8, 3, 32, 32)
         labels = torch.randint(0, 7, (8,))
-        trainer.train_loader = DataLoader(
-            TensorDataset(images, labels), batch_size=4, drop_last=True
-        )
+        trainer.train_loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         trainer.val_loader = DataLoader(TensorDataset(images, labels), batch_size=4)
         trainer.class_weights = None
 
@@ -385,9 +382,7 @@ class TestCentralizedTrainer:
 
         images = torch.randn(8, 3, 32, 32)
         labels = torch.randint(0, 7, (8,))
-        trainer.train_loader = DataLoader(
-            TensorDataset(images, labels), batch_size=4, drop_last=True
-        )
+        trainer.train_loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         trainer.val_loader = DataLoader(TensorDataset(images, labels), batch_size=4)
         trainer.class_weights = None
 
@@ -418,9 +413,7 @@ class TestCentralizedTrainer:
 
         images = torch.randn(8, 3, 32, 32)
         labels = torch.randint(0, 7, (8,))
-        trainer.train_loader = DataLoader(
-            TensorDataset(images, labels), batch_size=4, drop_last=True
-        )
+        trainer.train_loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         trainer.val_loader = DataLoader(TensorDataset(images, labels), batch_size=4)
         trainer.class_weights = None
 
@@ -449,9 +442,7 @@ class TestCentralizedTrainer:
 
         images = torch.randn(8, 3, 32, 32)
         labels = torch.randint(0, 7, (8,))
-        trainer.train_loader = DataLoader(
-            TensorDataset(images, labels), batch_size=4, drop_last=True
-        )
+        trainer.train_loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         trainer.val_loader = DataLoader(TensorDataset(images, labels), batch_size=4)
         trainer.class_weights = None
 
@@ -479,9 +470,7 @@ class TestCentralizedTrainer:
 
         images = torch.randn(8, 3, 32, 32)
         labels = torch.randint(0, 7, (8,))
-        trainer.train_loader = DataLoader(
-            TensorDataset(images, labels), batch_size=4, drop_last=True
-        )
+        trainer.train_loader = DataLoader(TensorDataset(images, labels), batch_size=4, drop_last=True)
         trainer.val_loader = DataLoader(TensorDataset(images, labels), batch_size=4)
         trainer.class_weights = None
 
@@ -533,6 +522,7 @@ class TestCentralizedTrainerIntegration:
     def check_datasets(self):
         """Skip if no datasets available."""
         from pathlib import Path
+
         data_root = Path(__file__).parent.parent / "data"
         ham_csv = data_root / "HAM10000" / "HAM10000_metadata.csv"
         if not ham_csv.exists():

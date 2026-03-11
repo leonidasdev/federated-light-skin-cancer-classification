@@ -151,6 +151,69 @@ class TestMetricsTracker:
         data = tracker._read_existing_csv()
         assert data == []
 
+    def test_csv_preserved_on_resume(self, tmp_path):
+        """New MetricsTracker must not truncate an existing CSV."""
+        tracker1 = MetricsTracker(tmp_path, "exp_resume")
+        tracker1.log(1, loss=0.5, accuracy=0.7)
+        tracker1.log(2, loss=0.4, accuracy=0.8)
+        tracker1.log(3, loss=0.3, accuracy=0.85)
+        tracker1.save()
+
+        # Simulate resume: create a new tracker pointing to the same dir
+        tracker2 = MetricsTracker(tmp_path, "exp_resume")
+        tracker2.log(4, loss=0.25, accuracy=0.88)
+        tracker2.log(5, loss=0.2, accuracy=0.9)
+
+        data = tracker2._read_existing_csv()
+        steps = [int(float(row["step"])) for row in data]
+        assert steps == [1, 2, 3, 4, 5]
+
+    def test_csv_crash_recovery_no_duplicates(self, tmp_path):
+        """Resuming from an earlier checkpoint must not duplicate rows."""
+        tracker1 = MetricsTracker(tmp_path, "exp_crash")
+        for i in range(1, 11):
+            tracker1.log(i, loss=1.0 / i)
+        tracker1.save()
+
+        # Simulate resume from step 6 (crash after step 10, checkpoint at 5)
+        tracker2 = MetricsTracker(tmp_path, "exp_crash")
+        tracker2.log(6, loss=0.15)
+
+        data = tracker2._read_existing_csv()
+        steps = [int(float(row["step"])) for row in data]
+        # Should have steps 1-6 (rows 7-10 trimmed, then 6 appended)
+        assert steps == [1, 2, 3, 4, 5, 6]
+
+    def test_restore_from_history(self, tmp_path):
+        """restore_from_history must populate in-memory metrics."""
+        tracker = MetricsTracker(tmp_path, "exp_restore")
+        history = {
+            "epochs": [1, 2, 3],
+            "train_loss": [0.5, 0.4, 0.3],
+            "val_accuracy": [0.7, 0.8, 0.85],
+        }
+        tracker.restore_from_history(history)
+
+        assert tracker.metrics["train_loss"] == [0.5, 0.4, 0.3]
+        assert tracker.metrics["val_accuracy"] == [0.7, 0.8, 0.85]
+        # Step keys should be excluded
+        assert "epochs" not in tracker.metrics
+
+        best_val, best_step = tracker.get_best("val_accuracy", mode="max")
+        assert best_val == 0.85
+        assert best_step == 3
+
+    def test_restore_then_log_extends_metrics(self, tmp_path):
+        """After restore, new log() calls should append to restored data."""
+        tracker = MetricsTracker(tmp_path, "exp_extend")
+        tracker.restore_from_history(
+            {
+                "train_loss": [0.5, 0.4],
+            }
+        )
+        tracker.log(3, train_loss=0.3)
+        assert tracker.metrics["train_loss"] == [0.5, 0.4, 0.3]
+
 
 # =============================================================================
 # ExperimentLogger

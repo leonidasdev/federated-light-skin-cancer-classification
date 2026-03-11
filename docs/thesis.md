@@ -432,7 +432,7 @@ The PAD-UFES-20 (Pacheco et al., 2020) dataset contains 2,298 clinical (non-derm
 | Flower | 1.25.0 |
 | timm | 1.0.24 |
 
-**VRAM Constraint**: The 4 GB VRAM limitation necessitates a batch size of 8 with gradient accumulation (4 steps) to achieve an effective batch size of 32. AMP is disabled for training stability.
+**VRAM Constraint**: The 4 GB VRAM limitation necessitates a batch size of 4 with gradient accumulation (8 steps) to achieve an effective batch size of 32. AMP is disabled for training stability.
 
 ### 4.3 Experiment Matrix
 

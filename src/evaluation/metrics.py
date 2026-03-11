@@ -209,12 +209,14 @@ class ModelEvaluator:
                 # Check if all classes are present
                 unique_labels = np.unique(labels)
                 if len(unique_labels) >= 2:
-                    auc = float(roc_auc_score(
-                        labels,
-                        probabilities,
-                        multi_class="ovr",
-                        average="macro",
-                    ))
+                    auc = float(
+                        roc_auc_score(
+                            labels,
+                            probabilities,
+                            multi_class="ovr",
+                            average="macro",
+                        )
+                    )
             except ValueError as e:
                 logger.warning(f"Could not compute AUC: {e}")
 

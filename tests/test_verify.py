@@ -45,10 +45,12 @@ class TestVerifyHAM10000:
         img_dir.mkdir()
 
         # Create metadata CSV
-        df = pd.DataFrame({
-            "image_id": ["img001", "img002", "img003"],
-            "dx": ["mel", "nv", "bcc"],
-        })
+        df = pd.DataFrame(
+            {
+                "image_id": ["img001", "img002", "img003"],
+                "dx": ["mel", "nv", "bcc"],
+            }
+        )
         df.to_csv(ds_path / "HAM10000_metadata.csv", index=False)
 
         # Create dummy images
@@ -66,10 +68,12 @@ class TestVerifyHAM10000:
         ds_path = data_root / "HAM10000"
         ds_path.mkdir(parents=True)
 
-        df = pd.DataFrame({
-            "image_id": ["img001", "img002"],
-            "dx": ["mel", "nv"],
-        })
+        df = pd.DataFrame(
+            {
+                "image_id": ["img001", "img002"],
+                "dx": ["mel", "nv"],
+            }
+        )
         df.to_csv(ds_path / "HAM10000_metadata.csv", index=False)
 
         verifier = DatasetVerifier(str(data_root))
@@ -94,12 +98,14 @@ class TestVerifyISIC2018:
         img_dir = ds_path / "ISIC2018_Task3_Training_Input"
         img_dir.mkdir()
 
-        df = pd.DataFrame({
-            "image": ["A", "B"],
-            "MEL": [1, 0],
-            "NV": [0, 1],
-            "BCC": [0, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "image": ["A", "B"],
+                "MEL": [1, 0],
+                "NV": [0, 1],
+                "BCC": [0, 0],
+            }
+        )
         df.to_csv(ds_path / "ISIC2018_Task3_Training_GroundTruth.csv", index=False)
 
         (img_dir / "A.jpg").write_text("fake")
@@ -129,11 +135,19 @@ class TestVerifyISIC2019:
         img_dir = ds_path / "ISIC_2019_Training_Input"
         img_dir.mkdir()
 
-        df = pd.DataFrame({
-            "image": ["A"],
-            "MEL": [1], "NV": [0], "BCC": [0], "AK": [0],
-            "BKL": [0], "DF": [0], "VASC": [0], "SCC": [0],
-        })
+        df = pd.DataFrame(
+            {
+                "image": ["A"],
+                "MEL": [1],
+                "NV": [0],
+                "BCC": [0],
+                "AK": [0],
+                "BKL": [0],
+                "DF": [0],
+                "VASC": [0],
+                "SCC": [0],
+            }
+        )
         df.to_csv(ds_path / "ISIC_2019_Training_GroundTruth.csv", index=False)
         (img_dir / "A.jpg").write_text("fake")
 
@@ -158,10 +172,12 @@ class TestVerifyISIC2020:
         img_dir = ds_path / "train"
         img_dir.mkdir()
 
-        df = pd.DataFrame({
-            "image_name": ["X", "Y"],
-            "target": [0, 1],
-        })
+        df = pd.DataFrame(
+            {
+                "image_name": ["X", "Y"],
+                "target": [0, 1],
+            }
+        )
         df.to_csv(ds_path / "train.csv", index=False)
         (img_dir / "X.jpg").write_text("fake")
         (img_dir / "Y.jpg").write_text("fake")

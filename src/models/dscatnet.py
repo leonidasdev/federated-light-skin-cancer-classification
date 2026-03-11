@@ -81,7 +81,7 @@ class DSCATNet(nn.Module):
         coarse_patch_size: int = 16,
         drop_rate: float = 0.1,
         attn_drop_rate: float = 0.0,
-        fusion_method: str = 'concat'
+        fusion_method: str = "concat",
     ):
         super().__init__()
 
@@ -97,54 +97,50 @@ class DSCATNet(nn.Module):
             fine_patch_size=fine_patch_size,
             coarse_patch_size=coarse_patch_size,
             in_channels=in_channels,
-            embed_dim=embed_dim
+            embed_dim=embed_dim,
         )
 
         # Dropout after embedding
         self.pos_drop = nn.Dropout(p=drop_rate)
 
         # Transformer blocks with cross-scale attention
-        self.blocks = nn.ModuleList([
-            CrossScaleAttentionBlock(
-                embed_dim=embed_dim,
-                num_heads=num_heads,
-                mlp_ratio=mlp_ratio,
-                qkv_bias=True,
-                drop=drop_rate,
-                attn_drop=attn_drop_rate
-            )
-            for _ in range(depth)
-        ])
+        self.blocks = nn.ModuleList(
+            [
+                CrossScaleAttentionBlock(
+                    embed_dim=embed_dim,
+                    num_heads=num_heads,
+                    mlp_ratio=mlp_ratio,
+                    qkv_bias=True,
+                    drop=drop_rate,
+                    attn_drop=attn_drop_rate,
+                )
+                for _ in range(depth)
+            ]
+        )
 
         # Final layer normalization
         self.norm_fine = nn.LayerNorm(embed_dim)
         self.norm_coarse = nn.LayerNorm(embed_dim)
 
         # Fusion and classification head
-        if fusion_method == 'concat':
+        if fusion_method == "concat":
             # Concatenate CLS tokens from both scales
             self.fusion = nn.Linear(embed_dim * 2, embed_dim)
             self.classifier = nn.Sequential(
-                nn.LayerNorm(embed_dim),
-                nn.Dropout(drop_rate),
-                nn.Linear(embed_dim, num_classes)
+                nn.LayerNorm(embed_dim), nn.Dropout(drop_rate), nn.Linear(embed_dim, num_classes)
             )
-        elif fusion_method == 'add':
+        elif fusion_method == "add":
             # Add CLS tokens from both scales
             self.fusion = nn.Identity()
             self.classifier = nn.Sequential(
-                nn.LayerNorm(embed_dim),
-                nn.Dropout(drop_rate),
-                nn.Linear(embed_dim, num_classes)
+                nn.LayerNorm(embed_dim), nn.Dropout(drop_rate), nn.Linear(embed_dim, num_classes)
             )
-        elif fusion_method == 'attention':
+        elif fusion_method == "attention":
             # Learnable attention-based fusion
             self.fusion_attention = nn.Linear(embed_dim, 1)
             self.fusion = nn.Identity()
             self.classifier = nn.Sequential(
-                nn.LayerNorm(embed_dim),
-                nn.Dropout(drop_rate),
-                nn.Linear(embed_dim, num_classes)
+                nn.LayerNorm(embed_dim), nn.Dropout(drop_rate), nn.Linear(embed_dim, num_classes)
             )
         else:
             raise ValueError(f"Unknown fusion method: {fusion_method}")
@@ -189,16 +185,16 @@ class DSCATNet(nn.Module):
         coarse_tokens = self.norm_coarse(coarse_tokens)
 
         # Extract CLS tokens
-        fine_cls = fine_tokens[:, 0]    # (B, embed_dim)
+        fine_cls = fine_tokens[:, 0]  # (B, embed_dim)
         coarse_cls = coarse_tokens[:, 0]  # (B, embed_dim)
 
         # Fuse dual-scale representations
-        if self.fusion_method == 'concat':
+        if self.fusion_method == "concat":
             fused = torch.cat([fine_cls, coarse_cls], dim=-1)  # (B, embed_dim * 2)
             fused = self.fusion(fused)  # (B, embed_dim)
-        elif self.fusion_method == 'add':
+        elif self.fusion_method == "add":
             fused = fine_cls + coarse_cls  # (B, embed_dim)
-        elif self.fusion_method == 'attention':
+        elif self.fusion_method == "attention":
             # Stack CLS tokens
             cls_stack = torch.stack([fine_cls, coarse_cls], dim=1)  # (B, 2, embed_dim)
             # Compute attention weights
@@ -229,16 +225,16 @@ class DSCATNet(nn.Module):
     def get_model_config(self) -> dict[str, Any]:
         """Return model configuration dictionary."""
         return {
-            'img_size': self.img_size,
-            'num_classes': self.num_classes,
-            'embed_dim': self.embed_dim,
-            'depth': self.depth,
-            'fusion_method': self.fusion_method,
-            'num_parameters': self.get_num_parameters()
+            "img_size": self.img_size,
+            "num_classes": self.num_classes,
+            "embed_dim": self.embed_dim,
+            "depth": self.depth,
+            "fusion_method": self.fusion_method,
+            "num_parameters": self.get_num_parameters(),
         }
 
 
-def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None:
+def load_pretrained_vit_weights(model: DSCATNet, variant: str = "small") -> None:
     """
     Load pretrained ViT-Small (ImageNet-21k) weights into DSCATNet.
 
@@ -258,10 +254,9 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
     """
     logger = logging.getLogger(__name__)
 
-    if variant not in ('small', 'paper'):
+    if variant not in ("small", "paper"):
         logger.warning(
-            "Pretrained ViT weight loading only supported for 'small' and 'paper' variants, "
-            f"got '{variant}'. Skipping."
+            f"Pretrained ViT weight loading only supported for 'small' and 'paper' variants, got '{variant}'. Skipping."
         )
         return
 
@@ -270,7 +265,7 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
         return
 
     logger.info("Loading pretrained ViT-Small (patch16_224) weights from timm...")
-    vit = timm.create_model('vit_small_patch16_224', pretrained=True)
+    vit = timm.create_model("vit_small_patch16_224", pretrained=True)
     vit_sd = vit.state_dict()
     del vit  # free memory
 
@@ -284,52 +279,54 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
 
         # Fine-scale self-attention ← ViT block fine_vit_idx
         mapping = {
-            f'blocks.{i}.fine_self_attn.in_proj_weight': f'blocks.{fine_vit_idx}.attn.qkv.weight',
-            f'blocks.{i}.fine_self_attn.in_proj_bias': f'blocks.{fine_vit_idx}.attn.qkv.bias',
-            f'blocks.{i}.fine_self_attn.out_proj.weight': f'blocks.{fine_vit_idx}.attn.proj.weight',
-            f'blocks.{i}.fine_self_attn.out_proj.bias': f'blocks.{fine_vit_idx}.attn.proj.bias',
-            f'blocks.{i}.norm_fine_self.weight': f'blocks.{fine_vit_idx}.norm1.weight',
-            f'blocks.{i}.norm_fine_self.bias': f'blocks.{fine_vit_idx}.norm1.bias',
-            f'blocks.{i}.norm_fine_ffn.weight': f'blocks.{fine_vit_idx}.norm2.weight',
-            f'blocks.{i}.norm_fine_ffn.bias': f'blocks.{fine_vit_idx}.norm2.bias',
-            f'blocks.{i}.fine_ffn.0.weight': f'blocks.{fine_vit_idx}.mlp.fc1.weight',
-            f'blocks.{i}.fine_ffn.0.bias': f'blocks.{fine_vit_idx}.mlp.fc1.bias',
-            f'blocks.{i}.fine_ffn.3.weight': f'blocks.{fine_vit_idx}.mlp.fc2.weight',
-            f'blocks.{i}.fine_ffn.3.bias': f'blocks.{fine_vit_idx}.mlp.fc2.bias',
+            f"blocks.{i}.fine_self_attn.in_proj_weight": f"blocks.{fine_vit_idx}.attn.qkv.weight",
+            f"blocks.{i}.fine_self_attn.in_proj_bias": f"blocks.{fine_vit_idx}.attn.qkv.bias",
+            f"blocks.{i}.fine_self_attn.out_proj.weight": f"blocks.{fine_vit_idx}.attn.proj.weight",
+            f"blocks.{i}.fine_self_attn.out_proj.bias": f"blocks.{fine_vit_idx}.attn.proj.bias",
+            f"blocks.{i}.norm_fine_self.weight": f"blocks.{fine_vit_idx}.norm1.weight",
+            f"blocks.{i}.norm_fine_self.bias": f"blocks.{fine_vit_idx}.norm1.bias",
+            f"blocks.{i}.norm_fine_ffn.weight": f"blocks.{fine_vit_idx}.norm2.weight",
+            f"blocks.{i}.norm_fine_ffn.bias": f"blocks.{fine_vit_idx}.norm2.bias",
+            f"blocks.{i}.fine_ffn.0.weight": f"blocks.{fine_vit_idx}.mlp.fc1.weight",
+            f"blocks.{i}.fine_ffn.0.bias": f"blocks.{fine_vit_idx}.mlp.fc1.bias",
+            f"blocks.{i}.fine_ffn.3.weight": f"blocks.{fine_vit_idx}.mlp.fc2.weight",
+            f"blocks.{i}.fine_ffn.3.bias": f"blocks.{fine_vit_idx}.mlp.fc2.bias",
         }
 
         # Coarse-scale self-attention ← ViT block coarse_vit_idx
         if coarse_vit_idx < vit_depth:
-            mapping.update({
-                f'blocks.{i}.coarse_self_attn.in_proj_weight': f'blocks.{coarse_vit_idx}.attn.qkv.weight',
-                f'blocks.{i}.coarse_self_attn.in_proj_bias': f'blocks.{coarse_vit_idx}.attn.qkv.bias',
-                f'blocks.{i}.coarse_self_attn.out_proj.weight': f'blocks.{coarse_vit_idx}.attn.proj.weight',
-                f'blocks.{i}.coarse_self_attn.out_proj.bias': f'blocks.{coarse_vit_idx}.attn.proj.bias',
-                f'blocks.{i}.norm_coarse_self.weight': f'blocks.{coarse_vit_idx}.norm1.weight',
-                f'blocks.{i}.norm_coarse_self.bias': f'blocks.{coarse_vit_idx}.norm1.bias',
-                f'blocks.{i}.norm_coarse_ffn.weight': f'blocks.{coarse_vit_idx}.norm2.weight',
-                f'blocks.{i}.norm_coarse_ffn.bias': f'blocks.{coarse_vit_idx}.norm2.bias',
-                f'blocks.{i}.coarse_ffn.0.weight': f'blocks.{coarse_vit_idx}.mlp.fc1.weight',
-                f'blocks.{i}.coarse_ffn.0.bias': f'blocks.{coarse_vit_idx}.mlp.fc1.bias',
-                f'blocks.{i}.coarse_ffn.3.weight': f'blocks.{coarse_vit_idx}.mlp.fc2.weight',
-                f'blocks.{i}.coarse_ffn.3.bias': f'blocks.{coarse_vit_idx}.mlp.fc2.bias',
-            })
+            mapping.update(
+                {
+                    f"blocks.{i}.coarse_self_attn.in_proj_weight": f"blocks.{coarse_vit_idx}.attn.qkv.weight",
+                    f"blocks.{i}.coarse_self_attn.in_proj_bias": f"blocks.{coarse_vit_idx}.attn.qkv.bias",
+                    f"blocks.{i}.coarse_self_attn.out_proj.weight": f"blocks.{coarse_vit_idx}.attn.proj.weight",
+                    f"blocks.{i}.coarse_self_attn.out_proj.bias": f"blocks.{coarse_vit_idx}.attn.proj.bias",
+                    f"blocks.{i}.norm_coarse_self.weight": f"blocks.{coarse_vit_idx}.norm1.weight",
+                    f"blocks.{i}.norm_coarse_self.bias": f"blocks.{coarse_vit_idx}.norm1.bias",
+                    f"blocks.{i}.norm_coarse_ffn.weight": f"blocks.{coarse_vit_idx}.norm2.weight",
+                    f"blocks.{i}.norm_coarse_ffn.bias": f"blocks.{coarse_vit_idx}.norm2.bias",
+                    f"blocks.{i}.coarse_ffn.0.weight": f"blocks.{coarse_vit_idx}.mlp.fc1.weight",
+                    f"blocks.{i}.coarse_ffn.0.bias": f"blocks.{coarse_vit_idx}.mlp.fc1.bias",
+                    f"blocks.{i}.coarse_ffn.3.weight": f"blocks.{coarse_vit_idx}.mlp.fc2.weight",
+                    f"blocks.{i}.coarse_ffn.3.bias": f"blocks.{coarse_vit_idx}.mlp.fc2.bias",
+                }
+            )
 
         for dscatnet_key, vit_key in mapping.items():
             if vit_key in vit_sd:
                 mapped_sd[dscatnet_key] = vit_sd[vit_key]
 
     # Transfer coarse-scale patch embedding (16×16 kernel matches ViT)
-    mapped_sd['patch_embed.coarse_embedding.projection.weight'] = vit_sd['patch_embed.proj.weight']
-    mapped_sd['patch_embed.coarse_embedding.projection.bias'] = vit_sd['patch_embed.proj.bias']
+    mapped_sd["patch_embed.coarse_embedding.projection.weight"] = vit_sd["patch_embed.proj.weight"]
+    mapped_sd["patch_embed.coarse_embedding.projection.bias"] = vit_sd["patch_embed.proj.bias"]
 
     # Transfer coarse positional embedding and CLS token (same sequence length)
-    mapped_sd['patch_embed.coarse_pos_embed'] = vit_sd['pos_embed']
-    mapped_sd['patch_embed.coarse_cls_token'] = vit_sd['cls_token']
+    mapped_sd["patch_embed.coarse_pos_embed"] = vit_sd["pos_embed"]
+    mapped_sd["patch_embed.coarse_cls_token"] = vit_sd["cls_token"]
 
     # Transfer ViT final norm → DSCATNet norm_coarse
-    mapped_sd['norm_coarse.weight'] = vit_sd['norm.weight']
-    mapped_sd['norm_coarse.bias'] = vit_sd['norm.bias']
+    mapped_sd["norm_coarse.weight"] = vit_sd["norm.weight"]
+    mapped_sd["norm_coarse.bias"] = vit_sd["norm.bias"]
 
     # Load mapped weights (strict=False leaves unmapped params as-is)
     missing, _ = model.load_state_dict(mapped_sd, strict=False)
@@ -343,12 +340,7 @@ def load_pretrained_vit_weights(model: DSCATNet, variant: str = 'small') -> None
     )
 
 
-def create_dscatnet(
-    num_classes: int = 7,
-    img_size: int = 224,
-    variant: str = 'base',
-    **kwargs
-) -> DSCATNet:
+def create_dscatnet(num_classes: int = 7, img_size: int = 224, variant: str = "base", **kwargs) -> DSCATNet:
     """
     Factory function to create DSCATNet variants.
 
@@ -371,33 +363,18 @@ def create_dscatnet(
         ValueError: If variant is not recognized.
     """
     variants = {
-        'tiny': {
-            'embed_dim': 192,
-            'depth': 4,
-            'num_heads': 3,
-            'mlp_ratio': 3.0
-        },
-        'small': {
-            'embed_dim': 384,
-            'depth': 6,
-            'num_heads': 6,
-            'mlp_ratio': 4.0
-        },
-        'paper': {
+        "tiny": {"embed_dim": 192, "depth": 4, "num_heads": 3, "mlp_ratio": 3.0},
+        "small": {"embed_dim": 384, "depth": 6, "num_heads": 6, "mlp_ratio": 4.0},
+        "paper": {
             # Matches paper Section 5.8: H=12 heads, D=384 (unified adaptation
             # of paper's asymmetric D=192/768), depth=6, MLP ratio=4.0.
             # Compatible with ViT-Small (patch16_224) pretrained weights.
-            'embed_dim': 384,
-            'depth': 6,
-            'num_heads': 12,
-            'mlp_ratio': 4.0
+            "embed_dim": 384,
+            "depth": 6,
+            "num_heads": 12,
+            "mlp_ratio": 4.0,
         },
-        'base': {
-            'embed_dim': 384,
-            'depth': 8,
-            'num_heads': 6,
-            'mlp_ratio': 4.0
-        }
+        "base": {"embed_dim": 384, "depth": 8, "num_heads": 6, "mlp_ratio": 4.0},
     }
 
     if variant not in variants:
@@ -407,13 +384,20 @@ def create_dscatnet(
     config.update(kwargs)
 
     # Extract pretrained flag before filtering config keys
-    pretrained = bool(config.pop('pretrained', False))
+    pretrained = bool(config.pop("pretrained", False))
 
     # Filter config to only keys accepted by DSCATNet.__init__
     accepted_keys = {
-        'in_channels', 'embed_dim', 'depth', 'num_heads', 'mlp_ratio',
-        'fine_patch_size', 'coarse_patch_size', 'drop_rate', 'attn_drop_rate',
-        'fusion_method'
+        "in_channels",
+        "embed_dim",
+        "depth",
+        "num_heads",
+        "mlp_ratio",
+        "fine_patch_size",
+        "coarse_patch_size",
+        "drop_rate",
+        "attn_drop_rate",
+        "fusion_method",
     }
 
     extra_keys = set(config.keys()) - accepted_keys
@@ -423,11 +407,7 @@ def create_dscatnet(
 
     filtered_config = {k: v for k, v in config.items() if k in accepted_keys}
 
-    model = DSCATNet(
-        img_size=img_size,
-        num_classes=num_classes,
-        **filtered_config
-    )
+    model = DSCATNet(img_size=img_size, num_classes=num_classes, **filtered_config)
 
     if pretrained:
         load_pretrained_vit_weights(model, variant=variant)

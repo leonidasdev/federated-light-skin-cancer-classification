@@ -25,10 +25,8 @@ import sys
 # This works because download.py doesn't import torch
 sys.path.insert(0, str(Path(__file__).parent.parent / "src" / "data"))
 import importlib.util
-spec = importlib.util.spec_from_file_location(
-    "download",
-    Path(__file__).parent.parent / "src" / "data" / "download.py"
-)
+
+spec = importlib.util.spec_from_file_location("download", Path(__file__).parent.parent / "src" / "data" / "download.py")
 assert spec is not None and spec.loader is not None
 download_module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(download_module)
@@ -58,44 +56,51 @@ class TestDatasetInfo:
 
     def test_contains_all_expected_datasets(self):
         """Should contain all 5 expected datasets."""
-        expected = ['HAM10000', 'ISIC2018', 'ISIC2019', 'ISIC2020', 'PAD-UFES-20']
+        expected = ["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"]
         for name in expected:
             assert name in DATASET_INFO, f"Missing {name} in DATASET_INFO"
 
     def test_each_entry_has_required_fields(self):
         """Each entry should have required fields."""
-        required_fields = ['description', 'source', 'download_url', 'classes',
-                          'approx_images', 'expected_files', 'client_id']
+        required_fields = [
+            "description",
+            "source",
+            "download_url",
+            "classes",
+            "approx_images",
+            "expected_files",
+            "client_id",
+        ]
         for name, info in DATASET_INFO.items():
             for field in required_fields:
                 assert field in info, f"{name} missing field: {field}"
 
     def test_ham10000_has_kaggle_info(self):
         """HAM10000 should have Kaggle-specific info."""
-        assert DATASET_INFO['HAM10000']['source'] == 'kaggle'
-        assert 'kaggle_dataset' in DATASET_INFO['HAM10000']
+        assert DATASET_INFO["HAM10000"]["source"] == "kaggle"
+        assert "kaggle_dataset" in DATASET_INFO["HAM10000"]
 
     def test_padufes20_has_mendeley_info(self):
         """PAD-UFES-20 should have Mendeley-specific info."""
-        assert DATASET_INFO['PAD-UFES-20']['source'] == 'mendeley'
-        assert 'mendeley_url' in DATASET_INFO['PAD-UFES-20']
+        assert DATASET_INFO["PAD-UFES-20"]["source"] == "mendeley"
+        assert "mendeley_url" in DATASET_INFO["PAD-UFES-20"]
 
     def test_isic_datasets_have_isic_source(self):
         """ISIC datasets should have ISIC source."""
-        for name in ['ISIC2018', 'ISIC2019', 'ISIC2020']:
-            assert DATASET_INFO[name]['source'] == 'isic'
-            assert 'isic_dataset' in DATASET_INFO[name]
+        for name in ["ISIC2018", "ISIC2019", "ISIC2020"]:
+            assert DATASET_INFO[name]["source"] == "isic"
+            assert "isic_dataset" in DATASET_INFO[name]
 
     def test_client_ids_are_unique(self):
         """Each dataset should have a unique client_id."""
-        client_ids = [info['client_id'] for info in DATASET_INFO.values()]
+        client_ids = [info["client_id"] for info in DATASET_INFO.values()]
         assert len(client_ids) == len(set(client_ids))
 
     def test_approx_images_are_positive(self):
         """approx_images should be positive integers."""
         for info in DATASET_INFO.values():
-            assert info['approx_images'] > 0
-            assert isinstance(info['approx_images'], int)
+            assert info["approx_images"] > 0
+            assert isinstance(info["approx_images"], int)
 
 
 # =============================================================================
@@ -136,26 +141,26 @@ class TestDirectoryStructure:
 class TestKaggleAvailability:
     """Tests for check_kaggle_available function."""
 
-    @patch('shutil.which')
+    @patch("shutil.which")
     def test_returns_false_when_kaggle_not_installed(self, mock_which):
         """Should return False if kaggle CLI not found."""
         mock_which.return_value = None
         assert check_kaggle_available() is False
 
-    @patch('shutil.which')
-    @patch('pathlib.Path.exists')
+    @patch("shutil.which")
+    @patch("pathlib.Path.exists")
     def test_returns_false_when_no_credentials(self, mock_exists, mock_which):
         """Should return False if credentials file not found."""
         mock_which.return_value = "/usr/bin/kaggle"
         mock_exists.return_value = False
         assert check_kaggle_available() is False
 
-    @patch('shutil.which')
+    @patch("shutil.which")
     def test_returns_true_when_fully_configured(self, mock_which):
         """Should return True when kaggle is installed and configured."""
         mock_which.return_value = "/usr/bin/kaggle"
 
-        with patch('pathlib.Path.exists') as mock_exists:
+        with patch("pathlib.Path.exists") as mock_exists:
             mock_exists.return_value = True
             assert check_kaggle_available() is True
 
@@ -264,8 +269,8 @@ class TestDownloadDataset:
         result = download_dataset("UnknownDataset", tmp_path)
         assert result is False
 
-    @patch.object(download_module, 'check_kaggle_available')
-    @patch.object(download_module, 'download_ham10000_kaggle')
+    @patch.object(download_module, "check_kaggle_available")
+    @patch.object(download_module, "download_ham10000_kaggle")
     def test_ham10000_uses_kaggle_when_available(self, mock_download, mock_check, tmp_path):
         """HAM10000 should use Kaggle when available."""
         mock_check.return_value = True
@@ -276,8 +281,8 @@ class TestDownloadDataset:
         mock_download.assert_called_once()
         assert result is True
 
-    @patch.object(download_module, 'check_kaggle_available')
-    @patch.object(download_module, 'download_dataset_isic')
+    @patch.object(download_module, "check_kaggle_available")
+    @patch.object(download_module, "download_dataset_isic")
     def test_ham10000_falls_back_to_isic(self, mock_isic, mock_check, tmp_path):
         """HAM10000 should fall back to ISIC when Kaggle unavailable."""
         mock_check.return_value = False
@@ -288,7 +293,7 @@ class TestDownloadDataset:
         mock_isic.assert_called_once()
         assert result is True
 
-    @patch.object(download_module, 'download_padufes20_mendeley')
+    @patch.object(download_module, "download_padufes20_mendeley")
     def test_padufes20_uses_mendeley(self, mock_download, tmp_path):
         """PAD-UFES-20 should use Mendeley download."""
         mock_download.return_value = True
@@ -298,12 +303,12 @@ class TestDownloadDataset:
         mock_download.assert_called_once()
         assert result is True
 
-    @patch.object(download_module, 'download_dataset_isic')
+    @patch.object(download_module, "download_dataset_isic")
     def test_isic_datasets_use_isic(self, mock_download, tmp_path):
         """ISIC datasets should use ISIC Archive."""
         mock_download.return_value = True
 
-        for name in ['ISIC2018', 'ISIC2019', 'ISIC2020']:
+        for name in ["ISIC2018", "ISIC2019", "ISIC2020"]:
             mock_download.reset_mock()
             download_dataset(name, tmp_path)
             mock_download.assert_called_once()
@@ -326,15 +331,11 @@ class TestISICArchiveClient:
 
     def test_client_custom_parameters(self):
         """Client should accept custom parameters."""
-        client = ISICArchiveClient(
-            max_retries=10,
-            timeout=60,
-            max_workers=16
-        )
+        client = ISICArchiveClient(max_retries=10, timeout=60, max_workers=16)
         assert client.timeout == 60
         assert client.max_workers == 16
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_get_image_list_makes_request(self, mock_get):
         """get_image_list should make API request."""
         mock_response = MagicMock()
@@ -348,17 +349,18 @@ class TestISICArchiveClient:
         assert result == []
         mock_get.assert_called_once()
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_make_request_raises_on_error(self, mock_get):
         """_make_request should raise on HTTP errors."""
         import requests as req
+
         mock_get.side_effect = req.exceptions.ConnectionError("fail")
 
         client = ISICArchiveClient()
         with pytest.raises(req.exceptions.ConnectionError):
             client._make_request("/images/")
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_download_image_success(self, mock_get, tmp_path):
         """download_image should save file on success."""
         mock_response = MagicMock()
@@ -373,7 +375,7 @@ class TestISICArchiveClient:
         assert out.exists()
         assert out.read_bytes() == b"fake image data"
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_download_image_failure(self, mock_get, tmp_path):
         """download_image should return False on network error."""
         mock_get.side_effect = Exception("network error")
@@ -382,7 +384,7 @@ class TestISICArchiveClient:
         result = client.download_image("ISIC_0000001", tmp_path / "img.jpg")
         assert result is False
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_download_image_404_with_metadata_fallback(self, mock_get, tmp_path):
         """download_image should try metadata fallback on 404."""
         import requests as req
@@ -395,9 +397,7 @@ class TestISICArchiveClient:
         # Second call: metadata with file URL
         meta_resp = MagicMock()
         meta_resp.raise_for_status = MagicMock()
-        meta_resp.json.return_value = {
-            "files": {"full": {"url": "https://example.com/img.jpg"}}
-        }
+        meta_resp.json.return_value = {"files": {"full": {"url": "https://example.com/img.jpg"}}}
 
         # Third call: actual image download
         img_resp = MagicMock()
@@ -419,7 +419,7 @@ class TestISICArchiveClient:
         _image_id, success = client._download_worker(("ISIC_0000001", out))
         assert success is True
 
-    @patch('requests.Session.get')
+    @patch("requests.Session.get")
     def test_download_images_parallel(self, mock_get, tmp_path):
         """download_images_parallel should return stats dict."""
         mock_response = MagicMock()
@@ -477,7 +477,7 @@ class TestDownloadDatasetISIC:
         result = download_module.download_dataset_isic("UnknownDataset", tmp_path)
         assert result is False
 
-    @patch.object(download_module.ISICArchiveClient, 'get_all_images_for_collection')
+    @patch.object(download_module.ISICArchiveClient, "get_all_images_for_collection")
     def test_returns_false_when_no_images(self, mock_get, tmp_path):
         mock_get.return_value = []
         result = download_module.download_dataset_isic("ISIC2018", tmp_path)
@@ -503,14 +503,14 @@ class TestDownloadDatasetISIC:
 class TestDownloadAllDatasets:
     """Tests for download_all_datasets function."""
 
-    @patch.object(download_module, 'download_dataset')
+    @patch.object(download_module, "download_dataset")
     def test_downloads_all(self, mock_dl, tmp_path):
         mock_dl.return_value = True
         results = download_module.download_all_datasets(tmp_path)
         assert len(results) == len(DATASET_INFO)
         assert all(results.values())
 
-    @patch.object(download_module, 'download_dataset')
+    @patch.object(download_module, "download_dataset")
     def test_downloads_subset(self, mock_dl, tmp_path):
         mock_dl.return_value = True
         results = download_module.download_all_datasets(tmp_path, datasets=["HAM10000"])
@@ -555,20 +555,18 @@ class TestDatasetSetupWizard:
         wizard = download_module.DatasetSetupWizard()
         assert wizard.data_root.name == "data"
 
-    @patch.object(download_module, 'verify_all_datasets')
-    @patch.object(download_module, 'print_verification_report')
+    @patch.object(download_module, "verify_all_datasets")
+    @patch.object(download_module, "print_verification_report")
     def test_run_all_valid(self, mock_print, mock_verify, tmp_path, capsys):
-        mock_verify.return_value = {
-            name: {"valid": True} for name in DATASET_INFO
-        }
+        mock_verify.return_value = {name: {"valid": True} for name in DATASET_INFO}
         wizard = download_module.DatasetSetupWizard(data_root=tmp_path)
         wizard.run()
         captured = capsys.readouterr()
         assert "ready" in captured.out.lower() or "proceed" in captured.out.lower()
 
-    @patch.object(download_module, 'download_all_datasets')
-    @patch.object(download_module, 'print_verification_report')
-    @patch.object(download_module, 'verify_all_datasets')
+    @patch.object(download_module, "download_all_datasets")
+    @patch.object(download_module, "print_verification_report")
+    @patch.object(download_module, "verify_all_datasets")
     def test_run_auto_download(self, mock_verify, mock_print, mock_dl, tmp_path):
         mock_verify.return_value = {
             "HAM10000": {"valid": False},

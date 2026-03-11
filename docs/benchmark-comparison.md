@@ -20,7 +20,7 @@ These settings are identical between centralized and federated training:
 | **Optimizer** | Adam | Adam | Matches DSCATNet paper |
 | **Learning Rate** | 0.001 | 0.001 | Fixed LR, no scheduler |
 | **Weight Decay** | 0.0 | 0.0 | Matches DSCATNet paper |
-| **Effective Batch Size** | 32 (8 × 4) | 32 (8 × 4) | Same gradient accumulation |
+| **Effective Batch Size** | 32 (4 × 8) | 32 (4 × 8) | Same gradient accumulation |
 | **Gradient Clipping** | `max_norm=1.0` | `max_norm=1.0` | Same threshold |
 | **Image Size** | 224 × 224 | 224 × 224 | Standard ViT input |
 | **Augmentation** | None | None | Matches DSCATNet paper |

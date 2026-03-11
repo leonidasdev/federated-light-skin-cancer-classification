@@ -98,8 +98,8 @@ class TestYAMLLoading:
             config = yaml.safe_load(f)
 
         assert config is not None
-        assert 'federated' in config
-        assert config['federated']['experiment']['name'] == 'test_experiment'
+        assert "federated" in config
+        assert config["federated"]["experiment"]["name"] == "test_experiment"
 
     def test_load_malformed_yaml_raises_error(self, malformed_yaml_content, tmp_path):
         """Test that malformed YAML raises appropriate error."""
@@ -160,9 +160,9 @@ training:
         with open(config_file) as f:
             config = yaml.safe_load(f)
 
-        assert isinstance(config['training']['batch_size'], int)
-        assert isinstance(config['training']['lr'], float)
-        assert config['training']['lr'] == 0.001
+        assert isinstance(config["training"]["batch_size"], int)
+        assert isinstance(config["training"]["lr"], float)
+        assert config["training"]["lr"] == 0.001
 
     def test_config_boolean_values(self, tmp_path):
         """Test that boolean values are parsed correctly."""
@@ -179,8 +179,8 @@ settings:
         with open(config_file) as f:
             config = yaml.safe_load(f)
 
-        assert config['settings']['pretrained'] is True
-        assert config['settings']['use_amp'] is False
+        assert config["settings"]["pretrained"] is True
+        assert config["settings"]["use_amp"] is False
 
 
 class TestConfigMerging:
@@ -188,13 +188,10 @@ class TestConfigMerging:
 
     def test_dict_merge(self):
         """Test merging two config dictionaries."""
-        base_config = {
-            'model': {'name': 'DSCATNet', 'variant': 'small'},
-            'training': {'batch_size': 8, 'lr': 0.001}
-        }
+        base_config = {"model": {"name": "DSCATNet", "variant": "small"}, "training": {"batch_size": 8, "lr": 0.001}}
 
         override_config = {
-            'training': {'batch_size': 16}  # Override only batch_size
+            "training": {"batch_size": 16}  # Override only batch_size
         }
 
         # Simulate merging
@@ -205,9 +202,9 @@ class TestConfigMerging:
             else:
                 merged[key] = value
 
-        assert merged['training']['batch_size'] == 16
-        assert merged['training']['lr'] == 0.001  # Preserved
-        assert merged['model']['variant'] == 'small'  # Preserved
+        assert merged["training"]["batch_size"] == 16
+        assert merged["training"]["lr"] == 0.001  # Preserved
+        assert merged["model"]["variant"] == "small"  # Preserved
 
 
 class TestRunExperimentConfigLoading:
@@ -217,10 +214,8 @@ class TestRunExperimentConfigLoading:
         """Test that load_config function is importable."""
         # Import from run_experiment.py module
         import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "run_experiment",
-            PROJECT_ROOT / "run_experiment.py"
-        )
+
+        spec = importlib.util.spec_from_file_location("run_experiment", PROJECT_ROOT / "run_experiment.py")
 
         # Just check we can load the module without torch errors
         # (torch import may fail in test environment)

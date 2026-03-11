@@ -98,14 +98,10 @@ def deterministic_train_val_test_split(
     val_n = int(remaining * (val_split / (1.0 - test_split)))
     train_n = remaining - val_n
 
-    return indices[:train_n], indices[train_n:train_n + val_n], indices[train_n + val_n:]
+    return indices[:train_n], indices[train_n : train_n + val_n], indices[train_n + val_n :]
 
 
-def create_iid_split(
-    labels: list[int],
-    num_clients: int = 4,
-    seed: int = 42
-) -> dict[int, list[int]]:
+def create_iid_split(labels: list[int], num_clients: int = 4, seed: int = 42) -> dict[int, list[int]]:
     """
     Create IID (Independent and Identically Distributed) split.
 
@@ -128,18 +124,13 @@ def create_iid_split(
     # Split indices evenly across clients
     splits = np.array_split(indices, num_clients)
 
-    client_data = {
-        i + 1: splits[i].tolist() for i in range(num_clients)
-    }
+    client_data = {i + 1: splits[i].tolist() for i in range(num_clients)}
 
     return client_data
 
 
 def create_noniid_split(
-    labels: list[int],
-    num_clients: int = 4,
-    alpha: float = 0.5,
-    seed: int = 42
+    labels: list[int], num_clients: int = 4, alpha: float = 0.5, seed: int = 42
 ) -> dict[int, list[int]]:
     """
     Create Non-IID split using Dirichlet distribution.
@@ -196,10 +187,7 @@ def create_noniid_split(
 
 
 def create_label_skew_split(
-    labels: list[int],
-    num_clients: int = 4,
-    num_classes_per_client: int = 3,
-    seed: int = 42
+    labels: list[int], num_clients: int = 4, num_classes_per_client: int = 3, seed: int = 42
 ) -> dict[int, list[int]]:
     """
     Create Non-IID split with label skew.
@@ -226,10 +214,7 @@ def create_label_skew_split(
     for i in range(num_clients):
         # Rotate class assignment to ensure coverage
         start_class = (i * num_classes_per_client) % num_classes
-        assigned_classes = [
-            unique_classes[(start_class + j) % num_classes]
-            for j in range(num_classes_per_client)
-        ]
+        assigned_classes = [unique_classes[(start_class + j) % num_classes] for j in range(num_classes_per_client)]
         client_classes[i + 1] = assigned_classes
 
     # Group indices by class
@@ -246,10 +231,7 @@ def create_label_skew_split(
         np.random.shuffle(indices)
 
         # Find clients that have this class
-        clients_with_class = [
-            c for c in range(1, num_clients + 1)
-            if class_id in client_classes[c]
-        ]
+        clients_with_class = [c for c in range(1, num_clients + 1) if class_id in client_classes[c]]
 
         if clients_with_class:
             # Split among clients with this class
@@ -265,10 +247,7 @@ def create_label_skew_split(
 
 
 def create_quantity_skew_split(
-    labels: list[int],
-    num_clients: int = 4,
-    imbalance_factor: float = 0.5,
-    seed: int = 42
+    labels: list[int], num_clients: int = 4, imbalance_factor: float = 0.5, seed: int = 42
 ) -> dict[int, list[int]]:
     """
     Create Non-IID split with quantity skew.
@@ -290,10 +269,7 @@ def create_quantity_skew_split(
     indices = np.random.permutation(num_samples).tolist()
 
     # Generate imbalanced proportions
-    proportions = np.array([
-        1 + imbalance_factor * (num_clients - 1 - i)
-        for i in range(num_clients)
-    ])
+    proportions = np.array([1 + imbalance_factor * (num_clients - 1 - i) for i in range(num_clients)])
     proportions = proportions / proportions.sum()
 
     # Shuffle proportions to randomize which client gets more
@@ -306,16 +282,13 @@ def create_quantity_skew_split(
         count = int(proportions[i] * num_samples)
         if i == num_clients - 1:
             count = num_samples - start  # Give remaining to last client
-        client_data[i + 1] = indices[start:start + count]
+        client_data[i + 1] = indices[start : start + count]
         start += count
 
     return client_data
 
 
-def get_dataset_statistics(
-    client_data: dict[int, list[int]],
-    labels: list[int]
-) -> dict[str, Any]:
+def get_dataset_statistics(client_data: dict[int, list[int]], labels: list[int]) -> dict[str, Any]:
     """
     Compute statistics about the data distribution across clients.
 
@@ -330,12 +303,12 @@ def get_dataset_statistics(
     num_classes = len(np.unique(np_labels[np_labels >= 0]))
 
     stats = {
-        'num_clients': len(client_data),
-        'total_samples': sum(len(indices) for indices in client_data.values()),
-        'samples_per_client': {},
-        'class_distribution': {},
-        'class_overlap': None,
-        'earth_movers_distance': None
+        "num_clients": len(client_data),
+        "total_samples": sum(len(indices) for indices in client_data.values()),
+        "samples_per_client": {},
+        "class_distribution": {},
+        "class_overlap": None,
+        "earth_movers_distance": None,
     }
 
     # Per-client statistics
@@ -344,7 +317,7 @@ def get_dataset_statistics(
         client_labels = np_labels[indices]
         unique, counts = np.unique(client_labels[client_labels >= 0], return_counts=True)
 
-        stats['samples_per_client'][client_id] = len(indices)
+        stats["samples_per_client"][client_id] = len(indices)
 
         # Class distribution for this client
         dist = {int(c): 0 for c in range(num_classes)}
@@ -352,37 +325,29 @@ def get_dataset_statistics(
             dist[int(c)] = int(count)
         client_class_dist[client_id] = dist
 
-    stats['class_distribution'] = client_class_dist
+    stats["class_distribution"] = client_class_dist
 
     # Compute EMD-based heterogeneity metric
     global_dist = np.zeros(num_classes)
     for c in range(num_classes):
-        global_dist[c] = sum(
-            client_class_dist[cid].get(c, 0)
-            for cid in client_data
-        )
+        global_dist[c] = sum(client_class_dist[cid].get(c, 0) for cid in client_data)
     global_dist = global_dist / global_dist.sum()
 
     emd_sum = 0
     for client_id in client_data:
-        client_dist = np.array([
-            client_class_dist[client_id].get(c, 0)
-            for c in range(num_classes)
-        ])
+        client_dist = np.array([client_class_dist[client_id].get(c, 0) for c in range(num_classes)])
         if client_dist.sum() > 0:
             client_dist = client_dist / client_dist.sum()
             # Simple L1 distance as proxy for EMD
             emd_sum += np.abs(client_dist - global_dist).sum()
 
-    stats['heterogeneity_score'] = emd_sum / len(client_data)
+    stats["heterogeneity_score"] = emd_sum / len(client_data)
 
     return stats
 
 
 def print_split_summary(
-    client_data: dict[int, list[int]],
-    labels: list[int],
-    class_names: list[str] | None = None
+    client_data: dict[int, list[int]], labels: list[int], class_names: list[str] | None = None
 ) -> None:
     """Print a formatted summary of the data split."""
     stats = get_dataset_statistics(client_data, labels)
@@ -396,26 +361,21 @@ def print_split_summary(
     print()
 
     print("Samples per client:")
-    for client_id, count in stats['samples_per_client'].items():
+    for client_id, count in stats["samples_per_client"].items():
         print(f"  Client {client_id}: {count}")
     print()
 
     print("Class distribution per client:")
-    num_classes = len(next(iter(stats['class_distribution'].values())))
+    num_classes = len(next(iter(stats["class_distribution"].values())))
 
     # Header
-    header = "Client | " + " | ".join(
-        class_names[i][:8] if class_names else f"Class {i}"
-        for i in range(num_classes)
-    )
+    header = "Client | " + " | ".join(class_names[i][:8] if class_names else f"Class {i}" for i in range(num_classes))
     print(header)
     print("-" * len(header))
 
     # Rows
-    for client_id, dist in stats['class_distribution'].items():
-        row = f"  {client_id}   | " + " | ".join(
-            f"{dist.get(i, 0):7d}" for i in range(num_classes)
-        )
+    for client_id, dist in stats["class_distribution"].items():
+        row = f"  {client_id}   | " + " | ".join(f"{dist.get(i, 0):7d}" for i in range(num_classes))
         print(row)
 
     print("=" * 60)

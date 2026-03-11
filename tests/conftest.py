@@ -37,22 +37,18 @@ if str(project_root) not in sys.path:
 # Pytest Markers
 # =============================================================================
 
+
 def pytest_configure(config):
     """Configure custom pytest markers."""
-    config.addinivalue_line(
-        "markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')"
-    )
-    config.addinivalue_line(
-        "markers", "integration: marks tests requiring datasets or external resources"
-    )
-    config.addinivalue_line(
-        "markers", "gpu: marks tests requiring GPU"
-    )
+    config.addinivalue_line("markers", "slow: marks tests as slow (deselect with '-m \"not slow\"')")
+    config.addinivalue_line("markers", "integration: marks tests requiring datasets or external resources")
+    config.addinivalue_line("markers", "gpu: marks tests requiring GPU")
 
 
 # =============================================================================
 # Shared Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def project_root_path():

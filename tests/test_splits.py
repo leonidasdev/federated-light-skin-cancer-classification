@@ -27,7 +27,7 @@ from src.data.splits import (
     create_label_skew_split,
     create_quantity_skew_split,
     get_dataset_statistics,
-    print_split_summary
+    print_split_summary,
 )
 
 # =============================================================================
@@ -46,6 +46,7 @@ def generate_mock_labels(n_samples=10000, n_classes=7, imbalanced=True):
         labels = np.random.randint(0, n_classes, size=n_samples)
 
     return labels.tolist()
+
 
 # =============================================================================
 # Test Functions
@@ -76,9 +77,7 @@ def test_train_val_split():
 def test_train_val_test_split():
     """Test 3-way train/val/test split."""
     total = 1000
-    train_idx, val_idx, test_idx = deterministic_train_val_test_split(
-        total, val_split=0.15, test_split=0.15, seed=42
-    )
+    train_idx, val_idx, test_idx = deterministic_train_val_test_split(total, val_split=0.15, test_split=0.15, seed=42)
 
     # Check no overlap
     all_sets = [set(train_idx), set(val_idx), set(test_idx)]
@@ -91,13 +90,11 @@ def test_train_val_test_split():
 
     # Check approximate sizes
     assert 650 <= len(train_idx) <= 750  # ~70%
-    assert 100 <= len(val_idx) <= 200    # ~15% of remaining
-    assert 100 <= len(test_idx) <= 200   # ~15%
+    assert 100 <= len(val_idx) <= 200  # ~15% of remaining
+    assert 100 <= len(test_idx) <= 200  # ~15%
 
     # Reproducibility
-    t2, v2, te2 = deterministic_train_val_test_split(
-        total, val_split=0.15, test_split=0.15, seed=42
-    )
+    t2, v2, te2 = deterministic_train_val_test_split(total, val_split=0.15, test_split=0.15, seed=42)
     assert train_idx == t2
     assert val_idx == v2
     assert test_idx == te2
@@ -107,9 +104,7 @@ def test_train_val_test_split_zero_test():
     """With test_split=0, train/val should match deterministic_train_val_split."""
     total = 500
     train_2way, val_2way = deterministic_train_val_split(total, val_split=0.15, seed=42)
-    train_3way, val_3way, test_3way = deterministic_train_val_test_split(
-        total, val_split=0.15, test_split=0.0, seed=42
-    )
+    train_3way, val_3way, test_3way = deterministic_train_val_test_split(total, val_split=0.15, test_split=0.0, seed=42)
     assert len(test_3way) == 0
     assert train_2way == train_3way
     assert val_2way == val_3way
@@ -141,15 +136,16 @@ def test_iid_split():
     for client_id, indices in client_data.items():
         client_labels = [labels[i] for i in indices]
         dist = Counter(client_labels)
-        client_dists[client_id] = {k: v/len(indices) for k, v in dist.items()}
+        client_dists[client_id] = {k: v / len(indices) for k, v in dist.items()}
 
     # Distributions should be similar across clients
     # Check that each class proportion differs by at most 10%
     for cls in range(7):
         props = [client_dists[c].get(cls, 0) for c in client_data]
         if max(props) > 0:
-            assert max(props) - min(props) < 0.15, \
+            assert max(props) - min(props) < 0.15, (
                 f"IID split should have similar distributions, class {cls} varies too much"
+            )
 
 
 def test_noniid_dirichlet_split():
@@ -172,8 +168,9 @@ def test_noniid_dirichlet_split():
 
         # Lower alpha should produce higher heterogeneity
         if alpha == 0.1:
-            assert stats['heterogeneity_score'] > 0.3, \
+            assert stats["heterogeneity_score"] > 0.3, (
                 f"Low alpha should be heterogeneous, got {stats['heterogeneity_score']}"
+            )
 
 
 def test_label_skew_split():
@@ -182,9 +179,7 @@ def test_label_skew_split():
     labels = generate_mock_labels(n_samples, n_classes=7, imbalanced=False)
 
     # Each client gets 3 classes
-    client_data = create_label_skew_split(
-        labels, num_clients=4, num_classes_per_client=3, seed=42
-    )
+    client_data = create_label_skew_split(labels, num_clients=4, num_classes_per_client=3, seed=42)
 
     # Check that clients have limited class coverage
     for client_id, indices in client_data.items():
@@ -193,8 +188,7 @@ def test_label_skew_split():
 
         # Should have approximately num_classes_per_client unique classes
         # (might have more due to overlap in assignment)
-        assert unique_classes <= 5, \
-            f"Client {client_id} has too many classes: {unique_classes}"
+        assert unique_classes <= 5, f"Client {client_id} has too many classes: {unique_classes}"
 
 
 def test_quantity_skew_split():
@@ -202,16 +196,13 @@ def test_quantity_skew_split():
     n_samples = 10000
     labels = generate_mock_labels(n_samples, n_classes=7)
 
-    client_data = create_quantity_skew_split(
-        labels, num_clients=4, imbalance_factor=0.7, seed=42
-    )
+    client_data = create_quantity_skew_split(labels, num_clients=4, imbalance_factor=0.7, seed=42)
 
     # Check that clients have different amounts of data
     sizes = [len(indices) for indices in client_data.values()]
 
     # With imbalance_factor=0.7, should have significant variance
-    assert max(sizes) / min(sizes) > 1.5, \
-        "Quantity skew should create imbalanced client sizes"
+    assert max(sizes) / min(sizes) > 1.5, "Quantity skew should create imbalanced client sizes"
 
 
 def test_statistics_computation():
@@ -222,19 +213,16 @@ def test_statistics_computation():
     stats = get_dataset_statistics(client_data, labels)
 
     # Check required keys
-    required_keys = [
-        'num_clients', 'total_samples', 'samples_per_client',
-        'class_distribution', 'heterogeneity_score'
-    ]
+    required_keys = ["num_clients", "total_samples", "samples_per_client", "class_distribution", "heterogeneity_score"]
     for key in required_keys:
         assert key in stats, f"Missing key: {key}"
 
     # Check values are sensible
-    assert stats['num_clients'] == 4
-    assert stats['total_samples'] == 10000
-    assert len(stats['samples_per_client']) == 4
-    assert len(stats['class_distribution']) == 4
-    assert 0 <= stats['heterogeneity_score'] <= 2.0
+    assert stats["num_clients"] == 4
+    assert stats["total_samples"] == 10000
+    assert len(stats["samples_per_client"]) == 4
+    assert len(stats["class_distribution"]) == 4
+    assert 0 <= stats["heterogeneity_score"] <= 2.0
 
 
 def test_reproducibility():
@@ -261,7 +249,7 @@ def test_visualization():
     labels = generate_mock_labels(10000, n_classes=7)
     client_data = create_noniid_split(labels, num_clients=4, alpha=0.5, seed=42)
 
-    class_names = ['AK', 'BCC', 'BKL', 'DF', 'MEL', 'NV', 'VASC']
+    class_names = ["AK", "BCC", "BKL", "DF", "MEL", "NV", "VASC"]
 
     # This should not raise an error
     print_split_summary(client_data, labels, class_names)

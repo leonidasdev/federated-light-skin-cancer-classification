@@ -38,7 +38,7 @@ def create_server(
     fraction_fit: float = 1.0,
     fraction_evaluate: float = 1.0,
     strategy: Strategy | None = None,
-    save_path: str | None = None
+    save_path: str | None = None,
 ) -> tuple[ServerConfig, Strategy]:
     """
     Create and configure the Flower FL server.
@@ -69,7 +69,7 @@ def create_server(
             min_available_clients=min_available_clients,
             fraction_fit=fraction_fit,
             fraction_evaluate=fraction_evaluate,
-            save_path=save_path
+            save_path=save_path,
         )
 
     # Server configuration
@@ -81,9 +81,10 @@ def create_server(
 def start_server(
     server_address: str = "[::]:8080",
     model: DSCATNet | None = None,
+    num_classes: int = 7,
     num_rounds: int = 50,
     strategy: Strategy | None = None,
-    **kwargs
+    **kwargs,
 ) -> History:
     """
     Start the Flower FL server.
@@ -91,6 +92,7 @@ def start_server(
     Args:
         server_address: Address to run the server on
         model: DSCATNet model for initialization
+        num_classes: Number of output classes (used when model is None)
         num_rounds: Number of FL rounds
         strategy: Custom strategy (optional)
         **kwargs: Additional arguments for create_server
@@ -100,21 +102,12 @@ def start_server(
     """
     if model is None:
         # Create default model for parameter initialization
-        model = DSCATNet(num_classes=7)
+        model = DSCATNet(num_classes=num_classes)
 
-    config, strategy = create_server(
-        model=model,
-        num_rounds=num_rounds,
-        strategy=strategy,
-        **kwargs
-    )
+    config, strategy = create_server(model=model, num_rounds=num_rounds, strategy=strategy, **kwargs)
 
     # Start server
-    history = fl_start_server(
-        server_address=server_address,
-        config=config,
-        strategy=strategy
-    )
+    history = fl_start_server(server_address=server_address, config=config, strategy=strategy)
 
     return history
 
@@ -141,11 +134,7 @@ class FederatedServer:
     """
 
     def __init__(
-        self,
-        model: DSCATNet,
-        num_rounds: int = 50,
-        checkpoint_dir: str = "./checkpoints",
-        log_dir: str = "./logs"
+        self, model: DSCATNet, num_rounds: int = 50, checkpoint_dir: str = "./checkpoints", log_dir: str = "./logs"
     ):
         self.model = model
         self.num_rounds = num_rounds
@@ -159,19 +148,14 @@ class FederatedServer:
         # Training state
         self.current_round = 0
         self.history: dict[str, list[Any]] = {
-            'round': [],
-            'loss': [],
-            'accuracy': [],
-            'clients_trained': [],
-            'clients_evaluated': []
+            "round": [],
+            "loss": [],
+            "accuracy": [],
+            "clients_trained": [],
+            "clients_evaluated": [],
         }
 
-    def configure(
-        self,
-        min_clients: int = 4,
-        fraction_fit: float = 1.0,
-        fraction_evaluate: float = 1.0
-    ) -> Strategy:
+    def configure(self, min_clients: int = 4, fraction_fit: float = 1.0, fraction_evaluate: float = 1.0) -> Strategy:
         """Configure and return the FL strategy."""
         initial_params = get_model_parameters(self.model)
 
@@ -183,15 +167,12 @@ class FederatedServer:
             fraction_fit=fraction_fit,
             fraction_evaluate=fraction_evaluate,
             save_path=str(self.checkpoint_dir),
-            evaluate_metrics_aggregation_fn=self._aggregate_metrics
+            evaluate_metrics_aggregation_fn=self._aggregate_metrics,
         )
 
         return strategy
 
-    def _aggregate_metrics(
-        self,
-        metrics: list[tuple[int, dict[str, Scalar]]]
-    ) -> dict[str, Scalar]:
+    def _aggregate_metrics(self, metrics: list[tuple[int, dict[str, Scalar]]]) -> dict[str, Scalar]:
         """Aggregate evaluation metrics from all clients."""
         if not metrics:
             return {}
@@ -200,7 +181,7 @@ class FederatedServer:
         metric_keys = metrics[0][1].keys()
 
         for key in metric_keys:
-            if key == 'client_id':
+            if key == "client_id":
                 continue
             values = [m[key] for _, m in metrics if key in m]
             weights = [n for n, m in metrics if key in m]
@@ -216,11 +197,9 @@ class FederatedServer:
     def save_checkpoint(self, round_num: int) -> str:
         """Save model checkpoint."""
         checkpoint_path = self.checkpoint_dir / f"model_round_{round_num}.pt"
-        torch.save({
-            'round': round_num,
-            'model_state_dict': self.model.state_dict(),
-            'history': self.history
-        }, checkpoint_path)
+        torch.save(
+            {"round": round_num, "model_state_dict": self.model.state_dict(), "history": self.history}, checkpoint_path
+        )
         return str(checkpoint_path)
 
     def load_checkpoint(self, checkpoint_path: str) -> int:
@@ -233,9 +212,9 @@ class FederatedServer:
             The round number from the checkpoint.
         """
         checkpoint = torch.load(checkpoint_path, weights_only=False)
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.history = checkpoint.get('history', self.history)
-        return checkpoint['round']
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.history = checkpoint.get("history", self.history)
+        return checkpoint["round"]
 
     def get_summary(self) -> dict[str, Any]:
         """Get summary of FL training.
@@ -245,8 +224,8 @@ class FederatedServer:
             final accuracy, best accuracy, and final loss.
         """
         return {
-            'total_rounds': len(self.history['round']),
-            'final_accuracy': self.history['accuracy'][-1] if self.history['accuracy'] else None,
-            'best_accuracy': max(self.history['accuracy']) if self.history['accuracy'] else None,
-            'final_loss': self.history['loss'][-1] if self.history['loss'] else None
+            "total_rounds": len(self.history["round"]),
+            "final_accuracy": self.history["accuracy"][-1] if self.history["accuracy"] else None,
+            "best_accuracy": max(self.history["accuracy"]) if self.history["accuracy"] else None,
+            "final_loss": self.history["loss"][-1] if self.history["loss"] else None,
         }

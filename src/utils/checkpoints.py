@@ -120,8 +120,8 @@ class CheckpointManager:
             return
 
         # Keep the most recent checkpoints
-        to_remove = self.checkpoints[:-self.max_checkpoints]
-        self.checkpoints = self.checkpoints[-self.max_checkpoints:]
+        to_remove = self.checkpoints[: -self.max_checkpoints]
+        self.checkpoints = self.checkpoints[-self.max_checkpoints :]
 
         for path in to_remove:
             # Don't remove best checkpoint

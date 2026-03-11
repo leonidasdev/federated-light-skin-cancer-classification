@@ -79,14 +79,16 @@ federated-light-skin-cancer-classification/
 │   └── PAD-UFES-20/
 │
 ├── outputs/                          # Training outputs (auto-generated)
-│   ├── federated_YYYYMMDD_HHMMSS/
-│   │   ├── checkpoints/
-│   │   │   ├── best_model.pt
-│   │   │   └── checkpoint_round_*.pt
-│   │   ├── config.json
-│   │   ├── history.json
-│   │   └── experiment.log
-│   └── centralized_YYYYMMDD_HHMMSS/
+│   └── <experiment_name>/
+│       ├── checkpoints/
+│       │   ├── best_model.pt
+│       │   ├── best_checkpoint.pt
+│       │   └── checkpoint_{epoch/round}_N.pt
+│       ├── config.json
+│       ├── results.json
+│       ├── metrics/
+│       │   └── <experiment_name>_metrics.csv
+│       └── experiment.log
 │
 ├── src/                              # Source code
 │   ├── __init__.py
@@ -126,17 +128,23 @@ federated-light-skin-cancer-classification/
 │   ├── test_centralized.py           # Centralized training tests
 │   ├── test_checkpoints.py           # Checkpoint save/load tests
 │   ├── test_cli.py                   # CLI argument parsing tests
+│   ├── test_client.py                # FL client tests
 │   ├── test_config_loading.py        # Config loading/validation tests
+│   ├── test_config_schema.py         # Config schema validation tests
 │   ├── test_datasets.py              # Dataset registry tests
 │   ├── test_download.py              # Download functionality tests
 │   ├── test_evaluation.py            # Evaluation metrics tests
 │   ├── test_helpers.py               # Helper utility tests
+│   ├── test_integration.py           # End-to-end integration tests
+│   ├── test_logging_utils.py         # Logging & metrics tracker tests
 │   ├── test_model_evaluator.py       # Model evaluator tests
 │   ├── test_models.py                # DSCATNet architecture tests
 │   ├── test_preprocessing.py         # Preprocessing pipeline tests
 │   ├── test_simulation.py            # FL simulation tests
 │   ├── test_splits.py                # Data splitting tests
-│   └── test_strategy.py              # FedAvg strategy tests
+│   ├── test_strategy.py              # FedAvg strategy tests
+│   ├── test_verify.py                # Dataset verification tests
+│   └── test_visualization.py         # Visualization tests
 │
 ├── docs/                             # Documentation
 │   ├── architecture.md               # System architecture
@@ -675,10 +683,12 @@ Evaluation is automatically performed at the end of each experiment. Results are
 
 ```
 outputs/<experiment_name>/
-├── metrics.json              # Final evaluation metrics
-├── history.json              # Training history (loss, accuracy per round)
-├── confusion_matrix.png      # Confusion matrix visualization
-└── training_curves.png       # Loss/accuracy curves
+├── results.json              # Final metrics + training history
+├── config.json               # Experiment configuration
+├── metrics/                  # Real-time CSV metrics
+│   └── <name>_metrics.csv
+└── checkpoints/
+    └── best_model.pt         # Best model weights
 ```
 
 ### Metrics JSON Structure
@@ -797,30 +807,40 @@ python run_download.py [OPTIONS]
 
 ```
 outputs/
-└── federated_20260125_181449/
+└── <experiment_name>/
     ├── checkpoints/
-    │   ├── best_model.pt
-    │   ├── checkpoint_round_5.pt
-    │   └── checkpoint_round_10.pt
-    ├── config.json               # Experiment configuration
-    ├── history.json              # Training history
-    ├── metrics.json              # Final evaluation metrics
-    ├── experiment.log            # Full training log
-    └── plots/
-        ├── training_curves.png
-        ├── confusion_matrix.png
-        └── per_class_accuracy.png
+    │   ├── best_model.pt             # Best weights only (inference)
+    │   ├── best_checkpoint.pt        # Full state (resumption)
+    │   ├── checkpoint_epoch_10.pt    # Periodic (centralized)
+    │   └── checkpoint_round_5.pt    # Periodic (federated)
+    ├── config.json                   # Experiment configuration
+    ├── results.json                  # Final metrics + training history
+    ├── metrics/                      # Real-time CSV metrics
+    │   └── <name>_metrics.csv
+    └── experiment.log                # Full training log
 ```
 
-### History JSON (Training Progress)
+### Training History (in results.json)
+
+The `results.json` file written at experiment completion includes the full training history:
 
 ```json
 {
-    "rounds": [1, 2, 3],
-    "train_loss": [2.1, 1.8, 1.5],
-    "val_loss": [2.0, 1.7, 1.4],
-    "val_accuracy": [0.35, 0.52, 0.61],
-    "learning_rate": [0.001, 0.001, 0.0009]
+    "best_val_accuracy": 0.85,
+    "best_epoch": 42,
+    "total_time_seconds": 3600.0,
+    "history": {
+        "epochs": [1, 2, 3],
+        "train_loss": [2.1, 1.8, 1.5],
+        "val_loss": [2.0, 1.7, 1.4],
+        "val_accuracy": [0.35, 0.52, 0.61],
+        "learning_rate": [0.001, 0.001, 0.0009]
+    },
+    "environment": {
+        "python_version": "3.13.3",
+        "pytorch_version": "2.7.0",
+        "cuda_available": true
+    }
 }
 ```
 
@@ -861,17 +881,23 @@ The project includes comprehensive unit tests for all major components.
 | `test_centralized.py` | Tests for centralized training configuration and trainer |
 | `test_checkpoints.py` | Tests for checkpoint saving, loading, and management |
 | `test_cli.py` | Tests for CLI argument parsing and validation |
+| `test_client.py` | Tests for Flower FL client |
 | `test_config_loading.py` | Tests for YAML config loading and schema validation |
+| `test_config_schema.py` | Tests for configuration schema validation |
 | `test_datasets.py` | Tests for dataset registry and loading functions |
 | `test_download.py` | Tests for download functionality |
 | `test_evaluation.py` | Tests for evaluation metrics and visualization functions |
 | `test_helpers.py` | Tests for seed, device, formatting, and other utilities |
+| `test_integration.py` | End-to-end integration tests (marked `@slow`) |
+| `test_logging_utils.py` | Tests for MetricsTracker, CSV logging, and resume safety |
 | `test_model_evaluator.py` | Tests for ModelEvaluator integration |
 | `test_models.py` | Tests for DSCATNet model architecture |
 | `test_preprocessing.py` | Tests for image transforms, augmentation levels, and normalization |
 | `test_simulation.py` | Tests for FL simulation, FedAvg aggregation, and client management |
 | `test_splits.py` | Tests for IID/Non-IID data splitting utilities |
 | `test_strategy.py` | Tests for DSCATNetFedAvg custom strategy |
+| `test_verify.py` | Tests for dataset verification utilities |
+| `test_visualization.py` | Tests for plotting and visualization functions |
 
 ### Running Tests
 
@@ -901,27 +927,34 @@ Expected output:
 
 ```
 ======================== test session starts ========================
-collected 219 items / 2 deselected / 217 selected
+collected 467 items / 10 deselected / 457 selected
 
-tests/test_centralized.py ........                             [  3%]
-tests/test_checkpoints.py ................                     [ 11%]
-tests/test_cli.py .......................                      [ 21%]
-tests/test_config_loading.py ..........                        [ 26%]
-tests/test_datasets.py .....................                   [ 36%]
-tests/test_download.py ...............................         [ 50%]
-tests/test_evaluation.py .......                               [ 54%]
-tests/test_helpers.py ......................                   [ 64%]
-tests/test_model_evaluator.py .............                    [ 70%]
-tests/test_models.py ..................                        [ 78%]
-tests/test_preprocessing.py ......                             [ 81%]
-tests/test_simulation.py ................                      [ 89%]
-tests/test_splits.py ........                                  [ 92%]
-tests/test_strategy.py ...............                         [100%]
+tests/test_centralized.py ........................              [  5%]
+tests/test_checkpoints.py ..................                    [  9%]
+tests/test_cli.py .......................                       [ 14%]
+tests/test_client.py ............                               [ 17%]
+tests/test_config_loading.py ..........                         [ 19%]
+tests/test_config_schema.py ....................................[ 27%]
+tests/test_datasets.py .....................                    [ 32%]
+tests/test_download.py ......................                   [ 36%]
+tests/test_evaluation.py .......                                [ 38%]
+tests/test_helpers.py ......................                    [ 43%]
+tests/test_logging_utils.py ...........................         [ 49%]
+tests/test_model_evaluator.py .............                     [ 52%]
+tests/test_models.py ..................                         [ 56%]
+tests/test_preprocessing.py ......                              [ 57%]
+tests/test_simulation.py .....................                  [ 62%]
+tests/test_splits.py ........                                   [ 64%]
+tests/test_strategy.py ...............                          [ 67%]
+tests/test_verify.py ..........................                 [ 73%]
+tests/test_visualization.py ........................            [ 78%]
 
-================= 217 passed, 2 deselected in 25s ===================
+================= 457 passed, 10 deselected in ~100s =================
 ```
 
-> **Note**: Two integration tests are deselected by default (marked `@pytest.mark.slow`). Run them with `pytest -m slow tests/`.
+Test coverage: **≥80%** across all source modules.
+
+> **Note**: Integration tests are deselected by default (marked `@pytest.mark.slow`). Run them with `pytest -m slow tests/`.
 
 ---
 

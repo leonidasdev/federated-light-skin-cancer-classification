@@ -44,11 +44,10 @@ from src.data.datasets import (
 # Helpers — create tiny images + CSVs for integration tests
 # =============================================================================
 
+
 def _create_tiny_image(path: Path, size: tuple[int, int] = (28, 28)) -> None:
     """Create a tiny RGB JPEG or PNG image at *path*."""
-    img = Image.fromarray(
-        np.random.randint(0, 255, (*size, 3), dtype=np.uint8)
-    )
+    img = Image.fromarray(np.random.randint(0, 255, (*size, 3), dtype=np.uint8))
     path.parent.mkdir(parents=True, exist_ok=True)
     img.save(path)
 
@@ -142,6 +141,7 @@ def _build_padufes20(root: Path, n: int = 4) -> Path:
     csv_path.write_text("\n".join(lines), encoding="utf-8")
     return ds
 
+
 # =============================================================================
 # Tests for DATASET_REGISTRY
 # =============================================================================
@@ -156,22 +156,22 @@ class TestDatasetRegistryDict:
 
     def test_registry_contains_expected_datasets(self):
         """Registry should contain all expected dataset names."""
-        expected = ['HAM10000', 'ISIC2018', 'ISIC2019', 'ISIC2020', 'PAD-UFES-20']
+        expected = ["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"]
         for name in expected:
             assert name in DATASET_REGISTRY, f"Missing {name} in registry"
 
     def test_registry_entry_has_required_fields(self):
         """Each registry entry should have required fields."""
         for name, config in DATASET_REGISTRY.items():
-            assert hasattr(config, 'dataset_class'), f"{name} missing dataset_class"
-            assert hasattr(config, 'csv_filename'), f"{name} missing csv_filename"
+            assert hasattr(config, "dataset_class"), f"{name} missing dataset_class"
+            assert hasattr(config, "csv_filename"), f"{name} missing csv_filename"
             # dataset_class should be callable
             assert callable(config.dataset_class), f"{name} dataset_class not callable"
 
     def test_registry_has_image_subdir_field(self):
         """Each registry entry should have image_subdir field (can be None)."""
         for name, config in DATASET_REGISTRY.items():
-            assert hasattr(config, 'image_subdir'), f"{name} missing image_subdir"
+            assert hasattr(config, "image_subdir"), f"{name} missing image_subdir"
 
 
 # =============================================================================
@@ -276,7 +276,7 @@ class TestGetAvailableDatasets:
     def test_contains_expected_names(self):
         """Should contain expected dataset names."""
         result = get_available_datasets()
-        expected = ['HAM10000', 'ISIC2018', 'ISIC2019', 'ISIC2020', 'PAD-UFES-20']
+        expected = ["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"]
         for name in expected:
             assert name in result
 
@@ -313,7 +313,7 @@ class TestLoadDataset:
 
     def test_accepts_classification_mode(self, tmp_path):
         """Should accept classification_mode parameter."""
-        result = load_dataset("HAM10000", tmp_path, classification_mode='binary')
+        result = load_dataset("HAM10000", tmp_path, classification_mode="binary")
         assert result is None  # Files don't exist
 
     def test_accepts_filter_unknown(self, tmp_path):

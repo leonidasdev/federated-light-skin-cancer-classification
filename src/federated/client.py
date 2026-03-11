@@ -119,12 +119,7 @@ class SkinCancerClient(NumPyClient):
             self.scheduler = None
 
         # Training history
-        self.history: dict[str, list[float]] = {
-            'train_loss': [],
-            'train_acc': [],
-            'val_loss': [],
-            'val_acc': []
-        }
+        self.history: dict[str, list[float]] = {"train_loss": [], "train_acc": [], "val_loss": [], "val_acc": []}
 
     def get_parameters(self, config: dict[str, Scalar]) -> NDArrays:
         """Return current model parameters as numpy arrays."""
@@ -134,11 +129,7 @@ class SkinCancerClient(NumPyClient):
         """Set model parameters from numpy arrays."""
         set_model_parameters(self.model, parameters)
 
-    def fit(
-        self,
-        parameters: NDArrays,
-        config: dict[str, Scalar]
-    ) -> tuple[NDArrays, int, dict[str, Scalar]]:
+    def fit(self, parameters: NDArrays, config: dict[str, Scalar]) -> tuple[NDArrays, int, dict[str, Scalar]]:
         """
         Train model on local dataset.
 
@@ -160,8 +151,8 @@ class SkinCancerClient(NumPyClient):
         train_loss, train_acc = self._train_epoch(epochs)
 
         # Record history
-        self.history['train_loss'].append(train_loss)
-        self.history['train_acc'].append(train_acc)
+        self.history["train_loss"].append(train_loss)
+        self.history["train_acc"].append(train_acc)
 
         # Step scheduler (if configured)
         if self.scheduler is not None:
@@ -173,17 +164,13 @@ class SkinCancerClient(NumPyClient):
             "train_loss": train_loss,
             "train_accuracy": train_acc,
             "round": current_round,
-            "learning_rate": self.optimizer.param_groups[0]['lr']
+            "learning_rate": self.optimizer.param_groups[0]["lr"],
         }
 
         num_examples = len(cast(Sized, self.train_loader.dataset))
         return self.get_parameters(config), num_examples, metrics
 
-    def evaluate(
-        self,
-        parameters: NDArrays,
-        config: dict[str, Scalar]
-    ) -> tuple[float, int, dict[str, Scalar]]:
+    def evaluate(self, parameters: NDArrays, config: dict[str, Scalar]) -> tuple[float, int, dict[str, Scalar]]:
         """
         Evaluate model on local validation set.
 
@@ -201,8 +188,8 @@ class SkinCancerClient(NumPyClient):
         loss, accuracy, metrics = self._evaluate()
 
         # Record history
-        self.history['val_loss'].append(loss)
-        self.history['val_acc'].append(accuracy)
+        self.history["val_loss"].append(loss)
+        self.history["val_acc"].append(accuracy)
 
         # Add client ID to metrics
         metrics["client_id"] = self.client_id
@@ -318,18 +305,11 @@ class SkinCancerClient(NumPyClient):
         accuracy = correct / total if total > 0 else 0.0
 
         # Compute detailed metrics
-        metrics = {
-            "accuracy": accuracy,
-            "loss": avg_loss,
-            "num_samples": total
-        }
+        metrics = {"accuracy": accuracy, "loss": avg_loss, "num_samples": total}
 
         # Add per-class accuracy
         for cls, cls_count in class_total.items():
-            metrics[f"class_{cls}_accuracy"] = (
-                class_correct[cls] / cls_count
-                if cls_count > 0 else 0.0
-            )
+            metrics[f"class_{cls}_accuracy"] = class_correct[cls] / cls_count if cls_count > 0 else 0.0
 
         return avg_loss, accuracy, metrics
 
@@ -339,12 +319,7 @@ class SkinCancerClient(NumPyClient):
 
 
 def create_client(
-    client_id: int,
-    model: DSCATNet,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
-    device: torch.device,
-    **kwargs
+    client_id: int, model: DSCATNet, train_loader: DataLoader, val_loader: DataLoader, device: torch.device, **kwargs
 ) -> SkinCancerClient:
     """
     Factory function to create a Flower client.
@@ -361,10 +336,5 @@ def create_client(
         Configured SkinCancerClient
     """
     return SkinCancerClient(
-        client_id=client_id,
-        model=model,
-        train_loader=train_loader,
-        val_loader=val_loader,
-        device=device,
-        **kwargs
+        client_id=client_id, model=model, train_loader=train_loader, val_loader=val_loader, device=device, **kwargs
     )
