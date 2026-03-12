@@ -63,6 +63,7 @@
 | 3.6 | ~~`server.py` hardcodes `num_classes=7`~~ | Fixed: `num_classes` is now a parameter with default=7. |
 | 3.7 | `simulation.py` uses magic `42` as seed offset | Extract to `RANDOM_SEED_BASE` constant. |
 | 3.8 | Expand dataclass docstrings (`CentralizedConfig`, `SimulationConfig`) | Document individual fields and their purposes. |
+| 3.9 | ~~`DirichletSubset.__getitem__` wrong attribute name~~ | Fixed: used `img_paths` instead of `image_paths`, causing val transforms to never apply. |
 
 ---
 

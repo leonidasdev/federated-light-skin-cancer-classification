@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # Usage:
-#   python run_experiment.py --mode federated --config configs/dscatnet_federated_isic2020.yaml
+#   python run_experiment.py --mode federated --config configs/dscatnet_federated_isic2020_non_iid.yaml
 #
 # Description:
 #   Federated learning on ISIC2020 (~33,126 dermoscopy images, 7 classes)
@@ -16,7 +16,7 @@ federated:
   # Experiment Identification
   # ---------------------------------------------------------------------------
   experiment:
-    name: dscatnet_federated_isic2020
+    name: dscatnet_federated_isic2020_non_iid
     description: "FL training on ISIC2020 with FedAvg (non-IID)"
 
   # ---------------------------------------------------------------------------

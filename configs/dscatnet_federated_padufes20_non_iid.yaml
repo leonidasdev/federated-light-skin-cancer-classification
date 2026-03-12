@@ -1,12 +1,12 @@
 # =============================================================================
-# DSCATNet Federated Learning Configuration - HAM10000 (Non-IID)
+# DSCATNet Federated Learning Configuration - PAD-UFES-20 (Non-IID)
 # =============================================================================
 #
 # Usage:
-#   python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000.yaml
+#   python run_experiment.py --mode federated --config configs/dscatnet_federated_padufes20_non_iid.yaml
 #
 # Description:
-#   Federated learning on HAM10000 (10,015 dermoscopy images, 7 classes)
+#   Federated learning on PAD-UFES-20 (~2,298 clinical skin images, 7 classes)
 #   with non-IID data distribution (Dirichlet alpha=0.5) across 4 clients.
 #
 # =============================================================================
@@ -16,17 +16,16 @@ federated:
   # Experiment Identification
   # ---------------------------------------------------------------------------
   experiment:
-    name: dscatnet_federated_ham10000
-    description: "FL training on HAM10000 with FedAvg (non-IID)"
+    name: dscatnet_federated_padufes20_non_iid
+    description: "FL training on PAD-UFES-20 with FedAvg (non-IID)"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
   # ---------------------------------------------------------------------------
   data_root: ./data
   output_dir: ./outputs
-
   datasets:
-    - HAM10000
+    - PAD-UFES-20
 
   # ---------------------------------------------------------------------------
   # Model Configuration
@@ -65,7 +64,7 @@ federated:
   # Augmentation Configuration
   # ---------------------------------------------------------------------------
   augmentation:
-    level: none
+    level: light
     use_dermoscopy_norm: false
 
   # ---------------------------------------------------------------------------

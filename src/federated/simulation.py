@@ -69,7 +69,9 @@ class DirichletSubset(torch.utils.data.Dataset):
     Dataset wrapper for Dirichlet split subsets.
 
     This class wraps combined dataset references and provides proper
-    indexing for samples assigned to a specific client.
+    indexing for samples assigned to a specific client.  Always re-loads
+    images from disk and applies the provided transform so that train and
+    val subsets can use different augmentation pipelines.
     """
 
     def __init__(self, combined_images: list[tuple[Any, int]], indices: list[int], transform: Any | None = None):
@@ -89,21 +91,27 @@ class DirichletSubset(torch.utils.data.Dataset):
         return len(self.indices)
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, int]:
-        """Get sample at index."""
+        """Get sample at index by re-loading from disk with this subset's transform."""
         combined_idx = self.indices[idx]
         dataset, original_idx = self.combined_images[combined_idx]
 
-        # Get the original sample
-        image, label = dataset[original_idx]
+        # Always load raw image from disk so the correct transform is applied
+        # (train vs val transforms differ in augmentation)
+        img_path = dataset.image_paths[original_idx]
+        label = int(dataset.labels[original_idx])
 
-        # Apply transform if different from dataset's transform
-        if self.transform is not None and hasattr(dataset, "transform"):
-            # Re-load the raw image and apply our transform
-            # This handles the case where we need val transforms
-            if hasattr(dataset, "img_paths"):
-                img_path = dataset.img_paths[original_idx]
-                image = Image.open(img_path).convert("RGB")
-                image = self.transform(image)
+        image = Image.open(img_path).convert("RGB")
+        image = np.array(image)
+
+        if self.transform:
+            transformed = self.transform(image=image)
+            image = transformed["image"]
+
+        # Ensure torch.Tensor CHW float
+        if not isinstance(image, torch.Tensor):
+            image = torch.from_numpy(image).permute(2, 0, 1).contiguous().float() / 255.0
+        elif image.ndim == 3 and image.shape[-1] in (1, 3):
+            image = image.permute(2, 0, 1).contiguous()
 
         return image, label
 

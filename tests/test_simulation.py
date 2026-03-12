@@ -737,32 +737,52 @@ class TestRunRound:
 class TestDirichletSubset:
     """Tests for DirichletSubset."""
 
-    def test_len_and_getitem(self):
-        from src.federated.simulation import DirichletSubset
-        from torch.utils.data import TensorDataset
+    def _make_mock_dataset(self, n: int, tmp_path):
+        """Create a mock dataset with image_paths and labels for DirichletSubset tests."""
         import torch
+        from PIL import Image as PILImage
 
-        ds = TensorDataset(torch.randn(10, 3, 32, 32), torch.arange(10))
+        img_dir = tmp_path / "imgs"
+        img_dir.mkdir(exist_ok=True)
+
+        image_paths = []
+        labels = []
+        for i in range(n):
+            p = img_dir / f"img_{i}.png"
+            PILImage.fromarray(np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)).save(p)
+            image_paths.append(str(p))
+            labels.append(i % 7)
+
+        class _MockDS:
+            pass
+
+        ds = _MockDS()
+        ds.image_paths = image_paths
+        ds.labels = labels
+        return ds
+
+    def test_len_and_getitem(self, tmp_path):
+        from src.federated.simulation import DirichletSubset
+
+        ds = self._make_mock_dataset(10, tmp_path)
         combined = [(ds, i) for i in range(10)]
         subset = DirichletSubset(combined, [0, 2, 4])
 
         assert len(subset) == 3
         img, _label = subset[0]
-        assert img.shape == (3, 32, 32)
+        assert img.shape[0] == 3  # CHW
 
-    def test_different_indices(self):
+    def test_different_indices(self, tmp_path):
         """DirichletSubset with different indices returns different items."""
         from src.federated.simulation import DirichletSubset
-        from torch.utils.data import TensorDataset
-        import torch
 
-        ds = TensorDataset(torch.arange(10).float().unsqueeze(1), torch.arange(10))
+        ds = self._make_mock_dataset(10, tmp_path)
         combined = [(ds, i) for i in range(10)]
         subset = DirichletSubset(combined, [1, 3, 5])
         _, label0 = subset[0]
         _, label1 = subset[1]
-        assert label0 == 1
-        assert label1 == 3
+        assert label0 == ds.labels[1]
+        assert label1 == ds.labels[3]
 
 
 class TestGetTransforms:

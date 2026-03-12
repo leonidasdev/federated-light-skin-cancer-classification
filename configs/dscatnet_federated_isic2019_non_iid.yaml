@@ -1,13 +1,14 @@
 # =============================================================================
-# DSCATNet Federated Learning Configuration - ISIC2018 (Non-IID)
+# DSCATNet Federated Learning Configuration - ISIC2019 (Non-IID)
 # =============================================================================
 #
 # Usage:
-#   python run_experiment.py --mode federated --config configs/dscatnet_federated_isic2018.yaml
+#   python run_experiment.py --mode federated --config configs/dscatnet_federated_isic2019_non_iid.yaml
 #
 # Description:
-#   Federated learning on ISIC2018 (~10,015 dermoscopy images, 7 classes)
-#   with non-IID data distribution (Dirichlet alpha=0.5) across 4 clients.
+#   Federated learning on ISIC2019 (~25,331 dermoscopy images, 8 classes
+#   including SCC; mapped to 7 by default) with non-IID data distribution
+#   (Dirichlet alpha=0.5) across 4 clients.
 #
 # =============================================================================
 
@@ -16,8 +17,8 @@ federated:
   # Experiment Identification
   # ---------------------------------------------------------------------------
   experiment:
-    name: dscatnet_federated_isic2018
-    description: "FL training on ISIC2018 with FedAvg (non-IID)"
+    name: dscatnet_federated_isic2019_non_iid
+    description: "FL training on ISIC2019 with FedAvg (non-IID)"
 
   # ---------------------------------------------------------------------------
   # Data Configuration
@@ -25,7 +26,7 @@ federated:
   data_root: ./data
   output_dir: ./outputs
   datasets:
-    - ISIC2018
+    - ISIC2019
 
   # ---------------------------------------------------------------------------
   # Model Configuration
@@ -34,7 +35,7 @@ federated:
     name: DSCATNet
     variant: paper  # Paper-faithful: embed_dim=384, depth=6, H=12 heads
     image_size: 224
-    num_classes: 7
+    num_classes: 7      # Use 7 for standard mapping; change to 8 to include SCC
     pretrained: true
 
   # ---------------------------------------------------------------------------
