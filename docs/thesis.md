@@ -791,7 +791,7 @@ centralized:
     use_class_weights: true
 ```
 
-**Federated training** (`dscatnet_federated_ham10000.yaml`):
+**Federated training** (`dscatnet_federated_ham10000_non_iid.yaml`):
 
 ```yaml
 federated:
@@ -839,11 +839,11 @@ python run_experiment.py --mode centralized \
 
 # Federated training
 python run_experiment.py --mode federated \
-    --config configs/dscatnet_federated_ham10000.yaml
+    --config configs/dscatnet_federated_ham10000_non_iid.yaml
 
 # Federated with custom Dirichlet alpha
 python run_experiment.py --mode federated \
-    --config configs/dscatnet_federated_ham10000.yaml \
+    --config configs/dscatnet_federated_ham10000_non_iid.yaml \
     --dirichlet-alpha 0.1
 
 # Resume from checkpoint

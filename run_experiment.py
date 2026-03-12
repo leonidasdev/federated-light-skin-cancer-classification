@@ -9,13 +9,13 @@ This script provides the unified entry point for running all experiments:
 
 Usage Examples:
     # Run federated learning with config file
-    python run_experiment.py --mode federated --config configs/dscatnet_federated_benchmark.yaml
+    python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000_non_iid.yaml
 
     # Run centralized baseline
     python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
 
     # Override config settings via CLI
-    python run_experiment.py --mode federated --config configs/dscatnet_federated_benchmark.yaml --rounds 10
+    python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000_non_iid.yaml --rounds 10
 
     # Run comparison experiment
     python run_experiment.py --mode comparison --config configs/experiment_config.yaml
@@ -71,9 +71,7 @@ def setup_file_logging(output_dir: Path) -> None:
     """
     log_file = output_dir / "experiment.log"
     file_handler = logging.FileHandler(log_file)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
+    file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
     logging.getLogger().addHandler(file_handler)
 
 
@@ -98,28 +96,43 @@ def load_config(config_path: str) -> dict[str, Any]:
 # Section-to-field mappings shared by centralized and federated config flattening.
 # Each entry: (yaml_section_name, [(yaml_key, config_field_name), ...])
 _COMMON_SECTION_MAPPINGS = [
-    (None, [  # Top-level keys
-        ("data_root", "data_root"),
-        ("output_dir", "output_dir"),
-        ("datasets", "datasets"),
-    ]),
-    ("experiment", [
-        ("name", "experiment_name"),
-    ]),
-    ("model", [
-        ("image_size", "image_size"),
-        ("variant", "model_variant"),
-    ]),
-    ("augmentation", [
-        ("level", "augmentation_level"),
-        ("use_dermoscopy_norm", "use_dermoscopy_norm"),
-    ]),
-    ("evaluation", [
-        ("early_stopping_patience", "early_stopping_patience"),
-        ("use_class_weights", "use_class_weights"),
-        ("checkpoint_interval", "checkpoint_interval"),
-        ("max_grad_norm", "max_grad_norm"),
-    ]),
+    (
+        None,
+        [  # Top-level keys
+            ("data_root", "data_root"),
+            ("output_dir", "output_dir"),
+            ("datasets", "datasets"),
+        ],
+    ),
+    (
+        "experiment",
+        [
+            ("name", "experiment_name"),
+        ],
+    ),
+    (
+        "model",
+        [
+            ("image_size", "image_size"),
+            ("variant", "model_variant"),
+        ],
+    ),
+    (
+        "augmentation",
+        [
+            ("level", "augmentation_level"),
+            ("use_dermoscopy_norm", "use_dermoscopy_norm"),
+        ],
+    ),
+    (
+        "evaluation",
+        [
+            ("early_stopping_patience", "early_stopping_patience"),
+            ("use_class_weights", "use_class_weights"),
+            ("checkpoint_interval", "checkpoint_interval"),
+            ("max_grad_norm", "max_grad_norm"),
+        ],
+    ),
 ]
 
 
@@ -194,8 +207,11 @@ def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
     from src.models.dscatnet import create_dscatnet
     from src.evaluation.metrics import ModelEvaluator
     from src.data.datasets import (
-        DATASET_REGISTRY, get_dataset_paths, normalize_dataset_name,
-        get_available_datasets, DatasetSubset
+        DATASET_REGISTRY,
+        get_dataset_paths,
+        normalize_dataset_name,
+        get_available_datasets,
+        DatasetSubset,
     )
     from src.data.preprocessing import get_val_transforms
     from src.data.splits import deterministic_train_val_split
@@ -319,16 +335,18 @@ def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
 
     print("\nPer-Class Metrics:")
     for class_name, metrics in results.per_class_metrics.items():
-        print(f"  {class_name}: acc={metrics['accuracy']:.3f}, "
-              f"prec={metrics['precision']:.3f}, rec={metrics['recall']:.3f}, "
-              f"support={metrics['support']}")
+        print(
+            f"  {class_name}: acc={metrics['accuracy']:.3f}, "
+            f"prec={metrics['precision']:.3f}, rec={metrics['recall']:.3f}, "
+            f"support={metrics['support']}"
+        )
 
     # Save results if output dir specified
     if args.output_dir:
         output_dir = Path(args.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         results_dict = results.to_dict()
         results_dict["checkpoint"] = str(checkpoint_path)
@@ -352,26 +370,35 @@ def run_centralized(args: argparse.Namespace) -> dict[str, Any]:
 
     # Centralized-specific config section mappings
     _CENTRALIZED_SECTIONS = [
-        ("model", [
-            ("num_classes", "num_classes"),
-            ("pretrained", "pretrained"),
-        ]),
-        ("training", [
-            ("batch_size", "batch_size"),
-            ("lr", "learning_rate"),
-            ("epochs", "num_epochs"),
-            ("weight_decay", "weight_decay"),
-            ("warmup_epochs", "warmup_epochs"),
-            ("scheduler", "scheduler_type"),
-            ("min_lr", "min_lr"),
-            ("optimizer", "optimizer_type"),
-            ("gradient_accumulation_steps", "gradient_accumulation_steps"),
-            ("use_amp", "use_amp"),
-        ]),
-        ("splits", [
-            ("val_split", "val_split"),
-            ("test_split", "test_split"),
-        ]),
+        (
+            "model",
+            [
+                ("num_classes", "num_classes"),
+                ("pretrained", "pretrained"),
+            ],
+        ),
+        (
+            "training",
+            [
+                ("batch_size", "batch_size"),
+                ("lr", "learning_rate"),
+                ("epochs", "num_epochs"),
+                ("weight_decay", "weight_decay"),
+                ("warmup_epochs", "warmup_epochs"),
+                ("scheduler", "scheduler_type"),
+                ("min_lr", "min_lr"),
+                ("optimizer", "optimizer_type"),
+                ("gradient_accumulation_steps", "gradient_accumulation_steps"),
+                ("use_amp", "use_amp"),
+            ],
+        ),
+        (
+            "splits",
+            [
+                ("val_split", "val_split"),
+                ("test_split", "test_split"),
+            ],
+        ),
     ]
 
     # Load config if provided
@@ -436,32 +463,43 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
             checkpoint = torch.load(resume_path, map_location="cpu", weights_only=False)
             checkpoint_config = checkpoint.get("config", {})
             if checkpoint_config:
-                logger.info(f"Restored config from checkpoint: noniid_type={checkpoint_config.get('noniid_type')}, "
-                          f"datasets={checkpoint_config.get('datasets')}")
+                logger.info(
+                    f"Restored config from checkpoint: noniid_type={checkpoint_config.get('noniid_type')}, "
+                    f"datasets={checkpoint_config.get('datasets')}"
+                )
 
     # Federated-specific config section mappings
     _FEDERATED_SECTIONS = [
-        ("model", [
-            ("num_classes", "num_classes"),
-            ("pretrained", "pretrained"),
-        ]),
-        ("training", [
-            ("batch_size", "batch_size"),
-            ("lr", "learning_rate"),
-            ("weight_decay", "weight_decay"),
-            ("optimizer", "optimizer_type"),
-            ("gradient_accumulation_steps", "gradient_accumulation_steps"),
-            ("local_epochs", "local_epochs"),
-            ("num_rounds", "num_rounds"),
-            ("rounds", "num_rounds"),
-            ("train_val_split", "train_val_split"),
-        ]),
-        ("federation", [
-            ("num_clients", "num_clients"),
-            ("num_rounds", "num_rounds"),
-            ("noniid_type", "noniid_type"),
-            ("dirichlet_alpha", "dirichlet_alpha"),
-        ]),
+        (
+            "model",
+            [
+                ("num_classes", "num_classes"),
+                ("pretrained", "pretrained"),
+            ],
+        ),
+        (
+            "training",
+            [
+                ("batch_size", "batch_size"),
+                ("lr", "learning_rate"),
+                ("weight_decay", "weight_decay"),
+                ("optimizer", "optimizer_type"),
+                ("gradient_accumulation_steps", "gradient_accumulation_steps"),
+                ("local_epochs", "local_epochs"),
+                ("num_rounds", "num_rounds"),
+                ("rounds", "num_rounds"),
+                ("train_val_split", "train_val_split"),
+            ],
+        ),
+        (
+            "federation",
+            [
+                ("num_clients", "num_clients"),
+                ("num_rounds", "num_rounds"),
+                ("noniid_type", "noniid_type"),
+                ("dirichlet_alpha", "dirichlet_alpha"),
+            ],
+        ),
     ]
 
     # Load config: priority is CLI args > YAML config > checkpoint config > defaults
@@ -542,7 +580,7 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Any]:
         plot_fl_vs_centralized,
     )
 
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     # Create comparison output directory
     comparison_dir = Path(args.output_dir or "./outputs") / f"comparison_{timestamp}"
@@ -615,8 +653,8 @@ def run_comparison(args: argparse.Namespace) -> dict[str, Any]:
     logger.info("=" * 60)
     logger.info(f"Centralized Best Accuracy: {cent_acc:.4f}")
     logger.info(f"Federated Best Accuracy:   {fed_acc:.4f}")
-    gap = comparison_summary['accuracy_gap']
-    gap_pct = comparison_summary['accuracy_gap_pct']
+    gap = comparison_summary["accuracy_gap"]
+    gap_pct = comparison_summary["accuracy_gap_pct"]
     logger.info(f"Accuracy Gap:              {gap:.4f} ({gap_pct:.2f}%)")
     logger.info("=" * 60)
 
@@ -694,22 +732,16 @@ Examples:
         type=str,
         nargs="+",
         choices=["HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"],
-        help="Specific dataset(s) to use. For FL natural non-IID, each dataset = one client"
+        help="Specific dataset(s) to use. For FL natural non-IID, each dataset = one client",
     )
     common_group.add_argument(
-        "--list-datasets",
-        action="store_true",
-        help="List available datasets with their details and exit"
+        "--list-datasets", action="store_true", help="List available datasets with their details and exit"
     )
     common_group.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show effective configuration and exit without running experiment"
+        "--dry-run", action="store_true", help="Show effective configuration and exit without running experiment"
     )
     common_group.add_argument(
-        "--validate-config",
-        action="store_true",
-        help="Validate config file and check for errors, then exit"
+        "--validate-config", action="store_true", help="Validate config file and check for errors, then exit"
     )
 
     # =============================================================================
@@ -720,7 +752,7 @@ Examples:
         "--model-variant",
         type=str,
         choices=["tiny", "small", "paper", "base"],
-        help="DSCATNet variant: tiny (~5M), small (~29.4M), paper (~29.4M, 12 heads), base (~39M)"
+        help="DSCATNet variant: tiny (~5M), small (~29.4M), paper (~29.4M, 12 heads), base (~39M)",
     )
     model_group.add_argument("--num-classes", type=int, help="Number of output classes (default: 7)")
     model_group.add_argument("--image-size", type=int, help="Input image size (default: 224)")
@@ -731,14 +763,10 @@ Examples:
     train_group = parser.add_argument_group("Training Hyperparameters")
     train_group.add_argument("--weight-decay", type=float, help="Weight decay for optimizer (default: 0.0)")
     train_group.add_argument(
-        "--augmentation",
-        type=str,
-        choices=["none", "light", "medium", "heavy"],
-        help="Data augmentation level"
+        "--augmentation", type=str, choices=["none", "light", "medium", "heavy"], help="Data augmentation level"
     )
     train_group.add_argument(
-        "--early-stopping", type=int,
-        help="Early stopping patience (epochs/rounds without improvement)"
+        "--early-stopping", type=int, help="Early stopping patience (epochs/rounds without improvement)"
     )
     train_group.add_argument("--checkpoint-interval", type=int, help="Save checkpoint every N epochs/rounds")
     train_group.add_argument("--num-workers", type=int, help="Number of data loader workers")
@@ -749,12 +777,7 @@ Examples:
     cent_group = parser.add_argument_group("Centralized Training Options")
     cent_group.add_argument("--epochs", type=int, help="Number of training epochs")
     cent_group.add_argument("--warmup-epochs", type=int, help="Number of warmup epochs for LR scheduler")
-    cent_group.add_argument(
-        "--scheduler",
-        type=str,
-        choices=["cosine", "plateau"],
-        help="Learning rate scheduler type"
-    )
+    cent_group.add_argument("--scheduler", type=str, choices=["cosine", "plateau"], help="Learning rate scheduler type")
     cent_group.add_argument("--val-split", type=float, help="Validation split ratio (default: 0.15)")
     cent_group.add_argument("--no-amp", action="store_true", help="Disable automatic mixed precision (AMP)")
 
@@ -769,24 +792,24 @@ Examples:
         "--noniid-type",
         type=str,
         choices=["natural", "dirichlet", "label_skew", "quantity_skew"],
-        help="Non-IID distribution type for FL"
+        help="Non-IID distribution type for FL",
     )
     fed_group.add_argument("--dirichlet-alpha", type=float, help="Dirichlet alpha (lower = more non-IID)")
     fed_group.add_argument("--participation", type=float, help="Client participation rate per round (0.0-1.0)")
     fed_group.add_argument(
         "--client-selection",
         type=float,
-        help="Fraction of clients to select each round (0.0-1.0, e.g., 0.75 = select 75%% of clients randomly)"
+        help="Fraction of clients to select each round (0.0-1.0, e.g., 0.75 = select 75%% of clients randomly)",
     )
     fed_group.add_argument(
         "--parallel-clients",
         type=int,
-        help="Number of clients to train in parallel (CPU only, 0=auto, 1=sequential, e.g., 4 for quad-core)"
+        help="Number of clients to train in parallel (CPU only, 0=auto, 1=sequential, e.g., 4 for quad-core)",
     )
     fed_group.add_argument(
         "--train-val-split",
         type=float,
-        help="Validation set fraction (e.g., 0.15 = 15%% for validation, 85%% for training)"
+        help="Validation set fraction (e.g., 0.15 = 15%% for validation, 85%% for training)",
     )
 
     # =============================================================================
@@ -794,14 +817,10 @@ Examples:
     # =============================================================================
     resume_group = parser.add_argument_group("Checkpoint & Resume Options")
     resume_group.add_argument(
-        "--resume",
-        type=str,
-        help="Path to checkpoint file to resume training from (centralized or federated)"
+        "--resume", type=str, help="Path to checkpoint file to resume training from (centralized or federated)"
     )
     resume_group.add_argument(
-        "--checkpoint",
-        type=str,
-        help="Path to checkpoint/model file for evaluation (--mode evaluate)"
+        "--checkpoint", type=str, help="Path to checkpoint/model file for evaluation (--mode evaluate)"
     )
 
     # Parse args
@@ -810,6 +829,7 @@ Examples:
     # Handle --list-datasets flag
     if args.list_datasets:
         from src.data.datasets import DATASET_REGISTRY
+
         print("\n" + "=" * 60)
         print("Available Datasets")
         print("=" * 60)

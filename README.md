@@ -64,9 +64,9 @@ This project evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCA
 federated-light-skin-cancer-classification/
 │
 ├── configs/                          # YAML configuration files
-│   ├── dscatnet_federated_ham10000.yaml    # Main FL experiment config
-│   ├── dscatnet_centralized_original.yaml  # Centralized baseline config
-│   ├── dscatnet_federated_padufes20.yaml  # Alternative FL config
+│   ├── dscatnet_federated_ham10000_non_iid.yaml  # Main FL experiment config
+│   ├── dscatnet_centralized_original.yaml        # Centralized baseline config
+│   ├── dscatnet_federated_padufes20_non_iid.yaml # Alternative FL config
 │   ├── fl_config.yaml                      # FL framework defaults
 │   ├── model_config.yaml                   # DSCATNet architecture settings
 │   └── experiment_config.yaml              # Comparison experiment settings
@@ -365,7 +365,7 @@ All experiments are configured via **YAML files** in the `configs/` directory. T
 
 | File | Purpose |
 |------|---------|
-| `dscatnet_federated_ham10000.yaml` | Primary FL experiment config |
+| `dscatnet_federated_ham10000_non_iid.yaml` | Primary FL experiment config (non-IID) |
 | `dscatnet_centralized_original.yaml` | Centralized baseline config |
 | `model_config.yaml` | DSCATNet architecture settings |
 | `fl_config.yaml` | FL framework defaults |
@@ -373,7 +373,7 @@ All experiments are configured via **YAML files** in the `configs/` directory. T
 ### Configuration Structure
 
 ```yaml
-# Example: dscatnet_federated_ham10000.yaml
+# Example: dscatnet_federated_ham10000_non_iid.yaml
 
 federated:
   experiment:
@@ -465,11 +465,11 @@ federated:
 
 ```bash
 # Using config file (recommended)
-python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000.yaml
+python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000_non_iid.yaml
 
 # Override specific settings
 python run_experiment.py --mode federated \
-    --config configs/dscatnet_federated_ham10000.yaml \
+    --config configs/dscatnet_federated_ham10000_non_iid.yaml \
     --rounds 50 \
     --batch-size 16 \
     --model-variant paper
@@ -591,7 +591,7 @@ python run_experiment.py --mode federated \
 
 # Resume with config + new experiment name
 python run_experiment.py --mode federated \
-    --config configs/dscatnet_federated_ham10000.yaml \
+    --config configs/dscatnet_federated_ham10000_non_iid.yaml \
     --resume outputs/federated_20260126_005720/checkpoints/checkpoint_round_10.pt \
     --rounds 30 \
     --experiment-name federated_continued

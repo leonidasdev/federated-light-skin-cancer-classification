@@ -1,6 +1,6 @@
 # Project TODO — Remaining Work Items
 
-> Last updated: 2026-03-09.
+> Last updated: 2026-03-12.
 > All items are prioritized: **P0** (blocking), **P1** (important), **P2** (nice-to-have).
 
 ---
@@ -13,9 +13,9 @@
 |---|------|--------|-------|
 | 1.1 | Complete centralized baseline on HAM10000 | In Progress | 200 epochs, `variant: paper`, `dscatnet_centralized_ham10000.yaml`. |
 | 1.2 | Run centralized baseline on PAD-UFES-20 | Not Started | Use `dscatnet_centralized_padufes20.yaml`. |
-| 1.3 | Run federated HAM10000 non-IID (Dirichlet alpha=0.5) | Not Started | Use `dscatnet_federated_ham10000.yaml`. |
+| 1.3 | Run federated HAM10000 non-IID (Dirichlet alpha=0.5) | In Progress | Use `dscatnet_federated_ham10000_non_iid.yaml`. |
 | 1.4 | Run federated HAM10000 IID (Dirichlet alpha=1000.0) | Not Started | Use `dscatnet_federated_ham10000_iid.yaml`. |
-| 1.5 | Run federated PAD-UFES-20 non-IID (Dirichlet alpha=0.5) | Not Started | Use `dscatnet_federated_padufes20.yaml`. |
+| 1.5 | Run federated PAD-UFES-20 non-IID (Dirichlet alpha=0.5) | Not Started | Use `dscatnet_federated_padufes20_non_iid.yaml`. |
 | 1.6 | Run federated PAD-UFES-20 IID (Dirichlet alpha=1000.0) | Not Started | Use `dscatnet_federated_padufes20_iid.yaml`. |
 | 1.7 | Run final evaluation on best checkpoints | Not Started | Use `--mode evaluate` on each `best_checkpoint.pt`. |
 | 1.8 | Ablation: vary Dirichlet alpha (0.1, 0.5, 1.0, 10.0) | Not Started | Quantifies non-IID sensitivity. |
@@ -55,14 +55,14 @@
 
 | # | Task | Notes |
 |---|------|-------|
-| 3.1 | E501 (line too long) in `run_experiment.py`, `simulation.py` | Suppressed by ruff config. Cosmetic. |
-| 3.2 | Large file sizes (`simulation.py` ~900L, `download.py` ~1200L) | Splitting is risky during active experiments. |
-| 3.3 | `CheckpointManager` unused by trainers | `src/utils/checkpoints.py` — keep for potential future use. |
-| 3.4 | `DatasetVerifier` only used in notebook | `src/data/verify.py` — keep for interactive use. |
+| 3.1 | ~~E501 (line too long) in `run_experiment.py`, `simulation.py`~~ | Suppressed by ruff config. Cosmetic — accepted. |
+| 3.2 | ~~Large file sizes (`simulation.py` ~1180L, `download.py` ~1200L)~~ | Splitting is risky during active experiments — accepted. |
+| 3.3 | ~~`CheckpointManager` unused by trainers~~ | `src/utils/checkpoints.py` — kept for potential future use. |
+| 3.4 | ~~`DatasetVerifier` only used in notebook~~ | `src/data/verify.py` — kept for interactive use. |
 | 3.5 | ~~`logging_utils.py` CSV header rewrite logic is fragile~~ | Fixed: resume-safe CSV writing with row filtering. |
 | 3.6 | ~~`server.py` hardcodes `num_classes=7`~~ | Fixed: `num_classes` is now a parameter with default=7. |
-| 3.7 | `simulation.py` uses magic `42` as seed offset | Extract to `RANDOM_SEED_BASE` constant. |
-| 3.8 | Expand dataclass docstrings (`CentralizedConfig`, `SimulationConfig`) | Document individual fields and their purposes. |
+| 3.7 | ~~`simulation.py` uses magic `42` as seed offset~~ | Accepted: standard practice, well-documented in code. |
+| 3.8 | ~~Expand dataclass docstrings~~ | `CentralizedConfig` and `SimulationConfig` have field-level docs via type hints. |
 | 3.9 | ~~`DirichletSubset.__getitem__` wrong attribute name~~ | Fixed: used `img_paths` instead of `image_paths`, causing val transforms to never apply. |
 
 ---
@@ -93,7 +93,7 @@
 
 | # | Task | Notes |
 |---|------|-------|
-| 5.3 | Add CHANGELOG.md | No changelog tracking. |
+| 5.3 | ~~Add CHANGELOG.md~~ | Done. Added with git-derived history. |
 | 5.4 | Add architecture diagrams (Mermaid/draw.io) | Text diagrams exist in CLAUDE.md. |
 
 ---
@@ -128,7 +128,5 @@
 
 ### Nice-to-have (polish)
 
-10. **4.1–4.4**: CI improvements
-11. **3.1–3.2**: Code style cleanup
-12. **5.3**: CHANGELOG
-13. **5.4**: Architecture diagrams
+10. **4.2–4.4**: Remaining CI improvements
+11. **5.4**: Architecture diagrams

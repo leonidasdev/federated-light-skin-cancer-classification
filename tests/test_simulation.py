@@ -754,12 +754,11 @@ class TestDirichletSubset:
             labels.append(i % 7)
 
         class _MockDS:
-            pass
+            def __init__(self, paths: list[str], lbls: list[int]):
+                self.image_paths = paths
+                self.labels = lbls
 
-        ds = _MockDS()
-        ds.image_paths = image_paths
-        ds.labels = labels
-        return ds
+        return _MockDS(image_paths, labels)
 
     def test_len_and_getitem(self, tmp_path):
         from src.federated.simulation import DirichletSubset

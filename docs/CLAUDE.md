@@ -271,7 +271,7 @@ Each dataset has two federated configs for IID vs non-IID comparison:
 
 | Config | Distribution | `dirichlet_alpha` | Purpose |
 |--------|-------------|-------------------|---------|
-| `dscatnet_federated_{dataset}.yaml` | Non-IID | 0.5 | Heterogeneous data across clients |
+| `dscatnet_federated_{dataset}_non_iid.yaml` | Non-IID | 0.5 | Heterogeneous data across clients |
 | `dscatnet_federated_{dataset}_iid.yaml` | IID | 1000.0 | Uniform baseline for comparison |
 
 Both IID and non-IID configs use Dirichlet sampling (`noniid_type: dirichlet`). A high alpha (1000.0) produces near-uniform class distributions across clients, approximating IID. A low alpha (0.5) produces heterogeneous distributions where each client may specialize in a subset of classes.
@@ -541,7 +541,7 @@ ruff check .
 python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
 
 # Federated training
-python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000.yaml
+python run_experiment.py --mode federated --config configs/dscatnet_federated_ham10000_non_iid.yaml
 
 # Resume training
 python run_experiment.py --mode federated --resume outputs/fed_xxx/checkpoints/checkpoint_round_5.pt --rounds 20

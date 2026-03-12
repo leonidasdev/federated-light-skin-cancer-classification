@@ -56,11 +56,13 @@ def run_tests(verbose: bool = False, coverage: bool = False) -> bool:
         args.append("-q")
 
     if coverage:
-        args.extend([
-            "--cov=src",
-            "--cov-report=term-missing",
-            "--cov-report=html:htmlcov",
-        ])
+        args.extend(
+            [
+                "--cov=src",
+                "--cov-report=term-missing",
+                "--cov-report=html:htmlcov",
+            ]
+        )
 
     exit_code = pytest.main(args)
 
