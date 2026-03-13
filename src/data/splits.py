@@ -116,10 +116,10 @@ def create_iid_split(labels: list[int], num_clients: int = 4, seed: int = 42) ->
     Returns:
         Dictionary mapping client_id to list of sample indices
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
 
     num_samples = len(labels)
-    indices = np.random.permutation(num_samples)
+    indices = rng.permutation(num_samples)
 
     # Split indices evenly across clients
     splits = np.array_split(indices, num_clients)
@@ -147,7 +147,7 @@ def create_noniid_split(
     Returns:
         Dictionary mapping client_id to list of sample indices
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
 
     np_labels = np.array(labels)
     num_classes = len(np.unique(np_labels[np_labels >= 0]))
@@ -163,10 +163,10 @@ def create_noniid_split(
 
     for class_id in range(num_classes):
         indices = np.array(class_indices[class_id])
-        np.random.shuffle(indices)
+        rng.shuffle(indices)
 
         # Sample proportions for this class
-        proportions = np.random.dirichlet([alpha] * num_clients)
+        proportions = rng.dirichlet([alpha] * num_clients)
 
         # Normalize to handle rounding
         proportions = (proportions * len(indices)).astype(int)
@@ -181,7 +181,7 @@ def create_noniid_split(
 
     # Shuffle each client's data
     for data in client_data.values():
-        np.random.shuffle(data)
+        rng.shuffle(data)
 
     return client_data
 
@@ -203,7 +203,7 @@ def create_label_skew_split(
     Returns:
         Dictionary mapping client_id to list of sample indices
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
 
     np_labels = np.array(labels)
     unique_classes = np.unique(np_labels[np_labels >= 0])
@@ -228,7 +228,7 @@ def create_label_skew_split(
 
     for class_id in unique_classes:
         indices = class_indices[class_id]
-        np.random.shuffle(indices)
+        rng.shuffle(indices)
 
         # Find clients that have this class
         clients_with_class = [c for c in range(1, num_clients + 1) if class_id in client_classes[c]]
@@ -241,7 +241,7 @@ def create_label_skew_split(
 
     # Shuffle each client's data
     for data in client_data.values():
-        np.random.shuffle(data)
+        rng.shuffle(data)
 
     return client_data
 
@@ -263,17 +263,17 @@ def create_quantity_skew_split(
     Returns:
         Dictionary mapping client_id to list of sample indices
     """
-    np.random.seed(seed)
+    rng = np.random.default_rng(seed)
 
     num_samples = len(labels)
-    indices = np.random.permutation(num_samples).tolist()
+    indices = rng.permutation(num_samples).tolist()
 
     # Generate imbalanced proportions
     proportions = np.array([1 + imbalance_factor * (num_clients - 1 - i) for i in range(num_clients)])
     proportions = proportions / proportions.sum()
 
     # Shuffle proportions to randomize which client gets more
-    np.random.shuffle(proportions)
+    rng.shuffle(proportions)
 
     # Distribute indices
     client_data = {}

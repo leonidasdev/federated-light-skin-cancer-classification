@@ -38,7 +38,7 @@ model:
   embed_dim: 384                  # Embedding dimension (64-1024)
                                   # Must be divisible by num_heads
   depth: 6                        # Number of transformer blocks (1-24)
-  num_heads: 6                    # Attention heads (1-16)
+  num_heads: 12                   # Attention heads (1-16); paper variant uses 12
                                   # embed_dim must be divisible by num_heads
   mlp_ratio: 4.0                  # MLP hidden dimension ratio (1.0-8.0)
                                   # MLP hidden dim = embed_dim * mlp_ratio
@@ -93,6 +93,13 @@ variants:
     num_heads: 6
     mlp_ratio: 4.0
     approx_params: "~29.4M"
+
+  paper:
+    embed_dim: 384
+    depth: 6
+    num_heads: 12
+    mlp_ratio: 4.0
+    approx_params: "~29.4M"
     
   base:
     embed_dim: 384
@@ -112,7 +119,8 @@ variants:
 #
 # Recommendations:
 #   - Use 'tiny' for quick prototyping or resource-constrained FL clients
-#   - Use 'small' for balanced performance/efficiency (default)
+#   - Use 'paper' for paper-faithful experiments (recommended baseline)
+#   - Use 'small' for balanced performance/efficiency
 #   - Use 'base' for maximum accuracy when resources allow
 #
 # Patch Size Guidelines:

@@ -60,7 +60,7 @@ federated-light-skin-cancer-classification/
 ├── configs/                # YAML configuration files
 │   └── templates/          # Configuration templates
 ├── notebooks/              # Jupyter notebooks
-├── tests/                  # Unit and integration tests (225 tests)
+├── tests/                  # Unit and integration tests (457 selected tests)
 ├── docs/                   # Documentation (you are here)
 ├── data/                   # Dataset files (not in git)
 └── outputs/                # Experiment outputs (auto-generated)

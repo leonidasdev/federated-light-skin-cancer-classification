@@ -11,7 +11,7 @@
 
 ## Abstract
 
-Skin cancer is one of the most prevalent cancers worldwide, and early detection through automated analysis of dermoscopic images has the potential to significantly improve patient outcomes. However, training centralized deep learning models requires aggregating large volumes of sensitive medical data, raising ethical and regulatory concerns under frameworks such as GDPR and HIPAA. Federated Learning (FL) offers a privacy-preserving alternative by enabling collaborative model training without sharing raw patient data. This thesis evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCATNet)**, a lightweight architecture proposed by Yadav et al. (2024), in a federated learning setting. We adapt DSCATNet for FL and compare its performance under centralized training, IID federated training, and non-IID federated training using Dirichlet-based data heterogeneity across simulated hospital clients. Experiments are conducted on two dermoscopy datasets (HAM10000 and PAD-UFES-20) with a unified 7-class classification schema. We analyze the accuracy gap between centralized and federated settings, the impact of data heterogeneity (Dirichlet α ∈ {0.1, 0.5, 1.0, 10.0}), and the communication efficiency of the federated approach. Our results show that *[PLACEHOLDER: key finding — e.g., "FL achieves within X% of centralized accuracy at α=0.5 while keeping data decentralized"]*. This work contributes the first empirical evaluation of DSCATNet under federated learning constraints and provides a reproducible experimental framework for future research in privacy-preserving dermatological AI.
+Skin cancer is one of the most prevalent cancers worldwide, and early detection through automated analysis of dermoscopic images has the potential to significantly improve patient outcomes. However, training centralized deep learning models requires aggregating large volumes of sensitive medical data, raising ethical and regulatory concerns under frameworks such as GDPR and HIPAA. Federated Learning (FL) offers a privacy-preserving alternative by enabling collaborative model training without sharing raw patient data. This thesis evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCATNet)**, a lightweight architecture proposed by Yadav et al. (2024), in a federated learning setting. We adapt DSCATNet for FL and compare its performance under centralized training, IID federated training, and non-IID federated training using Dirichlet-based data heterogeneity across simulated hospital clients. Experiments are conducted on two dermoscopy datasets (HAM10000 and PAD-UFES-20) with a unified 7-class classification schema. We analyze the accuracy gap between centralized and federated settings, the impact of data heterogeneity (Dirichlet α ∈ {0.1, 0.5, 1.0, 10.0}), and the communication efficiency of the federated approach. Final quantitative results are reported after completion of all planned training and evaluation runs. This work contributes the first empirical evaluation of DSCATNet under federated learning constraints and provides a reproducible experimental framework for future research in privacy-preserving dermatological AI.
 
 ---
 
@@ -218,11 +218,11 @@ FL has been applied to various medical imaging domains:
 |-------|-------|---------|-------------|---------|--------------|
 | Khullar et al. (2025) | EfficientNetV2-S | ISIC 2019 | FedAvg | Dirichlet | 3–8% |
 | Sheller et al. (2020) | DenseNet-121 | Chest X-ray | FedAvg | Natural | ~2% |
-| **This work** | DSCATNet (small) | HAM10000, PAD-UFES-20 | FedAvg | Dirichlet | *[PLACEHOLDER]* |
+| **This work** | DSCATNet (paper variant) | HAM10000, PAD-UFES-20 | FedAvg | Dirichlet | Pending final benchmarks |
 
 Key differentiators of this work:
 - First FL evaluation of a dual-scale Vision Transformer architecture.
-- Systematic Dirichlet α ablation study.
+- Planned Dirichlet α ablation study (tracked in project TODO).
 - Multi-dataset evaluation with unified label schema.
 - Open-source, fully tested implementation.
 

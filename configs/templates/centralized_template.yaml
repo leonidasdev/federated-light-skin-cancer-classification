@@ -38,10 +38,10 @@ centralized:
   # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
-    variant: small                # Options: tiny (~5M), small (~29.4M), base (~39M)
+    variant: paper                # Options: tiny (~5M), small (~29.4M), paper (~29.4M, H=12), base (~39M)
     image_size: 224               # Input image size (32-512)
     num_classes: 7                # 7: standard, 8: ISIC2019 with SCC, 2: binary
-    pretrained: true              # Load ViT-Small (ImageNet) weights into compatible layers (small variant only)
+    pretrained: true              # Load ViT-Small (ImageNet) weights into compatible layers (small/paper)
 
   # ---------------------------------------------------------------------------
   # Training Configuration
@@ -87,6 +87,6 @@ centralized:
     early_stopping_patience: 15   # Stop if no improvement for N epochs (1-1000)
     # Paper uses standard CrossEntropy (no class weights).
     # Set true for practical runs with imbalanced data.
-    use_class_weights: true       # Use class weights in loss for imbalance
+    use_class_weights: false      # Paper-faithful default; set true for practical imbalance handling
     # Paper does not use gradient clipping. Set null to disable.
     max_grad_norm: null           # Max gradient norm for clipping (null=disabled)
