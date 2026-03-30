@@ -1,0 +1,83 @@
+# =============================================================================
+# DSCATNet Centralized Training Configuration - All Datasets Combined
+# =============================================================================
+#
+# Usage:
+#   python run_experiment.py --mode centralized --config configs/dscatnet_centralized_all_datasets.yaml
+#
+# Description:
+#   Centralized training combining all four datasets:
+#   - ISIC2018 (~10,015 images)
+#   - ISIC2019 (~25,331 images)
+#   - ISIC2020 (~33,126 images)
+#   - PAD-UFES-20 (~2,298 images)
+#   Total: ~70,770 dermoscopy images, 7 classes
+#
+# =============================================================================
+
+centralized:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
+  experiment:
+    name: dscatnet_centralized_all_datasets
+    description: "Centralized training on all datasets (ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20)"
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
+  data_root: ./data
+  output_dir: ./outputs
+  datasets:
+    - ISIC2018
+    - ISIC2019
+    - ISIC2020
+    - PAD-UFES-20
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
+  model:
+    name: DSCATNet
+    variant: paper  # Paper-faithful: embed_dim=384, depth=6, H=12 heads
+    image_size: 224
+    num_classes: 7
+    pretrained: true
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
+  training:
+    batch_size: 4
+    gradient_accumulation_steps: 8  # Effective batch = 4 × 8 = 32
+    optimizer: adam
+    lr: 0.001
+    weight_decay: 0.0
+    epochs: 200
+    warmup_epochs: 0
+    scheduler: none
+    min_lr: 0.000001
+    use_amp: false
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
+  augmentation:
+    level: light
+    use_dermoscopy_norm: false
+
+  # ---------------------------------------------------------------------------
+  # Data Splits
+  # ---------------------------------------------------------------------------
+  splits:
+    val_split: 0.15
+    test_split: 0.15
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
+  evaluation:
+    checkpoint_interval: 5
+    early_stopping_patience: 200
+    use_class_weights: false
+    max_grad_norm: null
