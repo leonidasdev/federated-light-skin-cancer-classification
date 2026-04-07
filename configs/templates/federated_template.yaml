@@ -16,120 +16,84 @@
 
 federated:
   # ---------------------------------------------------------------------------
-  # Framework Settings
+  # Experiment Identification
   # ---------------------------------------------------------------------------
-  framework: flower               # FL framework (currently only 'flower')
-  strategy: FedAvg                # Options: FedAvg, FedProx, FedNova
-  
+  experiment:
+    name: my-federated-experiment
+    description: "FL training on selected datasets with FedAvg"
+
   # ---------------------------------------------------------------------------
-  # Client Configuration
+  # Data Configuration
   # ---------------------------------------------------------------------------
-  num_clients: 4                  # Number of clients (1-100)
-  
-  # Optional: Define specific clients (for natural non-IID)
-  clients:
-    - id: 1
-      dataset: HAM10000
-      description: "Client 1 description"
-    - id: 2
-      dataset: ISIC2018
-      description: "Client 2 description"
-    # Add more clients as needed
-  
+  data_root: ./data
+  output_dir: ./outputs
+  datasets:
+    - HAM10000
+    - ISIC2018
+
   # ---------------------------------------------------------------------------
-  # Training Rounds
+  # Model Configuration
   # ---------------------------------------------------------------------------
-  num_rounds: 100                 # FL rounds (1-1000)
-  early_stopping_patience: 20     # Stop if no improvement (1-100)
-  
+  model:
+    name: DSCATNet
+    variant: paper
+    image_size: 224
+    num_classes: 7
+    pretrained: true
+
   # ---------------------------------------------------------------------------
-  # Client Participation
+  # Training Configuration
   # ---------------------------------------------------------------------------
-  fraction_fit: 1.0               # Fraction of clients for training (0-1)
-  fraction_evaluate: 1.0          # Fraction of clients for evaluation (0-1)
-  min_fit_clients: 4              # Minimum clients for training (>=1)
-  min_evaluate_clients: 4         # Minimum clients for evaluation (>=1)
-  min_available_clients: 4        # Minimum available clients (>=1)
-  
+  training:
+    batch_size: 4
+    gradient_accumulation_steps: 8
+    optimizer: adam
+    lr: 0.001
+    weight_decay: 0.0
+    local_epochs: 1
+    num_rounds: 100
+    train_val_split: 0.85
+
   # ---------------------------------------------------------------------------
-  # Local Training
+  # Federation Configuration
   # ---------------------------------------------------------------------------
-  local_epochs: 1                 # Local epochs per round (1-50)
-  local_batch_size: 4             # Local batch size (1-256)
-  gradient_accumulation_steps: 8  # Effective BS = batch_size * steps (1-32)
-  train_val_split: 0.85           # Fraction for training (rest for validation)
-  
+  federation:
+    num_clients: 4
+    aggregation: FedAvg
+    participation: 1.0
+    data_partition_type: iid     # Options: iid, natural, dirichlet, label_skew, quantity_skew
+
   # ---------------------------------------------------------------------------
-  # Optimizer Configuration
+  # Augmentation Configuration
   # ---------------------------------------------------------------------------
-  optimizer: adam                 # Options: adam, adamw, SGD
-  learning_rate: 0.001            # Learning rate (>0, <=1.0)
-  weight_decay: 0.0               # L2 regularization (>=0, <=1.0)
-  
+  augmentation:
+    level: none
+    use_dermoscopy_norm: false
+
   # ---------------------------------------------------------------------------
-  # Learning Rate Schedule
+  # Evaluation & Checkpointing
   # ---------------------------------------------------------------------------
-  lr_scheduler: cosine            # Options: cosine, step, plateau, none
-  warmup_epochs: 0                # Warmup epochs (0-50)
-  min_lr: 0.000001                # Minimum learning rate (>=0, <=1.0)
-  
-  # ---------------------------------------------------------------------------
-  # Communication & Checkpointing
-  # ---------------------------------------------------------------------------
-  save_every_rounds: 10           # Checkpoint frequency (1-100)
-  evaluate_every_rounds: 1        # Evaluation frequency (1-100)
-  
-  # ---------------------------------------------------------------------------
-  # Server Settings
-  # ---------------------------------------------------------------------------
-  server_address: "[::]:8080"     # Server address for distributed mode
+  evaluation:
+    checkpoint_interval: 1
+    early_stopping_patience: 100
+    use_class_weights: false
+    max_grad_norm: null
 
 # =============================================================================
-# Data Partition Types
+# Data Partition Type Reference
 # =============================================================================
-# 
-# The 'data_partition_type' field determines how FL data is distributed across clients:
 #
-#   iid                 - True IID: all data pooled then uniformly distributed
-#   natural             - Each client uses its own dataset (dataset heterogeneity)
-#   dirichlet           - Dirichlet-sampled class heterogeneity 
-#   label_skew          - Class imbalance across clients
-#   quantity_skew       - Client size imbalance (unequal data per client)
+# The 'data_partition_type' field determines how FL data is distributed:
 #
-# Example scenarios:
-#
-#   data_partition_type: iid
-#     - Benchmark baseline: pooled data uniformly split
-#     - Use for: performance ceiling, FedAvg reference
-#
-#   data_partition_type: dirichlet
-#     - Heterogeneous class distribution following Dirichlet
-#     - Standard alpha values: 0.1 (extreme), 0.5 (high), 10.0 (moderate)
-#
-#   data_partition_type: natural
-#     - Each client gets distinct dataset (HAM10000, ISIC2018, etc.)
-#     - Most realistic for federated skin cancer classification
+#   iid           - True IID: all data pooled then uniformly distributed (benchmark)
+#   natural       - Each client gets its own dataset (dataset heterogeneity)
+#   dirichlet     - Dirichlet-sampled class heterogeneity (alpha=0.5 recommended)
+#   label_skew    - Class imbalance across clients
+#   quantity_skew - Client size imbalance (unequal data amounts per client)
 #
 # =============================================================================
-
-# =============================================================================
-# Aggregation Strategies
-# =============================================================================
-strategies:
-  - name: FedAvg
-    description: "Federated Averaging - weighted by sample count"
-    
-  - name: FedProx
-    description: "FedAvg with proximal term for heterogeneous data"
-    mu: 0.01                      # Proximal term coefficient
-    
-  - name: FedNova
-    description: "Normalized averaging accounting for local steps"
-
-# =============================================================================
-# Paper-Aligned Settings (DSCATNet, Yadav et al., PLOS ONE 2024)
-# =============================================================================
-# When creating experiment configs for paper-aligned runs, use these settings:
+#
+# Paper-Aligned Settings (DSCATNet, Yadav et al., PLOS ONE 2024):
 #
 #   training:
 #     optimizer: adam, lr: 0.001, weight_decay: 0.0
@@ -137,10 +101,12 @@ strategies:
 #     local_epochs: 1, num_rounds: 100
 #
 #   evaluation:
-#     early_stopping_patience: 100  # Train full rounds (no early stopping)
-#     use_class_weights: false      # Paper uses standard CrossEntropy
-#     max_grad_norm: null           # Paper does not use gradient clipping
+#     checkpoint_interval: 1, early_stopping_patience: 100
+#     use_class_weights: false
+#     max_grad_norm: null
 #
 #   augmentation:
-#     HAM10000/ISIC*: level: none   # No augmentation
-#     PAD-UFES-20:    level: light  # H/V flips (paper uses flip augmentation)
+#     HAM10000/ISIC*: level: none   (no augmentation)
+#     PAD-UFES-20:    level: light  (horizontal/vertical flips)
+#
+# ============================================================================

@@ -3,7 +3,7 @@
 # =============================================================================
 #
 # Description:
-#   Template for creating new experiment configurations centralized and federated.
+#   Template for creating new experiment configurations for centralized and federated.
 #   Copy this file and modify values as needed.
 #
 # Usage:
@@ -14,48 +14,42 @@
 #
 # =============================================================================
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Experiment Metadata
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 experiment:
   name: "my-experiment"           # Unique experiment name (no spaces)
   description: "Experiment description"
   seed: 42                        # Random seed for reproducibility
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Hardware Settings
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 hardware:
   device: cuda                    # Options: cuda, cpu
   num_workers: 2                  # DataLoader workers (0-16)
   pin_memory: true                # Pin memory for faster GPU transfer
   mixed_precision: true           # Enable AMP for faster training
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Data Configuration
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 data:
   root_dir: ./data                # Path to data directory
   img_size: 224                   # Image size (32-512)
   val_split: 0.15                 # Validation split (0.0-0.5)
   test_split: 0.15                # Test split (0.0-0.5)
-  
-  # Preprocessing Options
   normalization: imagenet         # Options: imagenet, dermoscopy
-  augmentation_level: none      # Options: none, light, medium, heavy
-  
-  # Classification Settings
+  augmentation_level: none        # Options: none, light, medium, heavy
   classification_mode: multiclass # Options: multiclass, multiclass_8, binary
   num_classes: 7                  # Number of classes (2-10)
   filter_unknown: true            # Filter UNK labels from datasets
-  
-  # Class Imbalance Handling
   use_weighted_sampling: false    # WeightedRandomSampler
-  use_class_weights: false         # Class weights in loss function
+  use_class_weights: false        # Class weights in loss function
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Centralized Training Baseline
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 centralized:
   epochs: 200                     # Training epochs (1-1000)
   batch_size: 4                   # Batch size (1-256)
@@ -65,9 +59,9 @@ centralized:
   gradient_accumulation_steps: 8  # Gradient accumulation steps
   pooled_data: true               # Combine all datasets
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Federated Experiments
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 federated_experiments:
   # Add your federated experiments here
   - name: experiment_1
@@ -76,12 +70,12 @@ federated_experiments:
     local_epochs: 1               # Local training epochs (1-50)
     batch_size: 4                 # Local batch size (1-256)
     data_partition_type: natural  # Options: iid, natural, dirichlet, label_skew, quantity_skew
-    # For dirichlet type, set dirichlet coefficient (optional):
+    # For dirichlet type, optionally set alpha:
     # dirichlet_alpha: 0.5        # (>0, affects heterogeneity level)
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Evaluation Metrics
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 metrics:
   classification:
     - accuracy
@@ -100,9 +94,9 @@ metrics:
     - sensitivity
     - specificity
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Logging Configuration
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 logging:
   log_dir: ./logs                 # Log directory
   checkpoint_dir: ./checkpoints   # Checkpoint directory
@@ -112,9 +106,9 @@ logging:
     project: dscatnet-fl          # W&B project name
     entity: null                  # W&B entity (username/team)
 
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Reproducibility Settings
-# -----------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 reproducibility:
   deterministic: true             # Use deterministic algorithms
   benchmark: false                # Use cuDNN benchmark mode
