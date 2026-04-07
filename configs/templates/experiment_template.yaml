@@ -75,8 +75,9 @@ federated_experiments:
     num_rounds: 100               # FL rounds (1-1000)
     local_epochs: 1               # Local training epochs (1-50)
     batch_size: 4                 # Local batch size (1-256)
-    noniid_type: natural          # Options: natural, dirichlet, label_skew
-    # dirichlet_alpha: 0.5        # Only for dirichlet type (>0)
+    data_partition_type: natural  # Options: iid, natural, dirichlet, label_skew, quantity_skew
+    # For dirichlet type, set dirichlet coefficient (optional):
+    # dirichlet_alpha: 0.5        # (>0, affects heterogeneity level)
 
 # -----------------------------------------------------------------------------
 # Evaluation Metrics

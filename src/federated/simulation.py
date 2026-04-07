@@ -53,7 +53,7 @@ from ..data.datasets import (
     normalize_dataset_name,
 )
 from ..data.preprocessing import get_transform_pair
-from ..data.splits import create_noniid_split, deterministic_train_val_split
+from ..data.splits import create_noniid_split, create_iid_split, create_label_skew_split, create_quantity_skew_split, deterministic_train_val_split
 from ..utils.helpers import collect_environment_info, compute_class_weights
 from ..utils.logging_utils import MetricsTracker, TensorBoardLogger
 
@@ -158,13 +158,18 @@ class SimulationConfig:
     use_dermoscopy_norm: bool = False
     train_val_split: float = 0.85  # Fraction of data for training (rest for validation)
 
-    # Non-IID configuration
-    noniid_type: str = "natural"  # natural, dirichlet, label_skew, quantity_skew
+    # Data partition configuration
+    # iid: Pooled random split (uniform label distribution)
+    # natural: Each client gets a different dataset (natural non-IID)
+    # dirichlet: Dirichlet sampling for controlled heterogeneity
+    # label_skew: Each client sees only a subset of classes
+    # quantity_skew: Clients receive different amounts of data
+    data_partition_type: str = "natural"
     dirichlet_alpha: float = 0.5
 
     # Dataset selection: list of datasets to use, or None/empty for all
     # Valid options: "HAM10000", "ISIC2018", "ISIC2019", "ISIC2020", "PAD-UFES-20"
-    # For natural non-IID, each selected dataset becomes one client
+    # For natural partition, each dataset becomes one client
     datasets: list[str] | None = None
 
     # Resume training from checkpoint
@@ -351,7 +356,7 @@ class FLSimulator:
 
         return loaded
 
-    def setup_natural_noniid(self) -> None:
+    def setup_natural(self) -> None:
         """
         Setup natural non-IID: each client gets a different dataset.
 
@@ -418,15 +423,30 @@ class FLSimulator:
             )
 
     def setup_clients(self) -> None:
-        """Setup client data based on configuration."""
-        if self.config.noniid_type == "natural":
-            self.setup_natural_noniid()
-        elif self.config.noniid_type in ["dirichlet", "label_skew", "quantity_skew"]:
-            # For synthetic non-IID, load and combine requested datasets, then split
-            self.setup_dirichlet_noniid()
+        """Setup client data based on data partition type.
+        
+        Routes to appropriate partition strategy:
+        - iid: Pooled random split
+        - natural: Each client = different dataset
+        - dirichlet: Dirichlet sampling for controlled heterogeneity
+        - label_skew: Each client sees only a subset of classes
+        - quantity_skew: Clients receive different amounts of data
+        """
+        partition_type = self.config.data_partition_type
+        
+        if partition_type == "natural":
+            self.setup_natural()
+        elif partition_type == "iid":
+            self.setup_iid()
+        elif partition_type == "dirichlet":
+            self.setup_dirichlet()
+        elif partition_type == "label_skew":
+            self.setup_label_skew()
+        elif partition_type == "quantity_skew":
+            self.setup_quantity_skew()
         else:
-            logger.warning(f"Unknown noniid_type: {self.config.noniid_type}, using natural non-IID")
-            self.setup_natural_noniid()
+            logger.warning(f"Unknown data_partition_type: {partition_type}, using natural")
+            self.setup_natural()
 
         # Compute class weights after client setup
         if self.config.use_class_weights:
@@ -449,22 +469,15 @@ class FLSimulator:
         self.class_weights = compute_class_weights(dict(global_counts), self.config.num_classes).to(self.device)
         logger.info(f"Class weights: {dict(enumerate(self.class_weights.tolist()))}")
 
-    def setup_dirichlet_noniid(self) -> None:
+    def _load_pooled_datasets(self, train_transform: Any) -> tuple[list[tuple[Any, Any]], list[int]]:
+        """Load and combine all requested datasets for pooled partitioning.
+        
+        Returns:
+            Tuple of (combined_images, combined_labels) where:
+            - combined_images: list of (dataset, original_idx) tuples
+            - combined_labels: list of label values
         """
-        Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.
-
-        Uses the DATASET_REGISTRY for centralized path resolution.
-
-        This creates heterogeneous label distributions across clients.
-        Lower alpha = more heterogeneous (more non-IID)
-        Higher alpha = more homogeneous (closer to IID)
-        """
-        logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
-
-        train_transform, val_transform = self._get_transforms()
         loaded_datasets = self._resolve_datasets(train_transform)
-
-        # Combine all loaded datasets
         combined_images = []
         combined_labels = []
 
@@ -476,17 +489,27 @@ class FLSimulator:
         if not combined_labels:
             raise RuntimeError("No data loaded. Please check dataset paths.")
 
-        total_samples = len(combined_labels)
-        logger.info(f"Total samples for Dirichlet split: {total_samples}")
+        return combined_images, combined_labels
 
-        # Create Dirichlet split
-        client_indices = create_noniid_split(
-            labels=combined_labels,
-            num_clients=self.config.num_clients,
-            alpha=self.config.dirichlet_alpha,
-        )
-
-        # Create client data loaders
+    def _create_pooled_clients(
+        self,
+        combined_images: list[tuple[Any, Any]],
+        combined_labels: list[int],
+        client_indices: dict[int, list[int]],
+        train_transform: Any,
+        val_transform: Any,
+        partition_name: str = "pooled",
+    ) -> None:
+        """Create client data loaders from pooled client indices.
+        
+        Args:
+            combined_images: List of (dataset, original_idx) tuples
+            combined_labels: List of label values
+            client_indices: Dict mapping client_id to list of indices
+            train_transform: Training transform
+            val_transform: Validation transform
+            partition_name: Name for logging (e.g. "iid", "dirichlet", "label_skew")
+        """
         for client_id, indices in client_indices.items():
             if len(indices) == 0:
                 logger.warning(f"Client {client_id} has no samples, skipping")
@@ -533,11 +556,118 @@ class FLSimulator:
                 num_train_samples=len(train_indices),
                 num_val_samples=len(val_indices),
                 class_distribution=class_dist,
-                dataset_name=f"dirichlet_client_{client_id}",
+                dataset_name=f"{partition_name}_client_{client_id}",
             )
 
             logger.info(f"Client {client_id}: {len(train_indices)} train, {len(val_indices)} val samples")
             logger.info(f"  Class distribution: {class_dist}")
+
+    def setup_iid(self) -> None:
+        """
+        Setup IID: pool all data and randomly split evenly across clients.
+
+        Each client receives a uniformly random subset of the pooled data,
+        maintaining similar class distributions (due to random sampling).
+        """
+        logger.info("Setting up IID distribution (pooled random split)")
+
+        train_transform, val_transform = self._get_transforms()
+        combined_images, combined_labels = self._load_pooled_datasets(train_transform)
+        
+        total_samples = len(combined_labels)
+        logger.info(f"Total samples for IID split: {total_samples}")
+
+        # Create IID split
+        client_indices = create_iid_split(
+            labels=combined_labels,
+            num_clients=self.config.num_clients,
+            seed=42,
+        )
+
+        self._create_pooled_clients(
+            combined_images, combined_labels, client_indices, train_transform, val_transform, "iid"
+        )
+
+    def setup_dirichlet(self) -> None:
+        """
+        Setup Dirichlet non-IID: split dataset(s) across clients using Dirichlet distribution.
+
+        Creates heterogeneous label distributions across clients.
+        Lower alpha = more heterogeneous (more non-IID)
+        Higher alpha = more homogeneous (closer to IID)
+        """
+        logger.info(f"Setting up Dirichlet non-IID with alpha={self.config.dirichlet_alpha}")
+
+        train_transform, val_transform = self._get_transforms()
+        combined_images, combined_labels = self._load_pooled_datasets(train_transform)
+        
+        total_samples = len(combined_labels)
+        logger.info(f"Total samples for Dirichlet split: {total_samples}")
+
+        # Create Dirichlet split
+        client_indices = create_noniid_split(
+            labels=combined_labels,
+            num_clients=self.config.num_clients,
+            alpha=self.config.dirichlet_alpha,
+            seed=42,
+        )
+
+        self._create_pooled_clients(
+            combined_images, combined_labels, client_indices, train_transform, val_transform, "dirichlet"
+        )
+
+    def setup_label_skew(self) -> None:
+        """
+        Setup label skew non-IID: each client sees only a subset of classes.
+
+        Creates artificial label imbalance by restricting class diversity per client.
+        """
+        logger.info("Setting up label skew non-IID distribution")
+
+        train_transform, val_transform = self._get_transforms()
+        combined_images, combined_labels = self._load_pooled_datasets(train_transform)
+        
+        total_samples = len(combined_labels)
+        logger.info(f"Total samples for label skew split: {total_samples}")
+
+        # Create label skew split (default: each client sees 3 classes)
+        num_classes_per_client = max(1, self.config.num_classes // 2)
+        client_indices = create_label_skew_split(
+            labels=combined_labels,
+            num_clients=self.config.num_clients,
+            num_classes_per_client=num_classes_per_client,
+            seed=42,
+        )
+
+        self._create_pooled_clients(
+            combined_images, combined_labels, client_indices, train_transform, val_transform, "label_skew"
+        )
+
+    def setup_quantity_skew(self) -> None:
+        """
+        Setup quantity skew non-IID: clients receive different amounts of data.
+
+        Creates data imbalance where some clients have more samples than others.
+        """
+        logger.info("Setting up quantity skew non-IID distribution")
+
+        train_transform, val_transform = self._get_transforms()
+        combined_images, combined_labels = self._load_pooled_datasets(train_transform)
+        
+        total_samples = len(combined_labels)
+        logger.info(f"Total samples for quantity skew split: {total_samples}")
+
+        # Create quantity skew split
+        client_indices = create_quantity_skew_split(
+            labels=combined_labels,
+            num_clients=self.config.num_clients,
+            imbalance_factor=0.5,
+            seed=42,
+        )
+
+        self._create_pooled_clients(
+            combined_images, combined_labels, client_indices, train_transform, val_transform, "quantity_skew"
+        )
 
     def train_client(
         self,

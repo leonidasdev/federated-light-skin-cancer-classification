@@ -112,9 +112,18 @@ class FusionMethod(str, Enum):
     ATTENTION = "attention"
 
 
-class NonIIDType(str, Enum):
-    """Valid non-IID distribution types."""
+class DataPartitionType(str, Enum):
+    """Valid data partition types for federated learning.
+    
+    This controls how data is distributed across FL clients:
+    - IID: Pooled random split (uniform label distribution per client)
+    - NATURAL: Each client gets a different dataset (natural non-IID)
+    - DIRICHLET: Dirichlet sampling for controlled non-IID heterogeneity
+    - LABEL_SKEW: Each client sees only a subset of classes
+    - QUANTITY_SKEW: Clients receive different amounts of data
+    """
 
+    IID = "iid"
     NATURAL = "natural"
     DIRICHLET = "dirichlet"
     LABEL_SKEW = "label_skew"
@@ -178,7 +187,7 @@ class FederatedExperiment(BaseModel):
     num_rounds: int = Field(default=100, ge=1, le=1000)
     local_epochs: int = Field(default=3, ge=1, le=50)
     batch_size: int = Field(default=8, ge=1, le=256)
-    noniid_type: NonIIDType = NonIIDType.NATURAL
+    data_partition_type: DataPartitionType = DataPartitionType.NATURAL
     dirichlet_alpha: float | None = Field(default=None, gt=0)
 
 
@@ -254,10 +263,10 @@ class ClientConfig(BaseModel):
 
 
 class ScenarioConfig(BaseModel):
-    """Non-IID scenario configuration."""
+    """Data partition scenario configuration for federated learning."""
 
     description: str = ""
-    noniid_type: NonIIDType = NonIIDType.NATURAL
+    data_partition_type: DataPartitionType = DataPartitionType.NATURAL
     dirichlet_alpha: float | None = Field(default=None, gt=0)
 
 

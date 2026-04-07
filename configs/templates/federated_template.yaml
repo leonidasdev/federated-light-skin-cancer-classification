@@ -85,27 +85,32 @@ federated:
   server_address: "[::]:8080"     # Server address for distributed mode
 
 # =============================================================================
-# Data Distribution Scenarios
+# Data Partition Types
 # =============================================================================
-scenarios:
-  natural_noniid:
-    description: "Each client uses its own dataset"
-    noniid_type: natural
-    
-  iid_pooled:
-    description: "All datasets pooled and uniformly distributed"
-    noniid_type: dirichlet
-    dirichlet_alpha: 1000         # High alpha ≈ IID
-    
-  moderate_noniid:
-    description: "Dirichlet distribution with alpha=0.5"
-    noniid_type: dirichlet
-    dirichlet_alpha: 0.5
-    
-  extreme_noniid:
-    description: "Dirichlet distribution with alpha=0.1"
-    noniid_type: dirichlet
-    dirichlet_alpha: 0.1
+# 
+# The 'data_partition_type' field determines how FL data is distributed across clients:
+#
+#   iid                 - True IID: all data pooled then uniformly distributed
+#   natural             - Each client uses its own dataset (dataset heterogeneity)
+#   dirichlet           - Dirichlet-sampled class heterogeneity 
+#   label_skew          - Class imbalance across clients
+#   quantity_skew       - Client size imbalance (unequal data per client)
+#
+# Example scenarios:
+#
+#   data_partition_type: iid
+#     - Benchmark baseline: pooled data uniformly split
+#     - Use for: performance ceiling, FedAvg reference
+#
+#   data_partition_type: dirichlet
+#     - Heterogeneous class distribution following Dirichlet
+#     - Standard alpha values: 0.1 (extreme), 0.5 (high), 10.0 (moderate)
+#
+#   data_partition_type: natural
+#     - Each client gets distinct dataset (HAM10000, ISIC2018, etc.)
+#     - Most realistic for federated skin cancer classification
+#
+# =============================================================================
 
 # =============================================================================
 # Aggregation Strategies

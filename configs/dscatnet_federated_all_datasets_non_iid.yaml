@@ -1,83 +1,50 @@
 # =============================================================================
-# DSCATNet Federated Learning Configuration - All Datasets Combined (Non-IID)
+# DSCATNet Federated Learning Configuration - All Datasets (Non-IID)
 # =============================================================================
 #
 # Usage:
 #   python run_experiment.py --mode federated --config configs/dscatnet_federated_all_datasets_non_iid.yaml
 #
 # Description:
-#   Federated learning combining all four datasets:
-#   - ISIC2018 (~10,015 images)
-#   - ISIC2019 (~25,331 images)
-#   - ISIC2020 (~33,126 images)
-#   - PAD-UFES-20 (~2,298 images)
-#   Total: ~70,770 dermoscopy images, 7 classes
-#   with non-IID data distribution (Dirichlet alpha=0.5) across 4 clients.
+#   Federated learning on all datasets combined with Dirichlet heterogeneous distribution
 #
 # =============================================================================
 
 federated:
-  # ---------------------------------------------------------------------------
-  # Experiment Identification
-  # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_federated_all_datasets_non_iid
-    description: "FL training on all datasets (ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20) with FedAvg (non-IID)"
-
-  # ---------------------------------------------------------------------------
-  # Data Configuration
-  # ---------------------------------------------------------------------------
+    description: FL training on all datasets (ISIC2018, ISIC2019, ISIC2020, PAD-UFES-20)
+      with FedAvg (non-IID)
   data_root: ./data
   output_dir: ./outputs
   datasets:
-    - ISIC2018
-    - ISIC2019
-    - ISIC2020
-    - PAD-UFES-20
-
-  # ---------------------------------------------------------------------------
-  # Model Configuration
-  # ---------------------------------------------------------------------------
+  - ISIC2018
+  - ISIC2019
+  - ISIC2020
+  - PAD-UFES-20
   model:
     name: DSCATNet
-    variant: paper  # Paper-faithful: embed_dim=384, depth=6, H=12 heads
+    variant: paper
     image_size: 224
     num_classes: 7
     pretrained: true
-
-  # ---------------------------------------------------------------------------
-  # Training Configuration
-  # ---------------------------------------------------------------------------
   training:
     batch_size: 4
-    gradient_accumulation_steps: 8  # Effective batch = 4 × 8 = 32
+    gradient_accumulation_steps: 8
     optimizer: adam
     lr: 0.001
     weight_decay: 0.0
     local_epochs: 1
     num_rounds: 100
     train_val_split: 0.85
-
-  # ---------------------------------------------------------------------------
-  # Federation Configuration
-  # ---------------------------------------------------------------------------
   federation:
     num_clients: 4
     aggregation: FedAvg
     participation: 1.0
-    noniid_type: dirichlet
-    dirichlet_alpha: 0.5  # Low alpha = heterogeneous class distribution across clients
-
-  # ---------------------------------------------------------------------------
-  # Augmentation Configuration
-  # ---------------------------------------------------------------------------
+    data_partition_type: dirichlet     # Dirichlet(alpha=0.5): heterogeneous class distribution
   augmentation:
     level: light
     use_dermoscopy_norm: false
-
-  # ---------------------------------------------------------------------------
-  # Evaluation & Checkpointing
-  # ---------------------------------------------------------------------------
   evaluation:
     checkpoint_interval: 1
     early_stopping_patience: 100

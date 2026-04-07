@@ -464,7 +464,7 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
             checkpoint_config = checkpoint.get("config", {})
             if checkpoint_config:
                 logger.info(
-                    f"Restored config from checkpoint: noniid_type={checkpoint_config.get('noniid_type')}, "
+                    f"Restored config from checkpoint: data_partition_type={checkpoint_config.get('data_partition_type')}, "
                     f"datasets={checkpoint_config.get('datasets')}"
                 )
 
@@ -496,7 +496,7 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
             [
                 ("num_clients", "num_clients"),
                 ("num_rounds", "num_rounds"),
-                ("noniid_type", "noniid_type"),
+                ("data_partition_type", "data_partition_type"),
                 ("dirichlet_alpha", "dirichlet_alpha"),
             ],
         ),
@@ -532,13 +532,13 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
         config.num_clients = args.clients
     if args.local_epochs:
         config.local_epochs = args.local_epochs
-    if args.noniid_type:
-        config.noniid_type = args.noniid_type
+    if args.data_partition_type:
+        config.data_partition_type = args.data_partition_type
     if args.dirichlet_alpha:
         config.dirichlet_alpha = args.dirichlet_alpha
     if args.datasets:
-        # Auto-adjust num_clients to match selected datasets for natural non-IID
-        if config.noniid_type == "natural":
+        # Auto-adjust num_clients to match selected datasets for natural partition
+        if config.data_partition_type == "natural":
             config.num_clients = len(args.datasets)
     if args.participation is not None:
         config.fraction_fit = args.participation
@@ -565,7 +565,7 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
     logger.info("FEDERATED LEARNING EXPERIMENT")
     logger.info("=" * 60)
     logger.info(f"Output directory: {output_dir}")
-    logger.info(f"Non-IID type: {config.noniid_type}")
+    logger.info(f"Data partition type: {config.data_partition_type}")
 
     # Run simulation
     simulator = FLSimulator(config)
@@ -676,11 +676,11 @@ Examples:
     # Resume centralized training from checkpoint
     python run_experiment.py --mode centralized --resume outputs/exp/checkpoints/best_checkpoint.pt
 
-    # Run federated learning with natural non-IID
-    python run_experiment.py --mode federated --rounds 50 --noniid-type natural
+    # Run federated learning with natural partition
+    python run_experiment.py --mode federated --rounds 50 --data-partition-type natural
 
     # Run federated with Dirichlet split and custom alpha
-    python run_experiment.py --mode federated --rounds 30 --noniid-type dirichlet --dirichlet-alpha 0.3
+    python run_experiment.py --mode federated --rounds 30 --data-partition-type dirichlet --dirichlet-alpha 0.3
 
     # Resume federated training from checkpoint
     python run_experiment.py --mode federated --resume outputs/federated_xxx/checkpoints/checkpoint_round_10.pt
@@ -789,10 +789,10 @@ Examples:
     fed_group.add_argument("--clients", type=int, help="Number of FL clients")
     fed_group.add_argument("--local-epochs", type=int, help="Local training epochs per FL round")
     fed_group.add_argument(
-        "--noniid-type",
+        "--data-partition-type",
         type=str,
-        choices=["natural", "dirichlet", "label_skew", "quantity_skew"],
-        help="Non-IID distribution type for FL",
+        choices=["iid", "natural", "dirichlet", "label_skew", "quantity_skew"],
+        help="Data partition type for FL (iid, natural, dirichlet, label_skew, quantity_skew)",
     )
     fed_group.add_argument("--dirichlet-alpha", type=float, help="Dirichlet alpha (lower = more non-IID)")
     fed_group.add_argument("--participation", type=float, help="Client participation rate per round (0.0-1.0)")
