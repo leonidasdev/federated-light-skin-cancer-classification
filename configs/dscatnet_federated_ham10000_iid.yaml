@@ -11,19 +11,34 @@
 # =============================================================================
 
 federated:
+  # ---------------------------------------------------------------------------
+  # Experiment Identification
+  # ---------------------------------------------------------------------------
   experiment:
     name: dscatnet_federated_ham10000_iid
     description: FL training on HAM10000 with FedAvg (IID baseline)
+
+  # ---------------------------------------------------------------------------
+  # Data Configuration
+  # ---------------------------------------------------------------------------
   data_root: ./data
   output_dir: ./outputs
   datasets:
-  - HAM10000
+    - HAM10000
+
+  # ---------------------------------------------------------------------------
+  # Model Configuration
+  # ---------------------------------------------------------------------------
   model:
     name: DSCATNet
     variant: paper
     image_size: 224
     num_classes: 7
     pretrained: true
+
+  # ---------------------------------------------------------------------------
+  # Training Configuration
+  # ---------------------------------------------------------------------------
   training:
     batch_size: 4
     gradient_accumulation_steps: 8
@@ -33,14 +48,26 @@ federated:
     local_epochs: 1
     num_rounds: 100
     train_val_split: 0.85
+
+  # ---------------------------------------------------------------------------
+  # Federation Configuration
+  # ---------------------------------------------------------------------------
   federation:
     num_clients: 4
     aggregation: FedAvg
     participation: 1.0
     data_partition_type: iid     # True IID: pooled random split
+
+  # ---------------------------------------------------------------------------
+  # Augmentation Configuration
+  # ---------------------------------------------------------------------------
   augmentation:
     level: none
     use_dermoscopy_norm: false
+
+  # ---------------------------------------------------------------------------
+  # Evaluation & Checkpointing
+  # ---------------------------------------------------------------------------
   evaluation:
     checkpoint_interval: 1
     early_stopping_patience: 100
