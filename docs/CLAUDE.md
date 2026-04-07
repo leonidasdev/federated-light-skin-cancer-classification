@@ -176,7 +176,7 @@ federated:
     use_amp: false
   federation:
     num_clients: 4  # Adjust based on number of datasets used
-    noniid_type: dirichlet
+    data_partition_type: dirichlet
 ```
 
 ---
@@ -207,9 +207,12 @@ federated:
 **Purpose**: Orchestrates federated learning simulation
 
 **Key Methods**:
-- `setup_clients()`: Routes to natural or Dirichlet non-IID setup
-- `setup_natural_noniid()`: Each dataset = one client
-- `setup_dirichlet_noniid()`: Split combined data via Dirichlet distribution
+- `setup_clients()`: Routes to appropriate partition strategy
+- `setup_natural()`: Each client uses a different dataset
+- `setup_iid()`: Pooled random split for uniform class distribution
+- `setup_dirichlet()`: Dirichlet-sampled class heterogeneity
+- `setup_label_skew()`: Each client sees only a subset of classes
+- `setup_quantity_skew()`: Clients receive different amounts of data
 - `train_client()`: Local training with gradient accumulation and clipping
 - `evaluate_client()`: Evaluate on client's validation data
 - `aggregate_parameters()`: FedAvg weighted averaging
@@ -219,7 +222,7 @@ federated:
 
 **Checkpoint Contents**: model_state_dict, round, config, history, best_val_accuracy, best_round, rounds_without_improvement, metrics
 
-**Resume Behavior**: When resuming without `--config`, `run_experiment.py` loads config from checkpoint to preserve original settings (noniid_type, datasets, hyperparameters). CLI args can still override specific values.
+**Resume Behavior**: When resuming without `--config`, `run_experiment.py` loads config from checkpoint to preserve original settings (data_partition_type, datasets, hyperparameters). CLI args can still override specific values.
 
 ### `ModelEvaluator` (src/evaluation/metrics.py)
 
@@ -274,7 +277,7 @@ Each dataset has two federated configs for IID vs non-IID comparison:
 | `dscatnet_federated_{dataset}_non_iid.yaml` | Non-IID | 0.5 | Heterogeneous data across clients |
 | `dscatnet_federated_{dataset}_iid.yaml` | IID | 1000.0 | Uniform baseline for comparison |
 
-Both IID and non-IID configs use Dirichlet sampling (`noniid_type: dirichlet`). A high alpha (1000.0) produces near-uniform class distributions across clients, approximating IID. A low alpha (0.5) produces heterogeneous distributions where each client may specialize in a subset of classes.
+Both IID and non-IID configs use Dirichlet sampling (`data_partition_type: dirichlet`). A high alpha (1000.0) produces near-uniform class distributions across clients, approximating IID. A low alpha (0.5) produces heterogeneous distributions where each client may specialize in a subset of classes.
 
 **Federated hyperparameters** (shared across IID and non-IID):
 

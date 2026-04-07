@@ -104,9 +104,12 @@ This document provides a technical overview of the DSCATNet Federated Learning s
 **Key Methods**:
 | Method | Description |
 |--------|-------------|
-| `setup_clients()` | Routes to natural or Dirichlet non-IID setup |
-| `setup_natural_noniid()` | Each dataset = one client |
-| `setup_dirichlet_noniid()` | Split combined data via Dirichlet distribution |
+| `setup_clients()` | Routes to appropriate partition strategy |
+| `setup_natural()` | Each client uses a different dataset |
+| `setup_iid()` | Pooled random split for uniform class distribution |
+| `setup_dirichlet()` | Dirichlet-sampled class heterogeneity |
+| `setup_label_skew()` | Each client sees only a subset of classes |
+| `setup_quantity_skew()` | Clients receive different amounts of data |
 | `train_client()` | Local training with gradient accumulation and clipping |
 | `aggregate_parameters()` | FedAvg weighted averaging |
 | `run_round()` | Single FL round (train → aggregate → evaluate) |

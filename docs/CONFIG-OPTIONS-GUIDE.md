@@ -123,10 +123,11 @@ List of federated experiment configurations:
 | `num_rounds` | int | 100 | FL training rounds |
 | `local_epochs` | int | 3 | Local epochs per round |
 | `batch_size` | int | 8 | Local batch size |
-| `noniid_type` | string | "natural" | Data distribution type |
+| `data_partition_type` | string | "natural" | Data distribution type |
 | `dirichlet_alpha` | float | null | Dirichlet concentration (if using dirichlet) |
 
-**noniid_type options:**
+**data_partition_type options:**
+- `iid`: Pooled random split (uniform class distribution)
 - `natural`: Each client uses its own dataset
 - `dirichlet`: Dirichlet distribution (requires `dirichlet_alpha`)
 - `label_skew`: Each client gets limited classes

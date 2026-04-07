@@ -819,7 +819,7 @@ federated:
     num_clients: 4
     aggregation: FedAvg
     participation: 1.0
-    noniid_type: dirichlet
+    data_partition_type: dirichlet
     dirichlet_alpha: 0.5
   augmentation:
     level: none

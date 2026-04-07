@@ -41,7 +41,7 @@ These differences are **inherent** to the federated learning paradigm and cannot
 | Aspect | Centralized | Federated |
 |--------|-------------|-----------|
 | **Data pooling** | All data combined into one dataset | Data partitioned across clients |
-| **IID assumption** | Data is shuffled IID | Non-IID via Dirichlet (α=0.5) or natural partitioning |
+| **IID assumption** | Data is shuffled IID | IID via `data_partition_type: iid` or non-IID via `dirichlet` (α=0.5) or `natural` or `label_skew` or `quantity_skew` |
 | **Label balance** | Global class balance preserved | Per-client class balance varies significantly |
 | **Effective samples/step** | Full dataset per epoch | Client-local subset per round |
 
@@ -209,7 +209,7 @@ federated:
     train_val_split: 0.85
   federation:
     num_clients: 4
-    noniid_type: dirichlet
+    data_partition_type: dirichlet
     dirichlet_alpha: 0.5
   augmentation:
     level: none
