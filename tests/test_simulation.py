@@ -32,7 +32,7 @@ class TestSimulationConfig:
         assert config.num_rounds == 100
         assert config.local_epochs == 1
         assert config.batch_size == 4
-        assert config.noniid_type == "natural"
+        assert config.data_partition_type == "natural"
         assert config.use_class_weights is False  # Paper: unweighted cross-entropy
 
     def test_config_to_dict(self):
@@ -813,12 +813,12 @@ class TestSetupClients:
             output_dir=str(tmp_path),
             experiment_name="unknown_noniid_test",
             pretrained=False,
-            noniid_type="unknown_type",
+            data_partition_type="unknown_type",
             use_class_weights=False,
         )
         simulator = FLSimulator(config)
 
-        with mock_patch.object(simulator, "setup_natural_noniid") as mock_natural:
+        with mock_patch.object(simulator, "setup_natural") as mock_natural:
             simulator.setup_clients()
             mock_natural.assert_called_once()
 
