@@ -466,9 +466,10 @@ def run_federated(args: argparse.Namespace) -> dict[str, Any]:
             checkpoint = torch.load(resume_path, map_location="cpu", weights_only=False)
             checkpoint_config = checkpoint.get("config", {})
             if checkpoint_config:
+                partition_type = checkpoint_config.get("data_partition_type")
+                datasets = checkpoint_config.get("datasets")
                 logger.info(
-                    f"Restored config from checkpoint: data_partition_type={checkpoint_config.get('data_partition_type')}, "
-                    f"datasets={checkpoint_config.get('datasets')}"
+                    f"Restored config from checkpoint: data_partition_type={partition_type}, datasets={datasets}"
                 )
 
     # Federated-specific config section mappings
