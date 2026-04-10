@@ -822,6 +822,79 @@ class TestSetupClients:
             simulator.setup_clients()
             mock_natural.assert_called_once()
 
+    def test_setup_clients_iid(self, tmp_path):
+        """Test setup_clients routes to setup_iid for IID partition."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="iid_test",
+            pretrained=False,
+            data_partition_type="iid",
+            use_class_weights=False,
+        )
+        simulator = FLSimulator(config)
+
+        with mock_patch.object(simulator, "setup_iid") as mock_iid:
+            simulator.setup_clients()
+            mock_iid.assert_called_once()
+
+    def test_setup_clients_dirichlet(self, tmp_path):
+        """Test setup_clients routes to setup_dirichlet for Dirichlet partition."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="dirichlet_test",
+            pretrained=False,
+            data_partition_type="dirichlet",
+            dirichlet_alpha=0.5,
+            use_class_weights=False,
+        )
+        simulator = FLSimulator(config)
+
+        with mock_patch.object(simulator, "setup_dirichlet") as mock_dir:
+            simulator.setup_clients()
+            mock_dir.assert_called_once()
+
+    def test_setup_clients_label_skew(self, tmp_path):
+        """Test setup_clients routes to setup_label_skew for label skew partition."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="label_skew_test",
+            pretrained=False,
+            data_partition_type="label_skew",
+            use_class_weights=False,
+        )
+        simulator = FLSimulator(config)
+
+        with mock_patch.object(simulator, "setup_label_skew") as mock_skew:
+            simulator.setup_clients()
+            mock_skew.assert_called_once()
+
+    def test_setup_clients_quantity_skew(self, tmp_path):
+        """Test setup_clients routes to setup_quantity_skew for quantity skew partition."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        from unittest.mock import patch as mock_patch
+
+        config = SimulationConfig(
+            output_dir=str(tmp_path),
+            experiment_name="quantity_skew_test",
+            pretrained=False,
+            data_partition_type="quantity_skew",
+            use_class_weights=False,
+        )
+        simulator = FLSimulator(config)
+
+        with mock_patch.object(simulator, "setup_quantity_skew") as mock_qty:
+            simulator.setup_clients()
+            mock_qty.assert_called_once()
+
 
 class TestRunSimulation:
     """Tests for the run() method and run_fl_simulation convenience function."""
