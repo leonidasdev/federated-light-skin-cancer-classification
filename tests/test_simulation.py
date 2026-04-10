@@ -1050,6 +1050,58 @@ class TestRunSimulation:
         assert simulator.best_val_accuracy == 0.75
 
 
+class TestConfigVariations:
+    """Tests for various configuration combinations."""
+
+    def test_config_with_class_weights(self):
+        """Test configuration with class weights enabled."""
+        from src.federated.simulation import SimulationConfig
+
+        config = SimulationConfig(use_class_weights=True)
+        assert config.use_class_weights is True
+        config_dict = config.to_dict()
+        assert config_dict["use_class_weights"] is True
+
+    def test_config_with_gradient_accumulation(self):
+        """Test configuration with gradient accumulation."""
+        from src.federated.simulation import SimulationConfig
+
+        config = SimulationConfig(gradient_accumulation_steps=2)
+        assert config.gradient_accumulation_steps == 2
+        config_dict = config.to_dict()
+        assert config_dict["gradient_accumulation_steps"] == 2
+
+    def test_config_with_max_grad_norm(self):
+        """Test configuration with gradient clipping."""
+        from src.federated.simulation import SimulationConfig
+
+        config = SimulationConfig(max_grad_norm=1.0)
+        assert config.max_grad_norm == 1.0
+
+    def test_config_with_different_model_variants(self):
+        """Test configuration with different model variants."""
+        from src.federated.simulation import SimulationConfig
+
+        for variant in ["tiny", "small", "paper", "base"]:
+            config = SimulationConfig(model_variant=variant)
+            assert config.model_variant == variant
+
+    def test_config_checkpoint_paths(self):
+        """Test checkpoint directory and file path generation."""
+        from src.federated.simulation import SimulationConfig, FLSimulator
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            config = SimulationConfig(
+                output_dir=tmp_dir,
+                experiment_name="path_test",
+                pretrained=False,
+            )
+            simulator = FLSimulator(config)
+            assert simulator.checkpoint_dir.exists()
+            assert simulator.checkpoint_dir.parent == simulator.output_dir
+
+
 # Integration tests that require actual data
 @pytest.mark.integration
 @pytest.mark.slow
