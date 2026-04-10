@@ -424,7 +424,7 @@ class FLSimulator:
 
     def setup_clients(self) -> None:
         """Setup client data based on data partition type.
-        
+
         Routes to appropriate partition strategy:
         - iid: Pooled random split
         - natural: Each client = different dataset
@@ -433,7 +433,7 @@ class FLSimulator:
         - quantity_skew: Clients receive different amounts of data
         """
         partition_type = self.config.data_partition_type
-        
+
         if partition_type == "natural":
             self.setup_natural()
         elif partition_type == "iid":
@@ -471,7 +471,7 @@ class FLSimulator:
 
     def _load_pooled_datasets(self, train_transform: Any) -> tuple[list[tuple[Any, Any]], list[int]]:
         """Load and combine all requested datasets for pooled partitioning.
-        
+
         Returns:
             Tuple of (combined_images, combined_labels) where:
             - combined_images: list of (dataset, original_idx) tuples
@@ -501,7 +501,7 @@ class FLSimulator:
         partition_name: str = "pooled",
     ) -> None:
         """Create client data loaders from pooled client indices.
-        
+
         Args:
             combined_images: List of (dataset, original_idx) tuples
             combined_labels: List of label values
@@ -573,7 +573,7 @@ class FLSimulator:
 
         train_transform, val_transform = self._get_transforms()
         combined_images, combined_labels = self._load_pooled_datasets(train_transform)
-        
+
         total_samples = len(combined_labels)
         logger.info(f"Total samples for IID split: {total_samples}")
 
@@ -600,7 +600,7 @@ class FLSimulator:
 
         train_transform, val_transform = self._get_transforms()
         combined_images, combined_labels = self._load_pooled_datasets(train_transform)
-        
+
         total_samples = len(combined_labels)
         logger.info(f"Total samples for Dirichlet split: {total_samples}")
 
@@ -626,7 +626,7 @@ class FLSimulator:
 
         train_transform, val_transform = self._get_transforms()
         combined_images, combined_labels = self._load_pooled_datasets(train_transform)
-        
+
         total_samples = len(combined_labels)
         logger.info(f"Total samples for label skew split: {total_samples}")
 
@@ -653,7 +653,7 @@ class FLSimulator:
 
         train_transform, val_transform = self._get_transforms()
         combined_images, combined_labels = self._load_pooled_datasets(train_transform)
-        
+
         total_samples = len(combined_labels)
         logger.info(f"Total samples for quantity skew split: {total_samples}")
 

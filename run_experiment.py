@@ -56,6 +56,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress verbose alembic plugin logs
+logging.getLogger("alembic").setLevel(logging.WARNING)
+
 
 # =============================================================================
 # Helper Functions

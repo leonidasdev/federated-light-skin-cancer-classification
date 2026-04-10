@@ -114,7 +114,7 @@ class FusionMethod(str, Enum):
 
 class DataPartitionType(str, Enum):
     """Valid data partition types for federated learning.
-    
+
     This controls how data is distributed across FL clients:
     - IID: Pooled random split (uniform label distribution per client)
     - NATURAL: Each client gets a different dataset (natural non-IID)
