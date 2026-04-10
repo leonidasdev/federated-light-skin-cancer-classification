@@ -23,28 +23,26 @@ Reference papers:
 # Imports
 # =============================================================================
 
+import json
+import logging
 import os
 import sys
 import time
-import json
-import logging
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass, asdict
 
-from PIL import Image
 import numpy as np
 import torch
+from flwr.common import Scalar
+from PIL import Image
 from torch import nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from flwr.common import Scalar
-
-from ..models.dscatnet import create_dscatnet, get_model_parameters, set_model_parameters
 from ..data.datasets import (
     DATASET_REGISTRY,
     DatasetSubset,
@@ -54,12 +52,13 @@ from ..data.datasets import (
 )
 from ..data.preprocessing import get_transform_pair
 from ..data.splits import (
-    create_noniid_split,
     create_iid_split,
     create_label_skew_split,
+    create_noniid_split,
     create_quantity_skew_split,
     deterministic_train_val_split,
 )
+from ..models.dscatnet import create_dscatnet, get_model_parameters, set_model_parameters
 from ..utils.helpers import collect_environment_info, compute_class_weights
 from ..utils.logging_utils import MetricsTracker, TensorBoardLogger
 

@@ -11,7 +11,6 @@ from torch.utils.data import DataLoader, TensorDataset
 from src.federated.client import SkinCancerClient
 from src.models.dscatnet import create_dscatnet, get_model_parameters
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================

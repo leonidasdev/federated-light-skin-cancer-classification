@@ -6,6 +6,8 @@
 from pathlib import Path
 from unittest.mock import patch
 
+# Use non-interactive backend for all tests
+import matplotlib
 import numpy as np
 import pytest
 
@@ -19,12 +21,8 @@ from src.evaluation.visualization import (
     plot_training_curves,
 )
 
-# Use non-interactive backend for all tests
-import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 
 # =============================================================================
 # Fixtures

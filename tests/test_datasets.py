@@ -33,12 +33,11 @@ from src.data.datasets import (
     ISIC2019Dataset,
     ISIC2020Dataset,
     PADUFES20Dataset,
-    normalize_dataset_name,
-    get_dataset_paths,
     get_available_datasets,
+    get_dataset_paths,
     load_dataset,
+    normalize_dataset_name,
 )
-
 
 # =============================================================================
 # Helpers — create tiny images + CSVs for integration tests

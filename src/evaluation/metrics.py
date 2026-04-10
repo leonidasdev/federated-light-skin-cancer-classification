@@ -13,22 +13,22 @@ accuracy, F1-score, AUC-ROC, confusion matrix, and per-class metrics.
 # =============================================================================
 
 import logging
-from typing import Any
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import torch
-from torch import nn
-from torch.utils.data import DataLoader
 from sklearn.metrics import (
     accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    f1_score,
     precision_score,
     recall_score,
-    f1_score,
     roc_auc_score,
-    confusion_matrix,
-    balanced_accuracy_score,
 )
+from torch import nn
+from torch.utils.data import DataLoader
 
 from ..data.datasets import CLASS_NAMES
 

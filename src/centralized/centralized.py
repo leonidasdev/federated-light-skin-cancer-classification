@@ -21,23 +21,22 @@ Reference papers:
 # Imports
 # =============================================================================
 
-import sys
-import time
 import json
 import logging
+import sys
+import time
 from collections import Counter
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
-from dataclasses import dataclass, asdict
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, ConcatDataset
 from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
+from torch.utils.data import ConcatDataset, DataLoader
 from tqdm import tqdm
 from tqdm.contrib.logging import logging_redirect_tqdm
 
-from ..models.dscatnet import create_dscatnet
 from ..data.datasets import (
     DATASET_REGISTRY,
     DatasetSubset,
@@ -47,6 +46,8 @@ from ..data.datasets import (
 )
 from ..data.preprocessing import get_transform_pair
 from ..data.splits import deterministic_train_val_split, deterministic_train_val_test_split
+from ..evaluation.metrics import ModelEvaluator
+from ..models.dscatnet import create_dscatnet
 from ..utils.helpers import (
     autocast,
     collect_environment_info,
@@ -54,7 +55,6 @@ from ..utils.helpers import (
     count_parameters,
     create_grad_scaler,
 )
-from ..evaluation.metrics import ModelEvaluator
 from ..utils.logging_utils import MetricsTracker, TensorBoardLogger
 
 logger = logging.getLogger(__name__)

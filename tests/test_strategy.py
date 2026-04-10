@@ -9,20 +9,19 @@ import numpy as np
 import pytest
 import torch
 from flwr.common import (
-    FitRes,
+    Code,
     EvaluateRes,
+    FitRes,
     Parameters,
     Scalar,
     Status,
-    Code,
     ndarrays_to_parameters,
     parameters_to_ndarrays,
 )
 from flwr.server.client_proxy import ClientProxy
 
-from src.federated.strategy import DSCATNetFedAvg, create_fedavg_strategy
 from src.federated.server import FederatedServer, create_server
-
+from src.federated.strategy import DSCATNetFedAvg, create_fedavg_strategy
 
 # =============================================================================
 # Helpers

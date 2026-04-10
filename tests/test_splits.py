@@ -15,17 +15,18 @@ Validates:
 # Imports
 # =============================================================================
 
-import numpy as np
-import pytest
 from collections import Counter
 
+import numpy as np
+import pytest
+
 from src.data.splits import (
+    create_iid_split,
+    create_label_skew_split,
+    create_noniid_split,
+    create_quantity_skew_split,
     deterministic_train_val_split,
     deterministic_train_val_test_split,
-    create_iid_split,
-    create_noniid_split,
-    create_label_skew_split,
-    create_quantity_skew_split,
     get_dataset_statistics,
     print_split_summary,
 )

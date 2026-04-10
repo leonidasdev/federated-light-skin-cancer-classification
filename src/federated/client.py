@@ -18,18 +18,17 @@ what GPU memory allows.
 # Imports
 # =============================================================================
 
-from typing import cast
 from collections.abc import Sized
+from typing import cast
 
 import torch
-from torch import nn
-from torch.utils.data import DataLoader
 from flwr.client import NumPyClient
 from flwr.common import NDArrays, Scalar
+from torch import nn
+from torch.utils.data import DataLoader
 
 from ..models.dscatnet import DSCATNet, get_model_parameters, set_model_parameters
 from ..utils.helpers import autocast, create_grad_scaler
-
 
 # =============================================================================
 # FL Client Implementation

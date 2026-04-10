@@ -9,8 +9,8 @@ Tests for Evaluation Metrics and Visualization.
 # Imports
 # =============================================================================
 
-import pytest
 import numpy as np
+import pytest
 
 # =============================================================================
 # Test Classes

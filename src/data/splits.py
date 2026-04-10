@@ -16,11 +16,11 @@ for federated learning experiments:
 # =============================================================================
 
 import logging
+from collections import defaultdict
+from typing import Any
 
 import numpy as np
 import torch
-from typing import Any
-from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 

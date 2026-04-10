@@ -26,20 +26,17 @@ from .client import SkinCancerClient, create_client
 # =============================================================================
 # Server Imports
 # =============================================================================
-
-from .server import create_server, start_server, FederatedServer
-
-# =============================================================================
-# Strategy Imports
-# =============================================================================
-
-from .strategy import create_fedavg_strategy
+from .server import FederatedServer, create_server, start_server
 
 # =============================================================================
 # Simulation Imports
 # =============================================================================
+from .simulation import FLSimulator, SimulationConfig, run_fl_simulation
 
-from .simulation import SimulationConfig, FLSimulator, run_fl_simulation
+# =============================================================================
+# Strategy Imports
+# =============================================================================
+from .strategy import create_fedavg_strategy
 
 # =============================================================================
 # Public API

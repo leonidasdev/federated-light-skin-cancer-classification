@@ -3,10 +3,11 @@
 # =============================================================================
 """Tests for src.models — DSCATNet variants, factory, FL param helpers."""
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
 import torch
-from unittest.mock import patch, MagicMock
 
 from src.models.dscatnet import (
     DSCATNet,
@@ -16,7 +17,6 @@ from src.models.dscatnet import (
     set_model_parameters,
 )
 from src.models.patch_embedding import DualScalePatchEmbedding
-
 
 # =============================================================================
 # DSCATNet Factory Tests

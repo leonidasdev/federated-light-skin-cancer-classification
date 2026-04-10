@@ -18,11 +18,11 @@ Key preprocessing steps:
 # =============================================================================
 
 import logging
+from collections.abc import Sequence
+from typing import Any, cast
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
-from typing import Any, cast
-from collections.abc import Sequence
 
 logger = logging.getLogger(__name__)
 

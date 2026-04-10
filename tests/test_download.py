@@ -16,10 +16,11 @@ Tests for download functionality including:
 # Imports
 # =============================================================================
 
-import pytest
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import sys
+
+import pytest
 
 # Import download module directly to avoid torch dependency
 # This works because download.py doesn't import torch

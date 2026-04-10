@@ -17,6 +17,7 @@ Provides comprehensive verification of dermoscopy datasets including:
 
 from pathlib import Path
 from typing import Any
+
 import pandas as pd
 
 # =============================================================================

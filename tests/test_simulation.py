@@ -11,8 +11,8 @@ Tests the federated learning simulation infrastructure.
 # Imports
 # =============================================================================
 
-import pytest
 import numpy as np
+import pytest
 
 # =============================================================================
 # Test Classes
@@ -69,7 +69,7 @@ class TestFLSimulator:
 
     def test_simulator_init(self, tmp_path):
         """Test simulator initialization."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -86,7 +86,7 @@ class TestFLSimulator:
 
     def test_output_directories_created(self, tmp_path):
         """Test that output directories are properly created."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -102,7 +102,7 @@ class TestFLSimulator:
 
     def test_aggregate_parameters(self, tmp_path):
         """Test FedAvg parameter aggregation."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -130,7 +130,7 @@ class TestFLSimulator:
 
     def test_aggregate_parameters_weighted(self, tmp_path):
         """Test weighted FedAvg aggregation."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -160,9 +160,10 @@ class TestClientSelection:
 
     def test_client_selection_full_participation(self, tmp_path):
         """Test that full participation (1.0) selects all clients."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -194,9 +195,10 @@ class TestClientSelection:
 
     def test_client_selection_partial(self, tmp_path):
         """Test that partial participation selects correct number of clients."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -230,9 +232,10 @@ class TestClientSelection:
 
     def test_client_selection_reproducibility(self, tmp_path):
         """Test that same round number produces same selection."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -268,7 +271,8 @@ class TestClientSelection:
     def test_parallel_workers_auto_detection(self, tmp_path):
         """Test auto-detection of parallel workers."""
         import os
-        from src.federated.simulation import SimulationConfig, FLSimulator
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -286,9 +290,10 @@ class TestClientSelection:
 
     def test_client_selection_single_client(self, tmp_path):
         """Test client selection with only 1 client available."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -322,9 +327,10 @@ class TestClientSelection:
 
     def test_client_selection_respects_min_fit_clients(self, tmp_path):
         """Test that client selection respects min_fit_clients."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -374,9 +380,10 @@ class TestClientData:
 
     def test_client_data_creation(self):
         """Test ClientData dataclass."""
-        from src.federated.simulation import ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData
 
         # Small dummy DataLoader for testing
         dummy_data = torch.randn(8, 3, 32, 32)
@@ -404,9 +411,10 @@ class TestClassWeights:
 
     def test_compute_class_weights(self, tmp_path):
         """Test that class weights are computed correctly from client distributions."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -455,7 +463,7 @@ class TestClassWeights:
 
     def test_class_weights_disabled(self, tmp_path):
         """Test that class weights are None when disabled."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -482,7 +490,7 @@ class TestCommunicationCost:
 
     def test_model_size_calculation(self, tmp_path):
         """Test model size calculation for communication cost."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
         from src.models.dscatnet import get_model_parameters
 
         config = SimulationConfig(
@@ -510,9 +518,10 @@ class TestTrainAndEvaluateClient:
     @pytest.fixture
     def simulator_with_client(self, tmp_path):
         """Create a simulator with one mock client using tiny model."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -577,10 +586,11 @@ class TestTrainAndEvaluateClient:
             simulator_with_client.evaluate_client(99, params)
 
     def test_train_with_adamw(self, tmp_path):
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from src.models.dscatnet import get_model_parameters
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
+        from src.models.dscatnet import get_model_parameters
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -610,10 +620,11 @@ class TestTrainAndEvaluateClient:
         assert "train_loss" in metrics
 
     def test_train_with_gradient_accumulation(self, tmp_path):
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from src.models.dscatnet import get_model_parameters
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
+        from src.models.dscatnet import get_model_parameters
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -648,7 +659,7 @@ class TestSimulatorCheckpoints:
 
     @pytest.fixture
     def simulator(self, tmp_path):
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -670,7 +681,7 @@ class TestSimulatorCheckpoints:
         simulator.save_checkpoint(round_num=1, metrics={"val_accuracy": 0.9})
 
         # Load into fresh simulator
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         sim2 = FLSimulator(
             SimulationConfig(
@@ -696,9 +707,10 @@ class TestRunRound:
     """Tests for run_round method."""
 
     def test_run_round_returns_metrics(self, tmp_path):
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -788,7 +800,7 @@ class TestGetTransforms:
     """Tests for FLSimulator._get_transforms."""
 
     def test_returns_pair(self, tmp_path):
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -806,8 +818,9 @@ class TestSetupClients:
 
     def test_setup_clients_unknown_noniid_type(self, tmp_path):
         """Unknown noniid_type should fall back to natural."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -824,8 +837,9 @@ class TestSetupClients:
 
     def test_setup_clients_iid(self, tmp_path):
         """Test setup_clients routes to setup_iid for IID partition."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -842,8 +856,9 @@ class TestSetupClients:
 
     def test_setup_clients_dirichlet(self, tmp_path):
         """Test setup_clients routes to setup_dirichlet for Dirichlet partition."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -861,8 +876,9 @@ class TestSetupClients:
 
     def test_setup_clients_label_skew(self, tmp_path):
         """Test setup_clients routes to setup_label_skew for label skew partition."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -879,8 +895,9 @@ class TestSetupClients:
 
     def test_setup_clients_quantity_skew(self, tmp_path):
         """Test setup_clients routes to setup_quantity_skew for quantity skew partition."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -901,10 +918,12 @@ class TestRunSimulation:
 
     def test_run_with_mocked_clients(self, tmp_path):
         """Test the run() method with pre-populated client data."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         from unittest.mock import patch as mock_patch
+
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -949,10 +968,12 @@ class TestRunSimulation:
 
     def test_run_early_stopping(self, tmp_path):
         """Test that early stopping works in run() method."""
-        from src.federated.simulation import SimulationConfig, FLSimulator, ClientData
-        from torch.utils.data import TensorDataset, DataLoader
         from unittest.mock import patch as mock_patch
+
         import torch
+        from torch.utils.data import DataLoader, TensorDataset
+
+        from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -989,8 +1010,9 @@ class TestRunSimulation:
 
     def test_run_no_clients_raises(self, tmp_path):
         """Test that run() raises when no clients available."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -1006,8 +1028,9 @@ class TestRunSimulation:
 
     def test_run_fl_simulation_convenience(self, tmp_path):
         """Test run_fl_simulation convenience function with mocked run."""
-        from src.federated.simulation import run_fl_simulation, SimulationConfig
         from unittest.mock import patch as mock_patch
+
+        from src.federated.simulation import SimulationConfig, run_fl_simulation
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -1025,8 +1048,9 @@ class TestRunSimulation:
 
     def test_load_checkpoint_partial_state(self, tmp_path):
         """Test load_checkpoint with partial checkpoint (missing some keys)."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         import torch
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),
@@ -1088,8 +1112,9 @@ class TestConfigVariations:
 
     def test_config_checkpoint_paths(self):
         """Test checkpoint directory and file path generation."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
         import tempfile
+
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = SimulationConfig(
@@ -1120,7 +1145,7 @@ class TestFLSimulatorIntegration:
 
     def test_full_simulation_run(self, tmp_path):
         """Test complete simulation with actual data."""
-        from src.federated.simulation import SimulationConfig, FLSimulator
+        from src.federated.simulation import FLSimulator, SimulationConfig
 
         config = SimulationConfig(
             output_dir=str(tmp_path),

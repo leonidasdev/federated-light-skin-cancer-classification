@@ -36,11 +36,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import torch
+
 # =============================================================================
 # Third-Party Imports
 # =============================================================================
 import yaml
-import torch
 
 __version__ = "0.1.0"
 
@@ -207,18 +208,19 @@ def _apply_cli_overrides(config: Any, args: argparse.Namespace) -> None:
 
 def run_evaluate(args: argparse.Namespace) -> dict[str, Any]:
     """Evaluate a trained model checkpoint using the DATASET_REGISTRY."""
-    from src.models.dscatnet import create_dscatnet
-    from src.evaluation.metrics import ModelEvaluator
+    from torch.utils.data import ConcatDataset, DataLoader
+
     from src.data.datasets import (
         DATASET_REGISTRY,
+        DatasetSubset,
+        get_available_datasets,
         get_dataset_paths,
         normalize_dataset_name,
-        get_available_datasets,
-        DatasetSubset,
     )
     from src.data.preprocessing import get_val_transforms
     from src.data.splits import deterministic_train_val_split
-    from torch.utils.data import DataLoader, ConcatDataset
+    from src.evaluation.metrics import ModelEvaluator
+    from src.models.dscatnet import create_dscatnet
 
     if not args.checkpoint:
         raise ValueError("--checkpoint is required for evaluation mode")
@@ -451,7 +453,7 @@ def run_centralized(args: argparse.Namespace) -> dict[str, Any]:
 
 def run_federated(args: argparse.Namespace) -> dict[str, Any]:
     """Run federated learning experiment."""
-    from src.federated.simulation import SimulationConfig, FLSimulator
+    from src.federated.simulation import FLSimulator, SimulationConfig
     from src.utils.helpers import set_seed
 
     # Ensure reproducibility (seeds random, numpy, torch, cuDNN)

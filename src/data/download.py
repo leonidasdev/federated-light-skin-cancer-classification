@@ -23,20 +23,20 @@ API Reference: https://isic-archive.com/api/v2
 # Imports
 # =============================================================================
 
+import concurrent.futures
 import csv
-import time
 import logging
 import shutil
+import time
 import zipfile
-import concurrent.futures
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from tqdm import tqdm
+from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
 
@@ -195,8 +195,8 @@ def download_ham10000_kaggle(data_root: Path | None = None, force_redownload: bo
     Returns:
         True if successful
     """
-    import subprocess
     import shutil
+    import subprocess
 
     if data_root is None:
         data_root = get_data_root()

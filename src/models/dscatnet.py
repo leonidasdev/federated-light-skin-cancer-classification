@@ -18,20 +18,21 @@ Reference: Adapted for Federated Learning based on the original DSCATNet paper (
 # Imports
 # =============================================================================
 
-import torch
-from torch import nn
-import torch.nn.functional as F
-from typing import Any
 import logging
+from typing import Any
+
 import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
 
 try:
     import timm
 except ImportError:
     timm = None  # type: ignore[assignment]
 
-from .patch_embedding import DualScalePatchEmbedding
 from .cross_attention import CrossScaleAttentionBlock
+from .patch_embedding import DualScalePatchEmbedding
 
 # =============================================================================
 # Main Model

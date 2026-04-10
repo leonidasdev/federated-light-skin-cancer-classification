@@ -20,7 +20,6 @@ from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 from src.federated.simulation import ClientData, FLSimulator, SimulationConfig
 from src.models.dscatnet import create_dscatnet
 
-
 # =============================================================================
 # Helpers
 # =============================================================================

@@ -13,8 +13,8 @@ to capture both fine-grained and coarse-grained features from dermoscopic images
 # =============================================================================
 
 import torch
-from torch import nn
 from einops import rearrange
+from torch import nn
 
 # =============================================================================
 # Single-Scale Patch Embedding

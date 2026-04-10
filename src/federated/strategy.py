@@ -11,14 +11,15 @@ Implements FedAvg and custom aggregation strategies for DSCATNet.
 # Imports
 # =============================================================================
 
-from flwr.server.strategy import FedAvg
-from flwr.common import Parameters, Scalar, FitRes, EvaluateRes, ndarrays_to_parameters, parameters_to_ndarrays
-from flwr.server.client_proxy import ClientProxy
-from typing import Any
-from collections.abc import Callable
 import logging
-import numpy as np
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
+
+import numpy as np
+from flwr.common import EvaluateRes, FitRes, Parameters, Scalar, ndarrays_to_parameters, parameters_to_ndarrays
+from flwr.server.client_proxy import ClientProxy
+from flwr.server.strategy import FedAvg
 
 logger = logging.getLogger(__name__)
 

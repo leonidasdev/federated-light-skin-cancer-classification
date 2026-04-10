@@ -23,9 +23,9 @@ import torch
 from PIL import Image
 
 from src.data.preprocessing import (
+    get_standardized_transforms,
     get_train_transforms,
     get_val_transforms,
-    get_standardized_transforms,
 )
 
 # Project root for finding test data

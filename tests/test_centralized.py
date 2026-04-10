@@ -12,6 +12,7 @@ Tests the centralized training baseline implementation.
 # =============================================================================
 
 import _pickle
+
 import pytest
 
 # =============================================================================
@@ -139,8 +140,9 @@ class TestCentralizedTrainer:
 
     def test_save_and_load_checkpoint_roundtrip(self, tmp_path):
         """Test saving and loading checkpoint preserves state."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -174,8 +176,9 @@ class TestCentralizedTrainer:
 
     def test_train_epoch_without_setup_data_raises(self, tmp_path):
         """train_epoch should raise if data not set up."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -205,9 +208,10 @@ class TestCentralizedTrainer:
 
     def test_train_epoch_with_synthetic_data(self, tmp_path):
         """train_epoch should run with synthetic data."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -230,9 +234,10 @@ class TestCentralizedTrainer:
 
     def test_evaluate_with_synthetic_data(self, tmp_path):
         """evaluate should run with synthetic data."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -253,8 +258,9 @@ class TestCentralizedTrainer:
 
     def test_save_checkpoint_best_creates_model_file(self, tmp_path):
         """Saving best checkpoint should also create best_model.pt."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -276,8 +282,9 @@ class TestCentralizedTrainer:
 
     def test_save_checkpoint_regular(self, tmp_path):
         """Regular checkpoint should use epoch-numbered filename."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -306,9 +313,10 @@ class TestCentralizedTrainer:
 
     def test_train_epoch_gradient_accumulation(self, tmp_path):
         """train_epoch with gradient_accumulation_steps > 1 should work."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -331,10 +339,12 @@ class TestCentralizedTrainer:
 
     def test_run_with_synthetic_data(self, tmp_path):
         """run() should complete with synthetic data and mocked setup_data."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         from unittest.mock import patch
+
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -364,10 +374,12 @@ class TestCentralizedTrainer:
 
     def test_run_with_cosine_scheduler(self, tmp_path):
         """run() with cosine scheduler should work."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         from unittest.mock import patch
+
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -395,10 +407,12 @@ class TestCentralizedTrainer:
 
     def test_run_with_plateau_scheduler(self, tmp_path):
         """run() with plateau scheduler should work."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         from unittest.mock import patch
+
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -424,10 +438,12 @@ class TestCentralizedTrainer:
 
     def test_run_with_adamw(self, tmp_path):
         """run() with adamw optimizer should work."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         from unittest.mock import patch
+
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -453,10 +469,12 @@ class TestCentralizedTrainer:
 
     def test_run_early_stopping(self, tmp_path):
         """run() should trigger early stopping when no improvement."""
-        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
         from unittest.mock import patch
+
         import torch
         from torch.utils.data import DataLoader, TensorDataset
+
+        from src.centralized.centralized import CentralizedConfig, CentralizedTrainer
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),
@@ -482,8 +500,9 @@ class TestCentralizedTrainer:
 
     def test_run_centralized_training_convenience(self, tmp_path):
         """run_centralized_training convenience function works."""
-        from src.centralized.centralized import run_centralized_training, CentralizedConfig
         from unittest.mock import patch
+
+        from src.centralized.centralized import CentralizedConfig, run_centralized_training
 
         config = CentralizedConfig(
             output_dir=str(tmp_path),

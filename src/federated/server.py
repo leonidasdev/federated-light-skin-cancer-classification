@@ -12,14 +12,15 @@ aggregating model updates and managing the training rounds.
 # Imports
 # =============================================================================
 
+from pathlib import Path
+from typing import Any
+
+import torch
+from flwr.common import Scalar
 from flwr.server import ServerConfig
 from flwr.server import start_server as fl_start_server
-from flwr.server.strategy import Strategy
 from flwr.server.history import History
-from flwr.common import Scalar
-from typing import Any
-import torch
-from pathlib import Path
+from flwr.server.strategy import Strategy
 
 from ..models.dscatnet import DSCATNet, get_model_parameters
 from .strategy import create_fedavg_strategy
