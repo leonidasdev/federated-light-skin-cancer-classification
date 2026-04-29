@@ -1,5 +1,6 @@
 # Federated Learning for Skin Cancer Classification with DSCATNet
 
+[![CI](https://github.com/leonidasdev/federated-light-skin-cancer-classification/actions/workflows/ci.yml/badge.svg)](https://github.com/leonidasdev/federated-light-skin-cancer-classification/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.7+](https://img.shields.io/badge/pytorch-2.7+-ee4c2c.svg)](https://pytorch.org/)
 [![Flower 1.25+](https://img.shields.io/badge/flower-1.25+-green.svg)](https://flower.dev/)
@@ -402,7 +403,7 @@ federated:
   # Federation
   federation:
     num_clients: 4  # Adjust based on number of datasets used
-    noniid_type: dirichlet    # natural, dirichlet, label_skew
+    data_partition_type: dirichlet    # natural, dirichlet, label_skew, quantity_skew, iid
     dirichlet_alpha: 0.5      # Lower = more non-IID
 
   # Augmentation
@@ -772,7 +773,7 @@ python run_experiment.py --mode <MODE> [OPTIONS]
 | `--rounds` | int | Number of FL communication rounds |
 | `--clients` | int | Number of FL clients |
 | `--local-epochs` | int | Local epochs per round |
-| `--noniid-type` | string | `natural`, `dirichlet`, `label_skew`, `quantity_skew` |
+| `--data-partition-type` | string | `natural`, `dirichlet`, `label_skew`, `quantity_skew`, `iid` |
 | `--dirichlet-alpha` | float | Dirichlet alpha (lower = more non-IID) |
 | `--participation` | float | Client participation rate per round (0.0-1.0) |
 

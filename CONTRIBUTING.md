@@ -181,6 +181,16 @@ pytest -k "test_client" -v
 pytest -m "not slow" -v
 ```
 
+### Testing Strategy
+
+The project maintains a comprehensive test suite to ensure code quality, correctness, and reliability. Our testing philosophy includes:
+
+- **Unit Tests**: Each module in `src/` should have a corresponding `test_*.py` file in `tests/` that tests its functions and classes in isolation.
+- **Integration Tests**: We test how different components work together, such as the full training pipeline (`test_centralized.py::test_run_with_synthetic_data`) and end-to-end federated simulations (`test_integration.py`).
+- **Fixtures**: Common test resources (like mock data, configurations, and paths) are defined as fixtures in `tests/conftest.py` to promote code reuse and simplify test setup.
+- **Markers**: Tests are categorized using pytest markers (`@pytest.mark.slow`, `@pytest.mark.integration`, `@pytest.mark.gpu`) to allow for selective test execution.
+- **Synthetic Data**: Core logic (training, evaluation, etc.) is tested on small, in-memory synthetic datasets to ensure tests run quickly and do not require downloading the full datasets.
+
 ### Writing Tests
 
 1. Place tests in `tests/` directory
@@ -209,6 +219,19 @@ class TestClassName:
         # Assert
         assert result == expected
 ```
+
+---
+
+## CI/CD (Continuous Integration)
+
+This project uses **GitHub Actions** for continuous integration. A CI pipeline is automatically triggered for every pull request and push to the `main` branch.
+
+The CI workflow, defined in `.github/workflows/ci.yml`, performs the following checks:
+
+1.  **Linting**: Runs `ruff check .` to enforce PEP 8 compliance and code style.
+2.  **Testing**: Executes the full test suite using `pytest` (excluding tests marked as `gpu` or `integration`).
+
+All checks must pass before a pull request can be merged. This ensures that the `main` branch always remains stable and that all contributions adhere to the project's quality standards.
 
 ---
 
