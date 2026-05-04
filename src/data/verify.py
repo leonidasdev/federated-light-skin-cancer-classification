@@ -235,11 +235,22 @@ class DatasetVerifier:
                 }
 
             # Count images
-            img_dir = dataset_path / "ISIC_2020_Training_JPEG"
-            if not img_dir.exists():
-                img_dir = dataset_path / "train"
-            if img_dir.exists():
-                result["total_images"] = len(list(img_dir.glob("*.jpg")))
+            image_dirs = [
+                dataset_path / "ISIC_2020_Training_JPEG" / "train",
+                dataset_path / "train",
+                dataset_path / "ISIC_2020_Training_JPEG",
+            ]
+
+            for img_dir in image_dirs:
+                if img_dir.exists():
+                    image_count = sum(
+                        1
+                        for ext in ("*.jpg", "*.jpeg", "*.png", "*.bmp")
+                        for _ in img_dir.rglob(ext)
+                    )
+                    if image_count > 0:
+                        result["total_images"] = image_count
+                        break
 
             result["valid"] = result["total_images"] > 0
 
