@@ -27,6 +27,7 @@ from sklearn.metrics import (
     recall_score,
     roc_auc_score,
 )
+from sklearn.preprocessing import label_binarize
 from torch import nn
 from torch.utils.data import DataLoader
 
@@ -202,22 +203,43 @@ class ModelEvaluator:
         f1_macro = float(f1_score(labels, predictions, average="macro", zero_division=0))
         f1_weighted = float(f1_score(labels, predictions, average="weighted", zero_division=0))
 
-        # AUC-ROC (one-vs-rest)
+        # AUC-ROC (one-vs-rest) - compute per-class AUCs and average only
+        # over classes that have valid support in the test set. This makes the
+        # macro AUC robust to missing classes (common in non-IID splits).
         auc = None
         if compute_auc:
             try:
-                # Check if all classes are present
-                unique_labels = np.unique(labels)
-                if len(unique_labels) >= 2:
-                    auc = float(
-                        roc_auc_score(
-                            labels,
-                            probabilities,
-                            multi_class="ovr",
-                            average="macro",
-                        )
-                    )
-            except ValueError as e:
+                # Binarize labels per class. `label_binarize` may return a
+                # scipy sparse matrix for certain inputs; convert to a
+                # NumPy array to allow safe indexing (`y_true_bin[:, i]`).
+                y_true_bin = label_binarize(labels, classes=range(self.num_classes))
+                # `label_binarize` may return a sparse matrix; use an `Any`
+                # typed temporary to avoid static type complaints and then
+                # attempt `.toarray()` with fallback to `np.asarray`.
+                y_true_bin_any: Any = y_true_bin
+                try:
+                    y_true_bin = y_true_bin_any.toarray()
+                except Exception:
+                    y_true_bin = np.asarray(y_true_bin_any)
+                per_class_aucs = []
+                for i in range(self.num_classes):
+                    # class has at least one positive and at least one negative sample
+                    pos_count = int(y_true_bin[:, i].sum())
+                    if 0 < pos_count < len(labels):
+                        try:
+                            auc_i = float(roc_auc_score(y_true_bin[:, i], probabilities[:, i]))
+                            # sanity: only accept finite auc values within [0,1]
+                            if np.isfinite(auc_i) and 0.0 <= auc_i <= 1.0:
+                                per_class_aucs.append(auc_i)
+                        except Exception:
+                            # skip class if roc_auc_score fails for this class
+                            logger.debug(f"Skipping ROC AUC for class {i} (insufficient variation)")
+
+                if per_class_aucs:
+                    auc = float(np.mean(per_class_aucs))
+                else:
+                    auc = None
+            except Exception as e:
                 logger.warning(f"Could not compute AUC: {e}")
 
         # Confusion matrix
