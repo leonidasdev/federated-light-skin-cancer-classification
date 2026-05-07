@@ -854,8 +854,62 @@ Interactive Jupyter notebooks for exploration, evaluation, and analysis are prov
 | Notebook | Description |
 |----------|-------------|
 | [01_dataset_exploration.ipynb](notebooks/01_dataset_exploration.ipynb) | Dataset verification, class distribution analysis, image statistics, non-IID visualization, preprocessing pipeline testing, and sample visualization |
-| [02_model_evaluation.ipynb](notebooks/02_model_evaluation.ipynb) | Comprehensive model evaluation with performance metrics, confusion matrices, per-class analysis, ROC curves, and prediction confidence analysis |
-| [03_fl_vs_centralized_comparison.ipynb](notebooks/03_fl_vs_centralized_comparison.ipynb) | Head-to-head comparison between centralized training (original DSCATNet paper) and federated learning approaches |
+| [02_model_evaluation.ipynb](notebooks/02_model_evaluation.ipynb) | Comprehensive model evaluation including performance metrics, confusion matrices, per-class analysis, ROC curves, confidence distribution analysis, and artifact export |
+| [03_fl_vs_centralized_comparison.ipynb](notebooks/03_fl_vs_centralized_comparison.ipynb) | Head-to-head comparison between centralized training and federated learning approaches with statistical significance testing |
+
+### Notebook 02: Model Evaluation & Export
+
+Notebook 02 evaluates trained models and exports comprehensive artifacts:
+
+**Configuration**: Select the experiment and dataset in the configuration cell, then run all cells sequentially.
+
+**Key Exports** (saved to `outputs/evaluation_<experiment>/` for each dataset):
+
+| File | Description |
+|------|-------------|
+| `results_latest.json` | Current evaluation snapshot with metrics and per-sample predictions |
+| `results_<timestamp>.json` | Timestamped archive of evaluation results |
+| `metrics_summary.csv` | Summary metrics (accuracy, F1, AUC, etc.) |
+| `per_class_metrics.csv` | Per-class performance breakdown |
+| `confusion_matrix.csv` | Confusion matrix in tabular form |
+| `kpi_dashboard.png`, `confusion_matrix.png`, `per_class_metrics.png`, `roc_curves.png`, `confidence_analysis.png` | Visualizations |
+
+**Results JSON Structure**:
+
+```json
+{
+    "evaluation_timestamp": "2026-05-07T23:06:35...",
+    "dataset": "HAM10000",
+    "model_variant": "centralized",
+    "num_samples": 10015,
+    "metrics": {
+        "accuracy": 0.8542,
+        "balanced_accuracy": 0.7891,
+        "f1_macro": 0.7956,
+        "auc_macro": 0.9234
+    },
+    "per_class_metrics": { ... },
+    "per_class_auc": { ... },
+    "confusion_matrix": [...],
+    "confidence_stats": { ... },
+    "labels": [5, 1, 3, ...],                    // Ground truth per sample
+    "predictions": [5, 1, 3, ...],              // Model predictions per sample
+    "sample_ids": ["path/to/img1.jpg", ...],   // Unique identifier per sample
+    "sample_predictions": [                     // Detailed per-sample results
+        {
+            "sample_index": 0,
+            "sample_id": "HAM10000_000000",
+            "y_true": 5,
+            "y_pred": 5,
+            "correct": true,
+            "confidence": 0.9876
+        },
+        ...
+    ]
+}
+```
+
+**Purpose of Per-Sample Data**: The `labels`, `predictions`, `sample_ids`, and `sample_predictions` enable exact paired statistical tests in Notebook 03 (e.g., McNemar test for centralized vs FL) without requiring recomputation.
 
 ### Running Notebooks
 
@@ -867,7 +921,7 @@ jupyter lab notebooks/
 jupyter notebook notebooks/
 ```
 
-> **Note**: Ensure the virtual environment is activated and datasets are downloaded before running notebooks.
+> **Note**: Ensure the virtual environment is activated and datasets are downloaded before running notebooks. Notebook 02 requires `results` object from model evaluation; Notebook 03 requires evaluation artifacts from Notebook 02.
 
 ---
 

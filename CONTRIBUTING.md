@@ -67,6 +67,9 @@ python run_tests.py --test
 
 # Run linter
 ruff check .
+
+# Run formatter check (matches CI)
+ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py
 ```
 
 ---
@@ -228,8 +231,9 @@ This project uses **GitHub Actions** for continuous integration. A CI pipeline i
 
 The CI workflow, defined in `.github/workflows/ci.yml`, performs the following checks:
 
-1.  **Linting**: Runs `ruff check .` to enforce PEP 8 compliance and code style.
-2.  **Testing**: Executes the full test suite using `pytest` (excluding tests marked as `gpu` or `integration`).
+1.  **Linting**: Runs `ruff check src/ tests/ run_experiment.py run_download.py run_tests.py`.
+2.  **Formatting**: Runs `ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py`.
+3.  **Testing**: Executes the full test suite using `pytest` (excluding tests marked as `gpu` or `integration`).
 
 All checks must pass before a pull request can be merged. This ensures that the `main` branch always remains stable and that all contributions adhere to the project's quality standards.
 
@@ -243,6 +247,7 @@ All checks must pass before a pull request can be merged. This ensures that the 
    ```bash
    python run_tests.py --test
    ruff check .
+    ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py
    ```
 4. **Update CHANGELOG** (if applicable)
 5. **Submit PR** with clear description
@@ -251,6 +256,7 @@ All checks must pass before a pull request can be merged. This ensures that the 
 
 - [ ] Tests pass locally
 - [ ] Linter passes (`ruff check .`)
+- [ ] Formatter check passes (`ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py`)
 - [ ] Documentation updated (if needed)
 - [ ] Commit messages are clear
 - [ ] Branch is up to date with main

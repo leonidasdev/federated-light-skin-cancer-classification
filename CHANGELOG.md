@@ -4,11 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Notebook 02 Export**: Per-sample predictions, labels, and sample IDs now exported to `results_latest.json` in both single-dataset and all-datasets evaluation paths for exact paired statistical testing in Notebook 03
+- **Notebook 03 Statistical Testing**: Exact binomial McNemar test with Bonferroni correction for multiple FL variants (replaces summary confidence interval approach)
+- **Documentation**: Expanded Notebooks section in README.md with results JSON schema and export structure details
+
 ### Fixed
 
 - Pylance `reportAttributeAccessIssue` errors in test `_MockDS` class
 - Stale config filenames in README.md, thesis.md, CLAUDE.md, and run_experiment.py docstring
 - TODO.md audit: updated dates, config filenames, experiment statuses
+- **Notebook 02 Export Cell**: Fixed execution order dependency where `confidence` and `roc_auc` were undefined; both export cells now self-contained
 
 ## [2026-03-12]
 

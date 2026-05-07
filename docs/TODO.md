@@ -42,8 +42,8 @@ These items directly affect experiment validity, thesis results, or reproducibil
 | 2.1 | Ablation: vary Dirichlet α (0.1, 0.5, 1.0, 10.0) | Quantifies non-IID sensitivity. Required to justify choice of α=0.5 in thesis. Configs can be generated from `federated_template.yaml`. |
 | 2.2 | Multiple random seeds (42, 123, 456) for key experiments | Report mean ± std for HAM10000 centralized and FL non-IID. Required for any statistical claim. |
 | 2.3 | Statistical significance test (paired t-test or Wilcoxon) | Needed to claim FL vs centralized differences are significant. Apply after 2.2. |
-| 2.4 | Run evaluation notebook (`02_model_evaluation.ipynb`) on final checkpoints | Produces per-class breakdown and visual confusion matrices for thesis §4.3. |
-| 2.5 | Run FL vs centralized comparison notebook (`03_fl_vs_centralized_comparison.ipynb`) | Final comparison plots for thesis §4.4. |
+| 2.4 | Run evaluation notebook (`02_model_evaluation.ipynb`) on final checkpoints | Produces per-class breakdown, visualizations, and per-sample predictions exported to `results_latest.json` for thesis §4.3 and exact statistical testing in Notebook 03. |
+| 2.5 | Run FL vs centralized comparison notebook (`03_fl_vs_centralized_comparison.ipynb`) | Final comparison plots and exact McNemar p-values with Bonferroni correction for thesis §4.4. Requires `results_latest.json` artifacts from Notebook 02. |
 | 2.6 | Update `docs/README.md` and `README.md` with final experiment results | After all experiments complete. |
 
 ---

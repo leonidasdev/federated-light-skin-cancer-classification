@@ -38,13 +38,15 @@ All experiments use YAML configuration files in `configs/`:
 
 ## Notebooks
 
-Interactive Jupyter notebooks for exploration:
+Interactive Jupyter notebooks for exploration, evaluation, and statistical analysis:
 
 | Notebook | Description |
 |----------|-------------|
-| [01_dataset_exploration](../notebooks/01_dataset_exploration.ipynb) | Dataset analysis and visualization |
-| [02_model_evaluation](../notebooks/02_model_evaluation.ipynb) | Model evaluation and metrics |
-| [03_fl_vs_centralized_comparison](../notebooks/03_fl_vs_centralized_comparison.ipynb) | FL vs centralized comparison |
+| [01_dataset_exploration](../notebooks/01_dataset_exploration.ipynb) | Dataset analysis, verification, and visualization |
+| [02_model_evaluation](../notebooks/02_model_evaluation.ipynb) | Model evaluation, metrics export, and per-sample prediction data |
+| [03_fl_vs_centralized_comparison](../notebooks/03_fl_vs_centralized_comparison.ipynb) | FL vs centralized comparison with exact statistical testing |
+
+See [README.md - Notebooks](../README.md#notebooks) for detailed export schema and usage instructions.
 
 ## Project Structure
 

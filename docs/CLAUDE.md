@@ -519,9 +519,10 @@ Before committing changes, verify:
 
 1. **Tests Pass**: `pytest tests/ -v`
 2. **Linter Passes**: `ruff check .`
-3. **No Import Errors**: `python -c "from src.federated.simulation import FLSimulator"`
-4. **CLI Help Works**: `python run_experiment.py --help`
-5. **Config Round-Trip**: Config → dict → Config preserves all values
+3. **Formatter Check Passes**: `ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py`
+4. **No Import Errors**: `python -c "from src.federated.simulation import FLSimulator"`
+5. **CLI Help Works**: `python run_experiment.py --help`
+6. **Config Round-Trip**: Config → dict → Config preserves all values
 
 ---
 
@@ -539,6 +540,9 @@ pytest --cov=src --cov-report=term-missing tests/
 
 # Lint
 ruff check .
+
+# Formatter check (CI)
+ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py
 
 # Centralized training
 python run_experiment.py --mode centralized --config configs/dscatnet_centralized_original.yaml
