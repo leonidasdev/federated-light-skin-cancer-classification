@@ -243,11 +243,7 @@ class DatasetVerifier:
 
             for img_dir in image_dirs:
                 if img_dir.exists():
-                    image_count = sum(
-                        1
-                        for ext in ("*.jpg", "*.jpeg", "*.png", "*.bmp")
-                        for _ in img_dir.rglob(ext)
-                    )
+                    image_count = sum(1 for ext in ("*.jpg", "*.jpeg", "*.png", "*.bmp") for _ in img_dir.rglob(ext))
                     if image_count > 0:
                         result["total_images"] = image_count
                         break

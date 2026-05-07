@@ -35,9 +35,12 @@ jobs:
           pip install -r requirements.txt
           pip install ruff pytest pytest-cov
 
-      - name: Lint with ruff
+      - name: Ruff lint
         run: |
           ruff check src/ tests/ run_experiment.py run_download.py run_tests.py
+
+      - name: Ruff format check
+        run: |
           ruff format --check src/ tests/ run_experiment.py run_download.py run_tests.py
 
       - name: Run tests with coverage

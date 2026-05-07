@@ -235,10 +235,7 @@ class ModelEvaluator:
                             # skip class if roc_auc_score fails for this class
                             logger.debug(f"Skipping ROC AUC for class {i} (insufficient variation)")
 
-                if per_class_aucs:
-                    auc = float(np.mean(per_class_aucs))
-                else:
-                    auc = None
+                auc = float(np.mean(per_class_aucs)) if per_class_aucs else None
             except Exception as e:
                 logger.warning(f"Could not compute AUC: {e}")
 
