@@ -202,8 +202,9 @@ class ModelEvaluator:
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore",
-                message="y_pred contains classes not in y_true",
+                message=r".*y_pred contains classes not in y_true.*",
                 category=UserWarning,
+                module=r"sklearn\.metrics\._classification",
             )
             precision = float(precision_score(labels, predictions, average="macro", zero_division=0))
             recall = float(recall_score(labels, predictions, average="macro", zero_division=0))
