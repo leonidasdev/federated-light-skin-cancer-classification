@@ -13,6 +13,7 @@ accuracy, F1-score, AUC-ROC, confusion matrix, and per-class metrics.
 # =============================================================================
 
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -198,10 +199,16 @@ class ModelEvaluator:
         # Compute metrics (cast to native Python types to satisfy type checkers)
         accuracy = float(accuracy_score(labels, predictions))
         balanced_acc = float(balanced_accuracy_score(labels, predictions))
-        precision = float(precision_score(labels, predictions, average="macro", zero_division=0))
-        recall = float(recall_score(labels, predictions, average="macro", zero_division=0))
-        f1_macro = float(f1_score(labels, predictions, average="macro", zero_division=0))
-        f1_weighted = float(f1_score(labels, predictions, average="weighted", zero_division=0))
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message="y_pred contains classes not in y_true",
+                category=UserWarning,
+            )
+            precision = float(precision_score(labels, predictions, average="macro", zero_division=0))
+            recall = float(recall_score(labels, predictions, average="macro", zero_division=0))
+            f1_macro = float(f1_score(labels, predictions, average="macro", zero_division=0))
+            f1_weighted = float(f1_score(labels, predictions, average="weighted", zero_division=0))
 
         # AUC-ROC (one-vs-rest) - compute per-class AUCs and average only
         # over classes that have valid support in the test set. This makes the
