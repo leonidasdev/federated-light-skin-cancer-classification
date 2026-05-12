@@ -48,6 +48,8 @@ Interactive Jupyter notebooks for exploration, evaluation, and statistical analy
 
 See [README.md - Notebooks](../README.md#notebooks) for detailed export schema and usage instructions.
 
+Note: `02_model_evaluation.ipynb` exports a timestamped JSON and `results_latest.json` containing per-sample fields used by Notebook 03 for paired statistical testing: `labels`, `predictions`, `sample_ids`, `sample_predictions`, plus aggregated `metrics` and `per_class_metrics`.
+
 ## Project Structure
 
 ```

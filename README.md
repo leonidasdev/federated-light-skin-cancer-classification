@@ -120,9 +120,10 @@ federated-light-skin-cancer-classification/
 │       └── logging_utils.py          # Logging configuration
 │
 ├── notebooks/                        # Jupyter notebooks
-│   ├── 01_dataset_exploration.ipynb  # Dataset analysis & verification
-│   ├── 02_model_evaluation.ipynb     # Model evaluation & metrics
-│   └── 03_fl_vs_centralized_comparison.ipynb  # FL vs centralized comparison
+│   ├── 01_dataset_exploration.ipynb
+│   ├── 02_model_evaluation.ipynb
+│   └── 03_fl_vs_centralized_comparison.ipynb
+
 │
 ├── tests/                            # Unit tests
 │   ├── conftest.py               # Shared fixtures and markers
@@ -247,6 +248,46 @@ pip install -r requirements.txt
 ```bash
 python -c "import torch; import flwr; print(f'PyTorch: {torch.__version__}'); print(f'CUDA: {torch.cuda.is_available()}')"
 ```
+
+## Quickstart — run notebooks and an example experiment
+
+After creating and activating the virtual environment and installing dependencies, you can open the notebooks or execute an experiment from the CLI.
+
+1. Activate venv and install dependencies:
+
+```powershell
+# Windows (PowerShell)
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+# macOS / Linux
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Run Jupyter Lab/Notebook and open the notebooks in `notebooks/`:
+
+```bash
+jupyter lab
+```
+
+3. Or run an example experiment from the CLI (uses a `configs/` YAML):
+
+```bash
+python run_experiment.py --config configs/dscatnet_centralized_ham10000.yaml
+```
+
+### Analysis scripts
+
+This repository includes analysis utilities to extract convergence metrics and generate comparison plots from training results.
+
+- `scripts/analysis/extract_logs.py`: Searches recursively under `--outputs-dir` for `results.json` files from experiments, extracts training/validation accuracy curves, and generates:
+  - **Convergence plots by dataset** (recommended for thesis): centralized vs federated IID vs federated Non-IID for each dataset (HAM10000, All Datasets, PAD-UFES-20)
+  - **Convergence plots by learning type**: overview of all experiments, centralized-only, and federated-only
+  - **Summary CSV**: best/final validation accuracy, test accuracy, and training time per experiment
+  
+  Usage: `python scripts/analysis/extract_logs.py --outputs-dir outputs/ --out-dir outputs/analysis`. See `scripts/analysis/README.md` for full details.
+
 
 ### System Requirements
 
@@ -514,6 +555,10 @@ python run_experiment.py --mode evaluate \
 ## Checkpoints & Resume Training
 
 ### Checkpoint Structure
+
+**File Types**:
+- `best_model.pt` — Model weights only; use for inference and fast evaluation.
+- `best_checkpoint.pt` — Full training state (model, optimizer, scheduler, scaler, epoch, and metrics); use for resuming training or reproducing the exact training run.
 
 Checkpoints are saved in `outputs/<experiment_name>/checkpoints/`:
 
@@ -853,11 +898,17 @@ Interactive Jupyter notebooks for exploration, evaluation, and analysis are prov
 
 | Notebook | Description |
 |----------|-------------|
-| [01_dataset_exploration.ipynb](notebooks/01_dataset_exploration.ipynb) | Dataset verification, class distribution analysis, image statistics, non-IID visualization, preprocessing pipeline testing, and sample visualization |
-| [02_model_evaluation.ipynb](notebooks/02_model_evaluation.ipynb) | Comprehensive model evaluation including performance metrics, confusion matrices, per-class analysis, ROC curves, confidence distribution analysis, and artifact export |
-| [03_fl_vs_centralized_comparison.ipynb](notebooks/03_fl_vs_centralized_comparison.ipynb) | Head-to-head comparison between centralized training and federated learning approaches with statistical significance testing |
+| [01_dataset_exploration.ipynb](notebooks/01_dataset_exploration.ipynb) | Dataset verification, class distribution analysis, image statistics, non-IID visualization, preprocessing pipeline testing, and sample visualization. Outputs exploratory figures and dataset summaries to `outputs/evaluation_dataset_exploration/`. |
+| [02_model_evaluation.ipynb](notebooks/02_model_evaluation.ipynb) | Comprehensive model evaluation including performance metrics, confusion matrices, per-class analysis, ROC curves, confidence distribution analysis, and artifact export. Exports `results_latest.json` (and timestamped JSON) with per-sample predictions and metrics used by Notebook 03. |
+| [03_fl_vs_centralized_comparison.ipynb](notebooks/03_fl_vs_centralized_comparison.ipynb) | Head-to-head comparison between centralized and federated (IID and non-IID) training approaches with paired statistical testing (McNemar exact test, Bonferroni correction, paired bootstrap gap CI, communication-cost analysis). Outputs saved to `outputs/evaluation_comparison_dscatnet_all_datasets/`. |
 
-### Notebook 02: Model Evaluation & Export
+### Notebook Details
+
+#### Notebook 01: Dataset Exploration
+
+Verifies dataset integrity and visualizes class distributions, heterogeneity metrics, and sample images. No model training required. Use this before running experiments to understand data characteristics, especially when comparing IID vs non-IID modes.
+
+#### Notebook 02: Model Evaluation & Export
 
 Notebook 02 evaluates trained models and exports comprehensive artifacts:
 
@@ -873,6 +924,15 @@ Notebook 02 evaluates trained models and exports comprehensive artifacts:
 | `per_class_metrics.csv` | Per-class performance breakdown |
 | `confusion_matrix.csv` | Confusion matrix in tabular form |
 | `kpi_dashboard.png`, `confusion_matrix.png`, `per_class_metrics.png`, `roc_curves.png`, `confidence_analysis.png` | Visualizations |
+
+#### Notebook 03: FL vs Centralized Comparison
+
+Compares centralized baselines against federated experiments under both IID and non-IID conditions. Requires `results_latest.json` from Notebook 02 runs for each experiment. Performs paired statistical testing to determine significance of accuracy gaps and computes communication costs.
+
+**Supported Experiment Modalities**:
+- `configs/dscatnet_centralized_*.yaml` — centralized training baseline
+- `configs/dscatnet_federated_*_iid.yaml` — federated with near-IID data (large Dirichlet alpha)
+- `configs/dscatnet_federated_*_non_iid.yaml` — federated with non-IID data (Dirichlet alpha 0.1–0.5)
 
 **Results JSON Structure**:
 

@@ -35,6 +35,27 @@ Evaluate whether a lightweight Vision Transformer (DSCATNet) can maintain classi
 
 ---
 
+## Notebook Exports
+
+`02_model_evaluation.ipynb` generates `results_latest.json` (and timestamped JSON files) that include per-sample arrays used for exact paired statistical testing in `03_fl_vs_centralized_comparison.ipynb`: the JSON contains `labels`, `predictions`, `sample_ids`, `sample_predictions`, `metrics`, and `per_class_metrics`. When running automated analyses, prefer the timestamped JSON for archival reproducibility and `results_latest.json` for quick iteration.
+
+## Notebooks
+
+- `notebooks/01_dataset_exploration.ipynb`: dataset verification, sample visualizations, class-distribution histograms, and heterogeneity diagnostics. Produces exploratory figures and dataset summaries under `outputs/evaluation_dataset_exploration/`.
+
+- `notebooks/02_model_evaluation.ipynb`: model evaluation including per-class metrics, ROC curves, confusion matrices, and confidence analysis. Exports per-experiment `results_latest.json` and timestamped `results_*.json` files used for paired comparisons.
+
+- `notebooks/03_fl_vs_centralized_comparison.ipynb`: comparison pipeline between centralized and federated experiments (IID vs non-IID), statistical testing (McNemar exact test, Bonferroni correction), paired bootstrap gap confidence intervals, and communication-cost analysis. Produces summary tables and plots under `outputs/evaluation_comparison_dscatnet_all_datasets/`.
+
+## Experiment Modalities (IID vs Non-IID)
+
+This repository explicitly supports both IID and non-IID federated experiment modes. Configuration conventions:
+
+- `configs/dscatnet_federated_{dataset}_iid.yaml` — near-IID experiments (Dirichlet alpha set very high, e.g., 1000.0) to approximate uniform class distributions across clients.
+- `configs/dscatnet_federated_{dataset}_non_iid.yaml` — non-IID experiments (Dirichlet alpha typically 0.1–0.5) to simulate realistic heterogeneity.
+
+The notebooks reflect these modalities: `01` inspects dataset distributions, `02` evaluates single-run metrics, and `03` performs paired statistical comparisons across IID/non-IID experiment outputs.
+
 ## Architecture Overview
 
 ```
