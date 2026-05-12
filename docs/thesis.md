@@ -943,3 +943,41 @@ Total: **150/286 tensors transferred** (~52%)
 | Non-IID | Non-IID data — clients have heterogeneous data distributions |
 | ViT | Vision Transformer — image classification using pure transformer architecture |
 | VRAM | Video RAM — GPU memory available for deep learning computations |
+
+## Artifacts & Reproducibility (Thesis Appendix)
+
+This section lists the primary experiment artifacts, the notebooks that produce them, and suggested figures/tables to include in the thesis. File paths are workspace-relative.
+
+- **Notebooks → Thesis mapping**:
+  - `notebooks/01_dataset_exploration.ipynb` → Chapter 4 (Dataset), Figures: dataset class distribution histograms, sample montage, dataset heterogeneity diagnostics. Outputs: [outputs/evaluation_dataset_exploration](outputs/evaluation_dataset_exploration/).
+  - `notebooks/02_model_evaluation.ipynb` → Chapter 5 (Evaluation), Figures: per-class ROC curves, confidence_analysis.png, confusion matrices. Exports: `results_latest.json`, timestamped `results_*.json` in each experiment output folder.
+  - `notebooks/03_fl_vs_centralized_comparison.ipynb` → Chapter 5–6 (Comparison & Statistical Tests), Figures/Tables: paired accuracy gap plots, McNemar test tables, Bonferroni-adjusted significance table, communication-cost plot.
+
+- **Experiment modalities included**: The analysis explicitly covers both IID and non-IID federated modes. Use the configs `configs/dscatnet_federated_{dataset}_iid.yaml` (near-IID, large Dirichlet alpha) and `configs/dscatnet_federated_{dataset}_non_iid.yaml` (non-IID, Dirichlet alpha 0.1–0.5). Notebooks reflect this: `01` inspects distributional differences, `02` evaluates per-experiment metrics, and `03` performs paired statistical comparisons between IID and non-IID runs.
+
+- **Key artifact paths (examples)**:
+  - Experiment outputs: `outputs/{experiment_name}/` (contains `config.json`, `history.json`, `checkpoints/`, `results_latest.json`).
+  - Confidence analysis: `outputs/{experiment_name}/figures/confidence_analysis.png` (from Notebook 02).
+  - KPI / main results table (CSV/LaTeX): `outputs/evaluation_comparison_dscatnet_all_datasets/thesis_main_results_table.csv` (suggested export location).
+  - Confusion matrices and per-class metrics: `outputs/{experiment_name}/evaluation/*`.
+
+- **Suggested Figures/Tables for the thesis**:
+  - Figure: Dataset class distribution (from Notebook 01).
+  - Figure: Example dermoscopy images montage (Notebook 01).
+  - Figure: Centralized vs Federated accuracy curves (global) (Notebook 03).
+  - Figure: Per-class ROC curves (one-vs-rest) for selected experiments (Notebook 02).
+  - Table: Main results summary (CSV → LaTeX) comparing centralized and FL experiments across α values (use `thesis_main_results_table.csv`).
+  - Table: Statistical test results (McNemar exact p-values and Bonferroni-adjusted significance) (Notebook 03 exports).
+  - Figure: Communication cost vs rounds (Notebook 03).
+
+- **How to reproduce a figure or table (example)**:
+  1. Run the experiment (example): `python run_experiment.py --mode centralized --config configs/dscatnet_centralized_ham10000.yaml`.
+  2. Run the corresponding notebook to generate evaluation artifacts: open `notebooks/02_model_evaluation.ipynb` and run the `Export results` cell or run programmatically with `python -m src.evaluation.generate_reports --exp outputs/dscatnet_centralized_ham10000`.
+  3. Collect artifacts from `outputs/dscatnet_centralized_ham10000/` into the thesis `figures/` and `tables/` folders and reference them in LaTeX.
+
+- **Notes for thesis text**:
+  - Use the phrasing "thesis project" where appropriate (user preference preserved).
+  - Cite the experiment config path (e.g., `configs/dscatnet_federated_ham10000_non_iid.yaml`) when describing each reported run.
+  - Include a short reproducibility checklist in the appendix pointing to the exact `config.json` and `best_model.pt` used for each reported number.
+
+If you want, I can now (a) generate `thesis_main_results_table.csv` from existing `outputs/` runs, (b) export selected figures into `docs/figures/` and add LaTeX-ready CSV/PNG references, or (c) produce a compact appendix-ready markdown fragment for direct inclusion in your thesis LaTeX source.
