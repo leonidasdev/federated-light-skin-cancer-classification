@@ -53,6 +53,9 @@ Thumbs.db
 
 # Outputs, artifacts, checkpoints
 outputs/
+!outputs/
+outputs/*
+!outputs/README.md
 checkpoints/
 results.json
 
