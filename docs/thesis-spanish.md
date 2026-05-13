@@ -306,7 +306,7 @@ En este trabajo, la arquitectura se interpreta como una solución intermedia ent
 
 **Figura 1**: Arquitectura de DSCATNet con doble escala de parches y bloques de cross-attention, destacando la agregación de información local y global.
 
-![Figura 1 - Arquitectura DSCATNet](../outputs/analysis/figura_1_dscatnet_architecture.png)
+<!-- ![Figura 1 - Arquitectura DSCATNet](../outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/) -->
 
 #### 3.3 Adaptación a aprendizaje federado
 
@@ -373,7 +373,7 @@ Con α = 0.5, la asignación por cliente presenta un sesgo claro pero todavía m
 
 **Figura 2**: Distribución de clases por cliente en los escenarios α=10.0, α=0.5 y α=0.1, mostrando el gradiente de heterogeneidad entre IID y no-IID extremo.
 
-![Figura 2 - Distribución Dirichlet por cliente](../outputs/analysis/figura_2_dirichlet_distribution.png)
+<!-- ![Figura 2 - Distribución Dirichlet por cliente](../outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/) -->
 
 ### 3.5 Configuración experimental
 
@@ -443,13 +443,7 @@ python src/federated/train_fl.py --config configs/ham10000_fl_iid.yaml
 python src/federated/train_fl.py --config configs/ham10000_fl_noniid_alpha0.5.yaml
 ```
 
-Nota: Para reproducir los análisis de convergencia y derive de cliente localmente, existe un script auxiliar:
-
-```bash
-python scripts/analysis/extract_logs.py --outputs-dir outputs/ --out-dir outputs/analysis --bootstrap-iters 1000
-```
-
-Este script busca los CSV de logs generados por los entrenamientos y, si existen, checkpoints `.pt`, y produce las gráficas y CSV de resumen en `outputs/analysis/`.
+Nota: Para reproducir los análisis de convergencia localmente, abra el notebook `notebooks/03_fl_vs_centralized_comparison.ipynb` y ejecute la sección **Convergence Analysis** (Sección 13, cerca del final). Este notebook carga automáticamente los archivos `results.json` de los entrenamientos y produce las gráficas y CSV de resumen en los directorios `outputs/evaluation_comparison_dscatnet_*/{DATASET}/`.
 
 ---
 
@@ -488,9 +482,9 @@ La arquitectura DSCATNet alcanza 70.37% de precisión de test, pero con heteroge
 
 **Comparación con literatura**:
 
-**Visualización**: Las curvas de convergencia para HAM10000 (centralizado vs federado IID vs federado non-IID) se encuentran en `outputs/analysis/convergence_by_dataset_ham10000.png`, generadas mediante `python scripts/analysis/extract_logs.py`.
+**Visualización**: Las curvas de convergencia para HAM10000 (centralizado vs federado IID vs federado non-IID) se encuentran en `outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/`, generadas mediante el notebook `03_fl_vs_centralized_comparison.ipynb` (Sección 13).
 
-![Curvas de convergencia HAM10000](../outputs/analysis/convergence_by_dataset_ham10000.png)
+![Curvas de convergencia HAM10000 - Generadas por notebook 03, Sección 13](../outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/)
 
 #### 4.1.2 ISIC2018 Centralizado (C-ISIC2018)
 
@@ -667,9 +661,9 @@ La comparativa por dataset refuerza la lectura anterior: en HAM10000, el modo II
 **Nota**: En los experimentos federados no se reporta un test separado; la comparación usa la validación final agregada sobre el conjunto de validación común, mientras que el baseline centralizado sí incluye métrica de test independiente.
 
 **Visualización**: Las gráficas de convergencia detalladas (por dataset) están disponibles en:
-- `outputs/analysis/convergence_by_dataset_ham10000.png`
-- `outputs/analysis/convergence_by_dataset_all_datasets.png` (escenario cross-domain etiquetado como ISIC2018 en logs)
-- `outputs/analysis/convergence_by_dataset_padufes20.png`
+- `outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/` (convergence plots e comparación)
+- `outputs/evaluation_comparison_dscatnet_isic2019/ISIC2019/` (escenario cross-domain)
+- `outputs/evaluation_comparison_dscatnet_padufes20/PAD-UFES-20/` (escenario PAD-UFES-20)
 
 **Discusión**: 
 
@@ -898,7 +892,7 @@ Las referencias se presentan en formato IEEE y organizadas por tema, respaldando
 - El código completo está disponible en: [repositorio GitHub del proyecto]
 - Configuración de hiperparámetros: `configs/` (YAML)
 - Logs de experimentos: `outputs/*/results.json`
-- Scripts de análisis: `scripts/analysis/extract_logs.py`
+- Análisis de convergencia: `notebooks/03_fl_vs_centralized_comparison.ipynb` (Sección 13)
 - Kairouz et al. (2021), *Advances and Open Problems in Federated Learning*.
 
 ---
