@@ -304,9 +304,18 @@ En este trabajo, la arquitectura se interpreta como una solución intermedia ent
   - Mecanismo de cross-attention
   - Cabeza de clasificación adaptada a 7 clases
 
-**Figura 1**: Arquitectura de DSCATNet con doble escala de parches y bloques de cross-attention, destacando la agregación de información local y global.
+**Figura 1**: Esquema resumido de DSCATNet con doble escala de parches y bloques de cross-attention, destacando la agregación de información local y global.
 
-<!-- ![Figura 1 - Arquitectura DSCATNet](../outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/) -->
+```mermaid
+flowchart LR
+  A[Input image 224x224] --> B[Patch embedding 8x8]
+  A --> C[Patch embedding 16x16]
+  B --> D[Dual-scale cross-attention]
+  C --> D
+  D --> E[Transformer encoder blocks]
+  E --> F[Classification head]
+  F --> G[7 skin lesion classes]
+```
 
 #### 3.3 Adaptación a aprendizaje federado
 
@@ -364,16 +373,15 @@ La heterogeneidad de datos se modela mediante distribuciones Dirichlet sobre las
 
 Con α = 10.0, la distribución se aproxima a un reparto casi uniforme y se usa como baseline federado comparable al entrenamiento centralizado.
 
-#### 3.4.2 Non-IID (Heterogeneidad moderada y extrema)
+#### 3.4.2 Non-IID (heterogeneidad moderada)
 
 - **α = 0.5**: Heterogeneidad moderada (cada cliente favorece 1-2 clases)
-- **α = 0.1**: Heterogeneidad extrema (cada cliente casi monoclase)
 
-Con α = 0.5, la asignación por cliente presenta un sesgo claro pero todavía mantiene varias clases relevantes por sitio. Con α = 0.1, la concentración de probabilidad aumenta de forma notable y cada cliente tiende a especializarse en 1 sola clase dominante, lo que estresa la agregación global y permite medir el efecto del client drift.
+Con α = 0.5, la asignación por cliente presenta un sesgo claro pero todavía mantiene varias clases relevantes por sitio. El escenario α = 0.1 se planificó como estrés adicional de heterogeneidad, pero no se completó en esta versión porque no hay logs suficientes para reconstruir con precisión las trayectorias locales necesarias para analizar client drift de forma meticulosa.
 
-**Figura 2**: Distribución de clases por cliente en los escenarios α=10.0, α=0.5 y α=0.1, mostrando el gradiente de heterogeneidad entre IID y no-IID extremo.
+**Figura 2**: Efecto de la heterogeneidad IID frente a non-IID sobre la convergencia agregada en los conjuntos evaluados.
 
-<!-- ![Figura 2 - Distribución Dirichlet por cliente](../outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/) -->
+*Insertar: `outputs/evaluation_comparison_dscatnet_ham10000/convergence/federated_iid_vs_noniid.png`*
 
 ### 3.5 Configuración experimental
 
@@ -482,9 +490,13 @@ La arquitectura DSCATNet alcanza 70.37% de precisión de test, pero con heteroge
 
 **Comparación con literatura**:
 
-**Visualización**: Las curvas de convergencia para HAM10000 (centralizado vs federado IID vs federado non-IID) se encuentran en `outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/`, generadas mediante el notebook `03_fl_vs_centralized_comparison.ipynb` (Sección 13).
+**Figura 3**: Comparativa HAM10000 (accuracy, precision, recall, F1-score, AUC-ROC).
 
-![Curvas de convergencia HAM10000 - Generadas por notebook 03, Sección 13](../outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/)
+*Insertar: `outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/comparison_bar_chart.png`*
+
+**Figura 4**: Convergencia por dataset para HAM10000 (centralizado vs IID vs NonIID).
+
+*Insertar: `outputs/evaluation_comparison_dscatnet_ham10000/convergence/convergence_by_dataset_ham10000.png`*
 
 #### 4.1.2 ISIC2018 Centralizado (C-ISIC2018)
 
@@ -500,8 +512,6 @@ El experimento `C-ISIC2018` corresponde a la evaluación centralizada sobre el s
 | **Best Val Accuracy** | 62.84% | 73.30% | -10.46% |
 
 **Interpretación**: C-ISIC2018 (escenario centralizado de referencia en este documento) es **más difícil** que C-HAM (menor precisión). Esto sugiere que la heterogeneidad intrínseca de múltiples conjuntos clínicos degrada rendimiento, incluso en configuración centralizada. La combinación de múltiples fuentes implica variación de adquisición, procesamiento y posibles solapamientos incompletos entre esquemas de anotación.
-
-**Nota sobre tiempo de entrenamiento**: El valor de 71.80 h en C-ISIC2018 es elevado frente a C-HAM (28.81 h). Se mantiene porque coincide con el registro de `results.json` y con el resumen agregado, pero debe interpretarse como una ejecución condicionada por hardware local (RTX 3050 4 GB, lotes efectivos pequeños y alta variabilidad de rendimiento en ejecuciones largas).
 
 #### 4.1.3 PAD-UFES-20 Centralizado (C-PAD)
 
@@ -519,6 +529,14 @@ El experimento C-PAD evalúa DSCATNet sobre PAD-UFES-20 en un dominio distinto a
 **Discusión**:
 
 PAD-UFES-20 es más difícil que HAM10000 tanto en exactitud global como en convergencia de validación. El cambio de dominio (imágenes clínicas con smartphone vs. dermoscopia) reduce fiabilidad de DSCATNet. Sin embargo, el modelo logra mejor rendimiento que una línea base al azar (14.29% para 7 clases), sugiriendo que extrae características relevantes incluso bajo cambio de dominio severo.
+
+**Figura 5**: Comparativa PAD-UFES-20 (accuracy, precision, recall, F1-score, AUC-ROC).
+
+*Insertar: `outputs/evaluation_comparison_dscatnet_padufes20/PAD-UFES-20/comparison_bar_chart.png`*
+
+**Figura 6**: Convergencia por dataset para PAD-UFES-20 (centralizado vs IID vs NonIID).
+
+*Insertar: `outputs/evaluation_comparison_dscatnet_padufes20/convergence/convergence_by_dataset_padufes20.png`*
 
 ### 4.2 Federado IID (α = 10.0)
 
@@ -550,7 +568,7 @@ El experimento federado IID (F-HAM-IID) distribuye HAM10000 uniformemente entre 
 2. **Escalado de batch**: El total de datos por ronda (batch global) es mayor en FL.
 3. **Convergencia eficiente**: FedAvg puede encontrar mínimos más planos en algunas dimensiones.
 
-### 4.3 Federado Non-IID (α = 0.5, 0.1)
+### 4.3 Federado Non-IID (α = 0.5)
 
 #### 4.3.1 HAM10000 Non-IID (F-HAM-NonIID)
 
@@ -606,6 +624,8 @@ Esta magnitud justifica analizar la comunicación como un coste de primer orden 
 | F-PAD-IID | 112.44 | 100 | 89.95 | Similar orden de magnitud |
 | F-PAD-NonIID | 112.44 | 100 | 89.95 | Similar orden de magnitud |
 
+**Nota metodológica**: Las Tablas 4.1 y 4.2 se basan en los artefactos de comparación head-to-head, mientras que la Tabla 5 resume el entrenamiento por época/ronda. Por eso, las cifras de precisión no son intercambiables entre ambas secciones aunque describan el mismo experimento.
+
 **Tabla 4.1**: Comparativa detallada HAM10000 (mejor validación)
 
 | Métrica | C-HAM | F-HAM-NonIID (α=0.5) | F-HAM-IID |
@@ -638,13 +658,19 @@ El análisis teórico muestra que el enfoque es viable en una red institucional 
 
 La viabilidad depende del equilibrio entre precisión clínica, privacidad y coste operativo. Frente a CNN ligeras como las de Khullar et al., DSCATNet introduce una carga de comunicación comparable por checkpoint, pero ofrece un comportamiento más expresivo en clases minoritarias cuando el escenario es favorable. En cambio, si la red es débil o si el caso de uso exige muchas rondas, la ventaja clínica puede no compensar el tráfico adicional.
 
-La comparativa por dataset refuerza la lectura anterior: en HAM10000, el modo IID mejora la exactitud en +4.28 pp y el modo no-IID en +3.01 pp frente al centralizado; en PAD-UFES-20, el modo IID mejora en +5.09 pp, mientras que el no-IID cae -11.18 pp. Esto confirma que la heterogeneidad de dominio es el principal factor de riesgo del esquema federado, no la federación en sí.
+**Figura 7**: Trade-off comunicación vs precisión según el tipo de agregación (centralizado, IID, NonIID).
+
+*Insertar: `outputs/evaluation_comparison_dscatnet_ham10000/all_datasets/communication_vs_accuracy.png`*
+
+Las curvas de client drift no se incluyen en esta versión porque los logs conservados no registran con suficiente detalle la trayectoria local frente al modelo global en cada ronda; derivarlas a posteriori no sería meticuloso sin ese material.
+
+La comparativa por dataset refuerza la lectura anterior: en HAM10000, el modo IID mejora la exactitud en +2.83 pp y el modo no-IID en +0.30 pp frente al centralizado; en PAD-UFES-20, el modo IID mejora en +9.69 pp, mientras que el no-IID cae -0.13 pp. Esto confirma que la heterogeneidad de dominio es el principal factor de riesgo del esquema federado, no la federación en sí.
 
 ### 4.5 Comparativa global: Centralizado vs Federado
 
 **Tabla 5**: Resumen de todos los experimentos
 
-**Nota**: El tiempo de 71.80 h en C-ISIC2018 debe interpretarse como una ejecución afectada por condiciones de sistema en la máquina local durante esa corrida (por ejemplo, mayor presión de E/S, procesos en segundo plano o fragmentación temporal del entorno). No se interpreta como una diferencia metodológica frente a C-HAM, sino como una variación operativa de una ejecución concreta.
+**Nota**: El tiempo de C-ISIC2018 (71.80 h) fue extraído del registro de entrenamiento. C-HAM (28.81 h) y C-PAD (10.41 h) tienen tiempos distintos debido a las diferencias en tamaño de dataset y convergencia. En entornos federados, el tiempo se distribuye en 100 rondas sobre 4 clientes simulados en una única máquina.
 
 | Experimento | Dataset | Tipo | Best Val | Final Val | Test Acc | Rondas | Tiempo (h) |
 |-----------|---------|------|----------|-------------|-----------|---------|-----------|
@@ -661,17 +687,17 @@ La comparativa por dataset refuerza la lectura anterior: en HAM10000, el modo II
 **Nota**: En los experimentos federados no se reporta un test separado; la comparación usa la validación final agregada sobre el conjunto de validación común, mientras que el baseline centralizado sí incluye métrica de test independiente.
 
 **Visualización**: Las gráficas de convergencia detalladas (por dataset) están disponibles en:
-- `outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/` (convergence plots e comparación)
-- `outputs/evaluation_comparison_dscatnet_isic2019/ISIC2019/` (escenario cross-domain)
-- `outputs/evaluation_comparison_dscatnet_padufes20/PAD-UFES-20/` (escenario PAD-UFES-20)
+- `outputs/evaluation_comparison_dscatnet_ham10000/HAM10000/` y `outputs/evaluation_comparison_dscatnet_ham10000/convergence/`
+- `outputs/evaluation_comparison_dscatnet_padufes20/PAD-UFES-20/` y `outputs/evaluation_comparison_dscatnet_padufes20/convergence/`
+- `outputs/evaluation_comparison_dscatnet_ham10000/all_datasets/communication_vs_accuracy.png` para el trade-off comunicación vs precisión
 
 **Discusión**: 
 
-El análisis global muestra que el aprendizaje federado IID mejora significativamente frente al centralizado en validación final. Los resultados empíricos de la comparativa detallada confirman que HAM10000 pasa de 72.54% a 76.82% en accuracy y PAD-UFES-20 pasa de 63.66% a 68.76%, mientras que el modo no-IID de PAD-UFES-20 cae a 52.48%.
+El análisis global muestra que el aprendizaje federado IID mejora significativamente frente al centralizado en validación final. Tomando como referencia el resumen de entrenamiento, HAM10000 pasa de 69.91% a 72.74% en validación final y PAD-UFES-20 pasa de 56.40% a 66.09%, mientras que el modo no-IID de PAD-UFES-20 cae a 56.27%.
 
 Sin embargo, la heterogeneidad moderada (α=0.5 non-IID) introduce degradación significativa en datasets con variación de dominio:
-- **HAM10000**: F-HAM-NonIID (75.55%) vs C-HAM (72.54%) → +3.01 pp de mejora
-- **PAD-UFES-20**: F-PAD-NonIID (52.48%) vs C-PAD (63.66%) → -11.18 pp de penalización
+- **HAM10000**: F-HAM-NonIID (70.21%) vs F-HAM-IID (72.74%) → -2.53 pp de penalización
+- **PAD-UFES-20**: F-PAD-NonIID (56.27%) vs F-PAD-IID (66.09%) → -9.82 pp de penalización
 
 Este patrón indica que DSCATNet es robusto a no-IID cuando el dominio clínico es homogéneo (HAM10000, adquisición dermoscópica uniforme), pero frágil cuando se combina heterogeneidad de datos con variación de dominio (PAD-UFES-20 incluye imágenes clínicas de smartphones; ISIC2018 combina múltiples fuentes). La implicación es que la viabilidad federada depende críticamente de la estabilidad del dominio de entrada, no solo de la IIDidad de la partición.
 
@@ -800,7 +826,7 @@ Este TFG muestra que DSCATNet puede funcionar de manera competitiva en aprendiza
 
 4. **Robustez no-IID por dominio**: En HAM10000, la degradación IID→NonIID es solo -2.53 pp; en ISIC2018 es -5.43 pp; en PAD-UFES-20 llega a -9.82 pp. El dominio clínico es más determinante que la IIDidad de la partición.
 
-5. **Tiempo de entrenamiento**: FL requiere solo 2.69-72.30 h (100 rondas en máquina única), significativamente menos que centralizado (10.41-71.80 h × 200 épocas), aunque esta comparación no es directa debido a la arquitectura de agregación.
+5. **Tiempo de entrenamiento**: FL requiere 2.69-72.30 h (100 rondas en máquina única), mientras que los baselines centralizados requieren 10.41-71.80 h (200 épocas). El tiempo es proporcional al tamaño del dataset (HAM10000 < PAD-UFES-20 < ISIC2018) y la convergencia es más rápida en FL debido al menor número de rondas.
 
 **Respuesta a objetivos**:
 
