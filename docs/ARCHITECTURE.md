@@ -219,17 +219,35 @@ class SimulationConfig:
 
 ```
 outputs/
-└── {experiment_name}/
-    ├── checkpoints/
-    │   ├── best_model.pt           # Weights only (for inference)
-    │   ├── best_checkpoint.pt      # Full state (for resumption)
-    │   └── checkpoint_{epoch/round}_N.pt
-    ├── config.json                 # Serialized config
-    ├── results.json                # Final metrics + training history
-    ├── metrics/                    # Real-time CSV metrics
-    │   └── {experiment_name}_metrics.csv
-    └── experiment.log              # Full logs (when log_file set)
+├── dscatnet_centralized_{dataset}/
+│   ├── checkpoints/
+│   │   ├── best_model.pt
+│   │   ├── best_checkpoint.pt
+│   │   └── checkpoint_*.pt
+│   ├── config.json
+│   ├── results.json
+│   └── experiment.log
+├── dscatnet_federated_{dataset}_{strategy}/
+│   ├── checkpoints/
+│   │   ├── best_model.pt
+│   │   ├── best_checkpoint.pt
+│   │   └── checkpoint_*.pt
+│   ├── config.json
+│   ├── results.json
+│   └── experiment.log
+├── evaluation_dscatnet_{experiment_name}/
+│   └── {DATASET}/
+│       ├── results_latest.json
+│       ├── metrics_summary.csv
+│       ├── per_class_metrics.csv
+│       └── ...
+└── evaluation_comparison_dscatnet_{experiment_name}/
+    ├── {DATASET}/
+    ├── all_datasets/
+    └── convergence/
 ```
+
+The comparison layer is the most useful when preparing analysis summaries because it consolidates centralized vs federated results, bootstrap gap estimates, communication efficiency, and convergence plots into one place.
 
 ---
 

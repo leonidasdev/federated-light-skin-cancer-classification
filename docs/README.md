@@ -30,6 +30,16 @@ All experiments use YAML configuration files in `configs/`:
 - **Templates**: Available in `configs/templates/`
 - **Validation**: `python src/utils/config_schema.py <config.yaml>`
 
+## Outputs
+
+The project stores its generated artifacts under `outputs/`.
+
+- [outputs/README.md](../outputs/README.md) explains the full output hierarchy.
+- Training runs live under `dscatnet_*` folders.
+- Evaluation exports live under `evaluation_dscatnet_*` folders.
+- Multi-model comparisons and convergence analyses live under `evaluation_comparison_dscatnet_*` folders.
+- The most useful research artifacts are `results_table.csv`, `all_datasets_comparison.csv`, `per_class_metrics.csv`, `confusion_matrix.csv`, `bootstrap_gap_table.csv`, `communication_efficiency.csv`, and the comparison PNG figures.
+
 ## Development
 
 - **Code Style**: [CONTRIBUTING.md](../CONTRIBUTING.md)

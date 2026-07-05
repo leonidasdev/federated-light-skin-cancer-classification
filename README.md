@@ -35,50 +35,24 @@
 
 This project evaluates the **Dual-Scale Cross-Attention Vision Transformer (DSCATNet)** in a **Federated Learning** setting for dermoscopic skin lesion classification.
 
-**This is a thesis project** investigating whether lightweight Vision Transformers can maintain their classification accuracy under federated learning constraints, specifically with non-IID (non-Independent and Identically Distributed) data across multiple simulated hospitals/institutions.
+**This is a research project** investigating whether lightweight Vision Transformers can maintain their classification accuracy under federated learning constraints, specifically with non-IID (non-Independent and Identically Distributed) data across multiple simulated hospitals/institutions.
 
 ### Key Features
 
-- **DSCATNet Implementation**: Lightweight ViT with dual-scale cross-attention (~29.4M parameters, paper variant)
-- **Federated Learning**: Flower-based FL simulation with FedAvg aggregation
-- **Multiple Non-IID Modes**: Natural (dataset-based), Dirichlet, label skew, quantity skew
-- **5 Dermoscopy Datasets**: HAM10000, ISIC 2018/2019/2020, PAD-UFES-20
-- **Comprehensive Evaluation**: Accuracy, F1, AUC-ROC, confusion matrices, per-class metrics
-- **Checkpoint Management**: Resume training, best model tracking, automatic cleanup
+The outputs directory is documented in detail in [outputs/README.md](outputs/README.md). In short, it contains three layers of artifacts: raw training runs (`dscatnet_*`), evaluation exports (`evaluation_dscatnet_*`), and comparison exports (`evaluation_comparison_dscatnet_*`).
 
----
+### What the training `results.json` files contain
 
-## Research Contribution
+The `results.json` file written at the end of each training run includes:
 
-| Aspect | Description |
-|--------|-------------|
-| **Novel Evaluation** | First adaptation and evaluation of DSCATNet in federated learning |
-| **Real-World Non-IID** | Each FL client holds a different dermoscopy dataset (natural heterogeneity) |
-| **Comprehensive Comparison** | Centralized vs. IID-FL vs. Non-IID-FL performance analysis |
-| **Lightweight Focus** | Benchmarking against literature on efficient FL models |
+- Best validation metric and the epoch or round where it occurred
+- Final validation metric
+- Total training time
+- Training history
+- Test metrics when a test split is available
+- Environment metadata such as Python, PyTorch, CUDA, and GPU details
 
----
-
-## Project Structure
-
-```
-federated-light-skin-cancer-classification/
-│
-├── configs/                          # YAML configuration files
-│   ├── dscatnet_federated_ham10000_non_iid.yaml  # Main FL experiment config
-│   ├── dscatnet_centralized_original.yaml        # Centralized baseline config
-│   ├── dscatnet_federated_padufes20_non_iid.yaml # Alternative FL config
-│   ├── fl_config.yaml                      # FL framework defaults
-│   ├── model_config.yaml                   # DSCATNet architecture settings
-│   └── experiment_config.yaml              # Comparison experiment settings
-│
-├── data/                             # Datasets (download required)
-│   ├── HAM10000/
-│   ├── ISIC2018/
-│   ├── ISIC2019/
-│   ├── ISIC2020/
-│   └── PAD-UFES-20/
-│
+For research analysis, the most useful evaluation artifacts are `metrics_summary.csv`, `per_class_metrics.csv`, `confusion_matrix.csv`, the ROC and dashboard figures, and the multi-dataset comparison tables under `outputs/evaluation_comparison_dscatnet_*`.
 ├── outputs/                          # Training outputs (auto-generated)
 │   └── <experiment_name>/
 │       ├── checkpoints/
@@ -282,7 +256,7 @@ python run_experiment.py --config configs/dscatnet_centralized_ham10000.yaml
 This repository includes analysis utilities to extract convergence metrics and generate comparison plots from training results.
 
 - `scripts/analysis/extract_logs.py`: Searches recursively under `--outputs-dir` for `results.json` files from experiments, extracts training/validation accuracy curves, and generates:
-  - **Convergence plots by dataset** (recommended for thesis): centralized vs federated IID vs federated Non-IID for each dataset (HAM10000, All Datasets, PAD-UFES-20)
+    - **Convergence plots by dataset** (recommended for research reporting): centralized vs federated IID vs federated Non-IID for each dataset (HAM10000, All Datasets, PAD-UFES-20)
   - **Convergence plots by learning type**: overview of all experiments, centralized-only, and federated-only
   - **Summary CSV**: best/final validation accuracy, test accuracy, and training time per experiment
   
@@ -923,11 +897,15 @@ Notebook 02 evaluates trained models and exports comprehensive artifacts:
 | `metrics_summary.csv` | Summary metrics (accuracy, F1, AUC, etc.) |
 | `per_class_metrics.csv` | Per-class performance breakdown |
 | `confusion_matrix.csv` | Confusion matrix in tabular form |
-| `kpi_dashboard.png`, `confusion_matrix.png`, `per_class_metrics.png`, `roc_curves.png`, `confidence_analysis.png` | Visualizations |
+| `bootstrap_metric_samples.csv`, `bootstrap_metric_summary.csv` | Bootstrap uncertainty estimates |
+| `env_info.json` | Environment metadata for reproducibility |
+| `kpi_dashboard.png`, `confusion_matrix.png`, `per_class_metrics.png`, `roc_curves.png`, `confidence_analysis.png`, `bootstrap_metric_ci.png` | Visualizations |
 
 #### Notebook 03: FL vs Centralized Comparison
 
 Compares centralized baselines against federated experiments under both IID and non-IID conditions. Requires `results_latest.json` from Notebook 02 runs for each experiment. Performs paired statistical testing to determine significance of accuracy gaps and computes communication costs.
+
+**Comparison outputs** are written to `outputs/evaluation_comparison_dscatnet_*` and include per-dataset tables for ISIC2018, ISIC2019, ISIC2020, and PAD-UFES-20, plus a combined `all_datasets` summary with results tables, bootstrap gap analysis, communication efficiency, and convergence plots.
 
 **Supported Experiment Modalities**:
 - `configs/dscatnet_centralized_*.yaml` — centralized training baseline
@@ -1123,11 +1101,11 @@ For AI assistants (Claude, GPT, etc.), see [docs/CLAUDE.md](docs/CLAUDE.md) for 
 If you use this code in your research, please cite:
 
 ```bibtex
-@thesis{chen2026dscatnet_fl,
+@misc{chen2026dscatnet_fl,
     title={Federated Learning for Skin Cancer Classification using Lightweight Vision Transformers},
     author={Chen, Leonardo},
     year={2026},
-    school={Universidad Politécnica de Madrid}
+    note={Research project repository}
 }
 ```
 
