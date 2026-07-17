@@ -53,6 +53,7 @@ The `results.json` file written at the end of each training run includes:
 - Environment metadata such as Python, PyTorch, CUDA, and GPU details
 
 For research analysis, the most useful evaluation artifacts are `metrics_summary.csv`, `per_class_metrics.csv`, `confusion_matrix.csv`, the ROC and dashboard figures, and the multi-dataset comparison tables under `outputs/evaluation_comparison_dscatnet_*`.
+```
 ├── outputs/                          # Training outputs (auto-generated)
 │   └── <experiment_name>/
 │       ├── checkpoints/
